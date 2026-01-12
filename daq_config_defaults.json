@@ -1,0 +1,12 @@
+{
+    "monitoring_time_s": 300,
+    "channels": [0, 1, 2, 3, 4],
+    "channel_types": ["T", "T", "P", "P", "I"],
+    "voltage_ranges": [10, 10, 10, 10, 10],
+    "sample_rate_hz": 6000,
+    "decimation": 100,
+    "display_points": 1600,
+    "plot_refresh_rate_ms": 50,
+    "separate_plots": false,
+    "cycle_mode": true
+}
