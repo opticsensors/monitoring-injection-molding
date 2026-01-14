@@ -32,8 +32,8 @@ IR sensors offer non-contact, fast-response measurement (<8ms) of melt temperatu
 A 24 V reset signal is applied to the charge amplifier to discharge its internal capacitance and eliminate drift. This signal can be triggered by either a manual switch or the inductive proximity sensor (both work independently and can be active simultaneously).
 
 **Relay Logic**
-- Auxiliary relay: Converts the sensor's electronic output into a mechanical contact, protecting the sensor electronics from the manual switch's direct 24 V supply.
-- Main relay: Energizes when either the manual switch or the auxiliary relay contact closes (wired in parallel). The main relay output controls the load—in this case, the charge amplifier's reset input.
+- Auxiliary relay: converts the sensor's electronic output into a mechanical contact, protecting the sensor electronics from the manual switch's direct 24 V supply.
+- Main relay: energizes when either the manual switch or the auxiliary relay contact closes (wired in parallel). The main relay output controls the load, in this case, the charge amplifier's trigger/reset input (pin 19).
 
 **Pull-Down Resistor (10 kΩ)**
 A 10 kΩ pull-down resistor between the main relay's NO contact and ground ensures the trigger pin stays at a defined LOW state (0 V) when the relay is open, preventing false triggering from electrical noise.
