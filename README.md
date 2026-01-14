@@ -5,6 +5,7 @@ Integration of temperature and pressure sensors inside the cavity of an injectio
 
 <img src="./figures/circuit4.jpg" alt="Circuit schematic" width="95%"/>
 
+<img src="./figures/circuit5.png" alt="Circuit schematic" width="95%"/>
 
 
 ## 1. Sensors:
@@ -22,13 +23,13 @@ Injection molding involves rapid pressure spikes during filling. Piezoelectric s
 IR sensors offer non-contact, fast-response measurement (<8ms) of melt temperature, unaffected by mold conduction. Thermocouples, though cost-effective, can have their melt temperature readings altered by heat conduction from the surrounding mold steel.
 
 
-## 3. Circuit
+## 2. Circuit
 
 <img src="./figures/circuit3.png" alt="Circuit schematic" width="95%"/>
 
 
 **Reset Signal**
-A 24 V reset signal is applied to the charge amplifier to discharge its internal capacitance and eliminate drift. This signal can be triggered by either a manual switch or the inductive proximity sensor—both work independently and can be active simultaneously.
+A 24 V reset signal is applied to the charge amplifier to discharge its internal capacitance and eliminate drift. This signal can be triggered by either a manual switch or the inductive proximity sensor (both work independently and can be active simultaneously).
 
 **Relay Logic**
 - Auxiliary relay: Converts the sensor's electronic output into a mechanical contact, protecting the sensor electronics from the manual switch's direct 24 V supply.
