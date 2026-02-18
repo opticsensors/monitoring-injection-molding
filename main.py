@@ -107,8 +107,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.adc_resolution = 2**(16-1)  # 15-bit ADC resolution
         self.voltage_scale = 10  # Voltage range scale
         
-        # Temperature conversion: 1V = 100°C
-        self.temp_scale = 100  # 100°C per volt
+        # Temperature conversion: 1V = 100C
+        self.temp_scale = 100  # 100C per volt
         
         # Pressure conversion: bar
         self.s0 = 2.500
@@ -249,7 +249,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         ch_num = self.daq_channels[channel_index] if channel_index < len(self.daq_channels) else channel_index
         
         if ch_type == 'T':
-            return f'Temperature CH{ch_num} [°C]'
+            return f'Temperature CH{ch_num} [C]'
         elif ch_type == 'P':
             return f'Pressure CH{ch_num} [bar]'
         else:  # 'I'
@@ -404,7 +404,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                     if i < len(self.channel_types):
                         ch_type = self.channel_types[i]
                         if ch_type == 'T':
-                            header.append(f"CH{ch}_Temp[°C]")
+                            header.append(f"CH{ch}_Temp[C]")
                         elif ch_type == 'P':
                             header.append(f"CH{ch}_Pressure[bar]")
                         else:  # 'I'
@@ -1055,10 +1055,10 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             
             # Configure left Y-axis (Temperature)
             if has_temp:
-                main_plot.setLabel('left', 'Temperature [°C]', color='#FF0000')
+                main_plot.setLabel('left', 'Temperature [C]', color='#FF0000')
                 main_plot.getAxis("left").setPen(pg.mkPen('#FF0000', width=2))
             else:
-                main_plot.setLabel('left', 'Temperature [°C] (unused)', color='#888888')
+                main_plot.setLabel('left', 'Temperature [C] (unused)', color='#888888')
                 main_plot.getAxis("left").setPen(pg.mkPen('#888888', width=1))
             
             main_plot.setLabel('bottom', 'Time [s]')
@@ -1263,7 +1263,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         if inductive_count > 0:
             plot_mode += f" + {inductive_count} Inductive"
         self.messagesBox.appendHtml('<p>Plot layout: %s</p>' %plot_mode)
-        self.messagesBox.appendHtml('<p>Unit conversion: T→°C, P→bar, I→0/1</p>')
+        self.messagesBox.appendHtml('<p>Unit conversion: T→C, P→bar, I→0/1</p>')
         
         if cycle_mode:
             self.messagesBox.appendHtml('<p style="color:green;">Cycle mode: ENABLED (I signal controls cycles)</p>')
