@@ -42,9 +42,9 @@ A 10 kΩ pull-down resistor between the main relay's NO contact and ground ensur
 
 # Software
 
-(put video of cycle control / display in real time)
+![Demo](figures/monitoring.gif)
 
-software capable of displaying and saving the data in real time. 
+<img src="./figures/integration.jpg" alt="Circuit schematic" width="100%"/>
 
 
 
