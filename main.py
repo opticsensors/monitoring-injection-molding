@@ -32,7 +32,7 @@ logger = logging.getLogger('main')
 
 # Cycle-counter persistence: cycle numbers keep increasing across sessions,
 # restarts and power loss (same idea as the Pi loggers' cycle_id.txt).
-CYCLE_ID_FILE = Path(__file__).parent / 'cycle_id.txt'
+CYCLE_ID_FILE = Path(__file__).parent / 'data' / 'cycle_id.txt'
 
 
 def load_cycle_id():
@@ -46,6 +46,7 @@ def load_cycle_id():
 def save_cycle_id(cid):
     """Write atomically (tmp + replace) so a power cut cannot truncate the file."""
     try:
+        CYCLE_ID_FILE.parent.mkdir(parents=True, exist_ok=True)
         tmp = CYCLE_ID_FILE.with_suffix('.tmp')
         tmp.write_text(str(cid))
         os.replace(tmp, CYCLE_ID_FILE)

@@ -8,8 +8,8 @@ missing or invalid. Pure: only ``json`` / ``pathlib``, no Qt.
 import json
 from pathlib import Path
 
-# Path to configuration defaults file (same folder as the source files).
-CONFIG_DEFAULTS_FILE = Path(__file__).parent / 'daq_config_defaults.json'
+# Path to configuration defaults file (in the config/ folder).
+CONFIG_DEFAULTS_FILE = Path(__file__).parent / 'config' / 'daq_config_defaults.json'
 
 
 def load_config_defaults():

@@ -31,7 +31,7 @@ import paho.mqtt.client as mqtt
 
 _MODULE_DIR = Path(__file__).parent
 ENV_FILE = _MODULE_DIR / '.env'
-PENDING_DIR = _MODULE_DIR / 'pending'
+PENDING_DIR = _MODULE_DIR / 'data' / 'pending'
 
 logger = logging.getLogger('mqtt_publisher')
 
@@ -302,7 +302,7 @@ class MqttPublisher:
     def _spill_to_disk(self, records):
         """Persist a batch we couldn't publish so it survives restarts."""
         try:
-            PENDING_DIR.mkdir(exist_ok=True)
+            PENDING_DIR.mkdir(parents=True, exist_ok=True)
             path = PENDING_DIR / f"batch_{time.time_ns()}.json"
             path.write_text(json.dumps(records))
             logger.warning("Spilled %d records to %s", len(records), path.name)

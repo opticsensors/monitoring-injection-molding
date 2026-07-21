@@ -1,0 +1,15 @@
+# Runtime dependencies for the monitoring app.
+#   pip install -r requirements.txt
+PyQt5
+pyqtgraph
+numpy
+paho-mqtt
+python-dotenv
+pyserial
+
+# Offline CSV plotting (scripts/plot_csv_raw.py)
+pandas
+matplotlib
+
+# DAQ device driver is a local editable package (not on PyPI):
+#   pip install -e ../daq_connectivity

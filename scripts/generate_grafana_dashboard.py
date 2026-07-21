@@ -39,11 +39,16 @@ import json
 import sys
 from pathlib import Path
 
+# This script lives in scripts/ but imports the app's sensor_types (repo root)
+# and reads/writes daq_config_defaults.json (config/) and grafana_dashboard.json
+# (iot/). Anchor everything to the repo root so it runs from any directory.
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
 from sensor_types import sensor_category, sensor_label, sensor_unit
 
-HERE = Path(__file__).parent
-CONFIG_FILE = HERE / 'daq_config_defaults.json'
-DASHBOARD_FILE = HERE / 'grafana_dashboard.json'
+CONFIG_FILE = ROOT / 'config' / 'daq_config_defaults.json'
+DASHBOARD_FILE = ROOT / 'iot' / 'grafana_dashboard.json'
 
 # InfluxQL filter shared by every panel: one machine, last N cycles.
 WHERE = "\"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles"
