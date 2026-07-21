@@ -3,6 +3,8 @@ Integration of temperature and pressure sensors inside the cavity of an injectio
 
 # Hardware
 
+UPDATE photos: added new connector for machine outputs and rewired 
+
 <img src="./figures/circuit4.jpg" alt="Circuit schematic" width="95%"/>
 
 <img src="./figures/circuit5.png" alt="Circuit schematic" width="95%"/>
@@ -24,6 +26,11 @@ IR sensors offer non-contact, fast-response measurement (<8ms) of melt temperatu
 
 
 ## 2. Circuit
+
+UPDATE: aux relay is two poles and uses instead of GND and A1, COM 21 and NC 22 to go to D5
+
+Talk about the dry contact that means, that thanks to the pull down (or up?) resistor inside the D5 ensures just a contact to GND (NC, incverted logic, contact to ground is mnot 0, but 1) con make the logic/read go to 1 in the D5
+
 
 <img src="./figures/circuit3.png" alt="Circuit schematic" width="95%"/>
 
@@ -47,4 +54,20 @@ A 10 kΩ pull-down resistor between the main relay's NO contact and ground ensur
 <img src="./figures/integration.jpg" alt="Circuit schematic" width="100%"/>
 
 
+# IoT
 
+ADD how data is send via mqtt to node red and send the data to server...
+use the rpi repo readme for this!
+
+### Grafana dashboard
+
+The app publishes one `CH<n>_<sensor_type>` field per configured channel (already in
+physical units) and the Node-RED flow ingests whatever channels arrive, so neither
+needs edits when the channel setup changes. Only `grafana_dashboard.json` is static:
+after changing `channels` / `channel_types` / `plot_channels` / `machine_id` in
+`daq_config_defaults.json`, regenerate it and re-import it in Grafana
+(Dashboards → Import; same uid, so the existing dashboard is updated in place):
+
+```
+py generate_grafana_dashboard.py
+```

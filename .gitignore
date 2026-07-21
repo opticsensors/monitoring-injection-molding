@@ -8,4 +8,16 @@ __pycache__/
 *.so
 *~
 
+# Dev notes / scratch (kept locally, not versioned)
+PROMPT.md
+
+# Runtime output + state: logs, MQTT offline spool, saved sessions, cycle counter.
+# The new layout keeps these under data/; the old top-level names are retained
+# so nothing is accidentally committed if a file predates the move.
+data/
+.env
 results/
+pending/
+logs/
+cycle_id.txt
+cycle_id.tmp

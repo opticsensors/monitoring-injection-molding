@@ -1,12 +1,26 @@
 {
-    "monitoring_time_s": 300,
-    "channels": [0, 1, 2, 3, 4],
-    "channel_types": ["T", "T", "P", "P", "I"],
-    "voltage_ranges": [10, 10, 10, 10, 10],
+    "monitoring_time_s": 400,
+    "channels": [0, 1, 2, 3, 5, 6, 7],
+    "channel_types": ["T_futaba", "T_futaba", "P_kistler", "P_kistler", "P_machine", "S_speed", "S_position"],
+    "voltage_ranges": [10, 10, 10, 10, 10, 10, 10],
     "sample_rate_hz": 6000,
     "decimation": 100,
     "display_points": 1600,
     "plot_refresh_rate_ms": 50,
     "separate_plots": false,
-    "cycle_mode": true
+    "machine_layout": "shared",
+    "plot_channels": [0, 1, 2, 3, 5, 6, 7],
+    "mqtt_enabled": false,
+    "machine_id": "55t",
+    "min_cycle_s": 2.0,
+    "trigger_mode": "Inductive",
+    "trigger_wiring": "digital",
+    "digital_map": {"D4": "Inductive", "D5": "Machine_signal"},
+    "conversion": {
+        "T_futaba":   {"deg_per_volt": 100.0},
+        "P_kistler":  {"s0": 2.500, "s1": 2.508, "Qmax": 20000.0},
+        "P_machine":  {"initial": 0.0, "resolution_mV": 20.0},
+        "S_speed":    {"initial": 0.0, "resolution_mV": 100.0},
+        "S_position": {"initial": 0.0, "resolution_mV": 100.0}
+    }
 }
