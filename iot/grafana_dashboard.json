@@ -1132,20 +1132,20 @@
     "list": [
       {
         "current": {
-          "text": "160t",
-          "value": "160t"
+          "text": "55t",
+          "value": "55t"
         },
         "includeAll": false,
         "label": "Machine",
         "name": "machine_id",
         "options": [
           {
-            "selected": true,
+            "selected": false,
             "text": "160t",
             "value": "160t"
           },
           {
-            "selected": false,
+            "selected": true,
             "text": "55t",
             "value": "55t"
           }
