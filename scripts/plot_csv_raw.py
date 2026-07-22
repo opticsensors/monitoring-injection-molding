@@ -7,12 +7,13 @@ import matplotlib.pyplot as plt
 
 csv_file = r".\results\5mms.csv"
 
-# Column names (CHANGE THESE IF CSV CHANGES)
-time_column = 'Time(s)'
-cycle_column = 'Cycle'
+# Column names (CHANGE THESE IF CSV CHANGES). The CSV header now matches the
+# MQTT keys exactly: cycle_id, time_s, then CH<n>_<type> with no units.
+time_column = 'time_s'
+cycle_column = 'cycle_id'
 
-temperature_columns = ['CH0_Temp[C]', 'CH1_Temp[C]']
-pressure_columns = ['CH2_Pressure[bar]', 'CH3_Pressure[bar]']
+temperature_columns = ['CH0_T_futaba', 'CH1_T_futaba']
+pressure_columns = ['CH2_P_kistler', 'CH3_P_kistler']
 
 # Cycles to plot (single int OR list of ints)
 cycles_to_plot = [1]          # Example: [1] or [1,2,3]

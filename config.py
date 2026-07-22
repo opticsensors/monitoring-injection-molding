@@ -18,7 +18,7 @@ def load_config_defaults():
         "monitoring_time_s": 300,
         "channels": [0, 1, 2, 3, 5, 6, 7],
         "channel_types": ["T_futaba", "T_futaba", "P_kistler", "P_kistler",
-                          "P_machine", "S_speed", "S_position"],
+                          "P_machine", "vel_screw", "pos_screw"],
         "voltage_ranges": [10, 10, 10, 10, 10, 10, 10],
         "sample_rate_hz": 6000,
         "decimation": 100,
@@ -37,8 +37,8 @@ def load_config_defaults():
             "T_futaba":   {"deg_per_volt": 100.0},
             "P_kistler":  {"s0": 2.500, "s1": 2.508, "Qmax": 20000.0},
             "P_machine":  {"initial": 0.0, "resolution_mV": 10.0},
-            "S_speed":    {"initial": 0.0, "resolution_mV": 10.0},
-            "S_position": {"initial": 0.0, "resolution_mV": 10.0}
+            "vel_screw":  {"initial": 0.0, "resolution_mV": 10.0},
+            "pos_screw":  {"initial": 0.0, "resolution_mV": 10.0}
         }
     }
 

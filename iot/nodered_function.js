@@ -1,7 +1,7 @@
 // The DAQ app publishes one batch per cycle (or one per continuous session):
 // [{timestamp_ns, time_s, machine_id, session_id, cycle_id,
 //   CH0_T_futaba, CH1_T_futaba, CH2_P_kistler, CH3_P_kistler,
-//   CH5_P_machine, CH6_S_speed, CH7_S_position}, ...]
+//   CH5_P_machine, CH6_vel_screw, CH7_pos_screw}, ...]
 // Channel keys are CH<hw-channel>_<sensor_type>, named by the app from its
 // channel config, and the values are already converted to physical units
 // (degC, bar, mm/s, mm). The channel set is discovered per record, so any

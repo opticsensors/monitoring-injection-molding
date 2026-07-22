@@ -814,12 +814,12 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "/^CH6_S_speed.*/"
+              "options": "/^CH6_vel_screw.*/"
             },
             "properties": [
               {
                 "id": "custom.axisLabel",
-                "value": "v_screw [mm/s]"
+                "value": "vel_screw [mm/s]"
               }
             ]
           }
@@ -853,7 +853,7 @@
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "CH6_S_speed"
+                  "options": "CH6_vel_screw"
                 }
               }
             ]
@@ -874,13 +874,13 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH6_S_speed\", \"t_ms\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles GROUP BY \"cycle_id\"",
+          "query": "SELECT \"CH6_vel_screw\", \"t_ms\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles GROUP BY \"cycle_id\"",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
         }
       ],
-      "title": "v_screw (CH6)",
+      "title": "vel_screw (CH6)",
       "transformations": [
         {
           "id": "partitionByValues",
@@ -960,12 +960,12 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "/^CH7_S_position.*/"
+              "options": "/^CH7_pos_screw.*/"
             },
             "properties": [
               {
                 "id": "custom.axisLabel",
-                "value": "X_screw [mm]"
+                "value": "pos_screw [mm]"
               }
             ]
           }
@@ -999,7 +999,7 @@
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "CH7_S_position"
+                  "options": "CH7_pos_screw"
                 }
               }
             ]
@@ -1020,13 +1020,13 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH7_S_position\", \"t_ms\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles GROUP BY \"cycle_id\"",
+          "query": "SELECT \"CH7_pos_screw\", \"t_ms\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles GROUP BY \"cycle_id\"",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
         }
       ],
-      "title": "X_screw (CH7)",
+      "title": "pos_screw (CH7)",
       "transformations": [
         {
           "id": "partitionByValues",
@@ -1110,7 +1110,7 @@
                 "uid": "aemj80lun4u0wc"
               },
               "policy": "default",
-              "query": "SELECT \"CH0_T_futaba\", \"CH1_T_futaba\", \"CH2_P_kistler\", \"CH3_P_kistler\", \"CH5_P_machine\", \"CH6_S_speed\", \"CH7_S_position\", \"cycle_num\", \"t_ms\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
+              "query": "SELECT \"CH0_T_futaba\", \"CH1_T_futaba\", \"CH2_P_kistler\", \"CH3_P_kistler\", \"CH5_P_machine\", \"CH6_vel_screw\", \"CH7_pos_screw\", \"cycle_num\", \"t_ms\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
               "rawQuery": true,
               "refId": "A",
               "resultFormat": "table"

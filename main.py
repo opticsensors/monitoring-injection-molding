@@ -108,7 +108,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.temp_colors = ['#FF0000', '#FF6600', '#FF9900', '#FFCC00']  # Red, Orange, Dark Orange, Gold
         self.pressure_colors = ['#0000FF', '#0099FF', '#00CCFF', '#00FFFF']  # Blue, Light Blue, Cyan, Aqua
         # Fixed colour per machine signal type
-        self.machine_colors = {'S_position': '#8E44AD', 'S_speed': '#16A085', 'P_machine': '#E67E22'}
+        self.machine_colors = {'pos_screw': '#8E44AD', 'vel_screw': '#16A085', 'P_machine': '#E67E22'}
 
         # Channel type configuration from defaults (full-name codes, see SENSOR_TYPES)
         self.channel_types = list(CONFIG_DEFAULTS['channel_types'])
@@ -469,7 +469,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         Save session dialog:
         Save a csv file with session data in converted physical units
         (same values as plotted/uploaded; analog trigger channels as 0/1).
-        In cycle mode, includes a Cycle column.
+        The header (cycle_id, time_s, CH<n>_<type>) matches the MQTT payload
+        exactly; cycle_id is always present (0 = continuous / no cycle).
         '''
         fname = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Session Data as:', os.getenv('HOME'), 'CSV(*.csv)')
 
@@ -477,22 +478,12 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             with open(fname[0], 'w', newline='') as csv_file:
                 writer = csv.writer(csv_file, dialect='excel')
                 
-                # Write header with channel types. The Cycle column is always
-                # present (0 = continuous / no cycle), matching the MQTT payload
-                # where cycle_id is always set (0 for a full continuous session).
-                header = []
-                header.append("Cycle")
-                header.append("Time(s)")
-                for i, ch in enumerate(self.daq_channels):
-                    if i < len(self.channel_types):
-                        ct = self.channel_types[i]
-                        if sensor_category(ct) == 'trigger':
-                            header.append(f"CH{ch}_{ct}[0/1]")
-                        else:
-                            unit = sensor_unit(ct)
-                            header.append(f"CH{ch}_{ct}[{unit}]" if unit else f"CH{ch}_{ct}")
-                    else:
-                        header.append(f"CH{ch}")
+                # Header names are identical to the MQTT payload keys: cycle_id,
+                # time_s, then one CH<n>_<type> per channel (no units, so the CSV
+                # and cloud schemas match exactly). cycle_id is always present
+                # (0 = continuous / no cycle), like the MQTT cycle_id.
+                header = ["cycle_id", "time_s"]
+                header.extend(self._channel_field_names())
                 writer.writerow(header)
                 
                 # Write data
@@ -1028,11 +1019,11 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
     _COORD_TAGS = {
         'T_futaba': 'T', 'T_typeK': 'T', 'T_typeJ': 'T',
         'P_kistler': 'P', 'P_machine': 'P',
-        'S_speed': 'v', 'S_position': 'pos',
+        'vel_screw': 'vel', 'pos_screw': 'pos',
     }
 
     def _coord_tag(self, ch_type):
-        """Short axis tag for the coordinate readout (T / P / pos / v)."""
+        """Short axis tag for the coordinate readout (T / P / pos / vel)."""
         return self._COORD_TAGS.get(ch_type, sensor_label(ch_type)[:3])
 
     def _add_coord_readout(self, which, main_plot, axes):
@@ -1219,8 +1210,12 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             self.messagesBox.appendHtml(
                 '<p style="color:red;">Cloud upload disabled: %s</p>' % e)
 
-    def _mqtt_field_names(self):
-        """Per-channel payload keys, matching the CSV header (e.g. CH2_P_kistler)."""
+    def _channel_field_names(self):
+        """Per-channel column/payload keys, e.g. CH2_P_kistler.
+
+        The single source used for BOTH the CSV header and the MQTT payload, so
+        the local and cloud schemas stay byte-for-byte identical (no units).
+        """
         names = []
         for i, ch in enumerate(self.daq_channels):
             if i < len(self.channel_types):
@@ -1239,7 +1234,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         """
         if self.mqtt_publisher is None or not xdata:
             return
-        names = self._mqtt_field_names()
+        names = self._channel_field_names()
         records = []
         for j, x in enumerate(xdata):
             rec = {'timestamp_ns': int((base_epoch + x) * 1e9),
@@ -1548,8 +1543,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             self._add_arrow_items(self.machine_splotlist[0] if self.machine_splotlist else None, 'machine')
         else:
             # Shared layout: position (native left), speed (extra left), pressure (right)
-            pos_idx = [i for i in machine_idx if self.channel_types[i] == 'S_position']
-            spd_idx = [i for i in machine_idx if self.channel_types[i] == 'S_speed']
+            pos_idx = [i for i in machine_idx if self.channel_types[i] == 'pos_screw']
+            spd_idx = [i for i in machine_idx if self.channel_types[i] == 'vel_screw']
             prs_idx = [i for i in machine_idx if self.channel_types[i] == 'P_machine']
 
             extra_ax = None
@@ -1566,12 +1561,12 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             legend.setParentItem(main_plot.graphicsItem())
 
             # Native left axis: Screw position
-            col_pos = self.machine_colors['S_position']
+            col_pos = self.machine_colors['pos_screw']
             if pos_idx:
-                main_plot.setLabel('left', f"{sensor_label('S_position')} [{sensor_unit('S_position')}]", color=col_pos)
+                main_plot.setLabel('left', f"{sensor_label('pos_screw')} [{sensor_unit('pos_screw')}]", color=col_pos)
                 main_plot.getAxis("left").setPen(pg.mkPen(col_pos, width=2))
             else:
-                main_plot.setLabel('left', f"{sensor_label('S_position')} (unused)", color='#888888')
+                main_plot.setLabel('left', f"{sensor_label('pos_screw')} (unused)", color='#888888')
                 main_plot.getAxis("left").setPen(pg.mkPen('#888888', width=1))
             for i in pos_idx:
                 item = main_plot.plot(pen=pg.mkPen(self.get_channel_color(i), width=2))
@@ -1586,8 +1581,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             if spd_idx and extra_ax is not None:
                 lvb = self._add_side_viewbox(main_plot, extra_ax)
                 self.machine_left2_viewbox = lvb
-                col_spd = self.machine_colors['S_speed']
-                extra_ax.setLabel(f"{sensor_label('S_speed')} [{sensor_unit('S_speed')}]", color=col_spd)
+                col_spd = self.machine_colors['vel_screw']
+                extra_ax.setLabel(f"{sensor_label('vel_screw')} [{sensor_unit('vel_screw')}]", color=col_spd)
                 extra_ax.setPen(pg.mkPen(col_spd, width=2))
                 for i in spd_idx:
                     item = pg.PlotDataItem(pen=pg.mkPen(self.get_channel_color(i), width=2))
@@ -1617,9 +1612,9 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
 
             coord_axes = []
             if pos_idx:
-                coord_axes.append(('pos', sensor_unit('S_position'), main_plot.vb))
+                coord_axes.append(('pos', sensor_unit('pos_screw'), main_plot.vb))
             if spd_idx and self.machine_left2_viewbox is not None:
-                coord_axes.append(('v', sensor_unit('S_speed'), self.machine_left2_viewbox))
+                coord_axes.append(('vel', sensor_unit('vel_screw'), self.machine_left2_viewbox))
             if prs_idx and self.machine_right_viewbox is not None:
                 coord_axes.append(('P', sensor_unit('P_machine'), self.machine_right_viewbox))
             self._add_coord_readout('machine', main_plot, coord_axes)

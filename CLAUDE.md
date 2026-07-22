@@ -68,17 +68,22 @@ Because the app modules use **flat imports** (`import MainWindow`,
 
 ## Data schemas
 
-Two datasets with **different** schemas:
+Two datasets that **share identical column/field names** (no units in any key —
+units live only in the sensor registry). Both come from
+`_channel_field_names()`, the single source for channel keys:
 
-- **Local CSV** (`save_Session`): `Cycle, Time(s), CH<n>_<type>[<unit>], ...`
-  Physical units in the header; `Cycle` is always present (0 = continuous).
-  `Time(s)` is relative to the session/cycle start.
-- **Cloud (MQTT)** (`_publish_records` → `nodered_function.js`):
-  `timestamp_ns, time_s, machine_id, session_id, cycle_id, CH<n>_<type>, ...`
-  No units in the channel keys. `cycle_id` is always present (0 for continuous).
-  In InfluxDB, `machine_id` / `cycle_id` / `session_id` are **tags**; identity is
-  effectively `(machine_id, timestamp)`. The Node-RED function discovers channel
-  fields per-record, so any channel config works without editing it.
+- **Local CSV** (`save_Session`): `cycle_id, time_s, CH<n>_<type>, ...`
+  `cycle_id` is always present (0 = continuous); `time_s` is relative to the
+  session/cycle start.
+- **Cloud (MQTT)** (`_publish_records` → `nodered_function.js`): the same
+  `cycle_id, time_s, CH<n>_<type>, ...` plus cloud-only metadata
+  `timestamp_ns, machine_id, session_id`. In InfluxDB, `machine_id` / `cycle_id`
+  / `session_id` are **tags**; identity is effectively `(machine_id, timestamp)`.
+  The Node-RED function discovers channel fields per-record, so any channel
+  config works without editing it.
+
+The CSV header and MQTT payload are byte-for-byte identical for the shared
+columns; keep `_channel_field_names()` the one place that names channels.
 
 `cycle_id` is a monotonic per-machine counter persisted in `data/cycle_id.txt`
 across restarts. Discarded (too-short) cycles reuse the number, so there are no
