@@ -5,7 +5,8 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from graphswidget import GraphsWidget
-from plot_icons import home_icon, zoom_icon, pan_icon, measure_icon
+from plot_icons import (home_icon, zoom_icon, pan_icon, measure_icon, eye_icon,
+                        cloud_icon, save_icon)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -87,10 +88,21 @@ class Ui_MainWindow(object):
         self.saveSessionButton.setEnabled(False)
         self.saveSessionButton.setMinimumSize(QtCore.QSize(40, 40))
         self.saveSessionButton.setMaximumSize(QtCore.QSize(40, 40))
-        self.saveSessionButton.setIcon(style.standardIcon(QtWidgets.QStyle.SP_DialogSaveButton))
-        self.saveSessionButton.setIconSize(QtCore.QSize(22, 22))
+        self.saveSessionButton.setIcon(save_icon())          # monochrome floppy, matches the cloud
+        self.saveSessionButton.setIconSize(QtCore.QSize(20, 20))  # a little smaller than the others
         self.saveSessionButton.setObjectName("saveSessionButton")
         self.horizontalLayout_3.addWidget(self.saveSessionButton)
+        # Send the finished session to the cloud (MQTT) in one shot. Enabled only
+        # when a stopped session has data that did NOT already stream live, so it
+        # can never double-publish.
+        self.sendSessionButton = QtWidgets.QPushButton(self.frame)
+        self.sendSessionButton.setEnabled(False)
+        self.sendSessionButton.setMinimumSize(QtCore.QSize(40, 40))
+        self.sendSessionButton.setMaximumSize(QtCore.QSize(40, 40))
+        self.sendSessionButton.setIcon(cloud_icon())
+        self.sendSessionButton.setIconSize(QtCore.QSize(22, 22))
+        self.sendSessionButton.setObjectName("sendSessionButton")
+        self.horizontalLayout_3.addWidget(self.sendSessionButton)
 
         # Plot tools (matplotlib-style): Home / Zoom / Pan / Time cursors + readout.
         # Wider gap so they read as a separate group. All start disabled; they are
@@ -134,6 +146,18 @@ class Ui_MainWindow(object):
         self.cursorButton.setIconSize(toolIconSize)
         self.cursorButton.setObjectName("cursorButton")
         self.horizontalLayout_3.addWidget(self.cursorButton)
+        # Eye toggle: a checkable button that hides/shows the faint past-cycle
+        # ghost curves. Unlike the modal tools it is a persistent view
+        # preference, so it is NOT cleared when the plot goes live again.
+        self.hideGhostsButton = QtWidgets.QPushButton(self.frame)
+        self.hideGhostsButton.setEnabled(False)
+        self.hideGhostsButton.setCheckable(True)
+        self.hideGhostsButton.setMinimumSize(QtCore.QSize(40, 40))
+        self.hideGhostsButton.setMaximumSize(QtCore.QSize(40, 40))
+        self.hideGhostsButton.setIcon(eye_icon())
+        self.hideGhostsButton.setIconSize(toolIconSize)
+        self.hideGhostsButton.setObjectName("hideGhostsButton")
+        self.horizontalLayout_3.addWidget(self.hideGhostsButton)
         # Blank space (as between the Save and Home icons) separating the tools
         # from the computed Δt / ΔP readout.
         self.horizontalLayout_3.addSpacing(30)
@@ -239,12 +263,14 @@ class Ui_MainWindow(object):
         self.nextButton.setToolTip(_translate("MainWindow", "Next"))
         self.stopButton.setToolTip(_translate("MainWindow", "Stop"))
         self.saveSessionButton.setToolTip(_translate("MainWindow", "Save Session"))
+        self.sendSessionButton.setToolTip(_translate("MainWindow", "Send session to cloud (MQTT) - uploads the whole finished session at once; disabled once it has streamed or been sent"))
         # Plot-tool buttons are icon-only (matplotlib-style, see plot_icons.py);
         # they are enabled only while the plot is still. Name them via tooltips.
         self.homeButton.setToolTip(_translate("MainWindow", "Home - reset the view to the automatic range"))
         self.zoomButton.setToolTip(_translate("MainWindow", "Zoom - drag a rectangle to zoom in (available when the plot is not updating)"))
         self.panButton.setToolTip(_translate("MainWindow", "Pan - drag the plot to move around (available when the plot is not updating)"))
         self.cursorButton.setToolTip(_translate("MainWindow", "Time cursors - left-click: t1 line, right-click: t2 line, middle-click: clear. Drag a line to fine-tune."))
+        self.hideGhostsButton.setToolTip(_translate("MainWindow", "Hide previous cycles - toggle the faint past-cycle (ghost) curves on/off"))
         self.cycleReadoutLabel.setText(_translate("MainWindow", "Cycle: --"))
         self.deltaTLabel.setText(_translate("MainWindow", "Δt: --"))
         self.deltaPLabel.setText(_translate("MainWindow", "ΔP: --"))

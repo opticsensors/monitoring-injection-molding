@@ -59,15 +59,19 @@ A 10 kΩ pull-down resistor between the main relay's NO contact and ground ensur
 ADD how data is send via mqtt to node red and send the data to server...
 use the rpi repo readme for this!
 
-### Grafana dashboard
+ssh 'eduard.almar@local.eurecat.org'@172.20.48.28
 
-The app publishes one `CH<n>_<sensor_type>` field per configured channel (already in
-physical units) and the Node-RED flow ingests whatever channels arrive, so neither
-needs edits when the channel setup changes. Only `grafana_dashboard.json` is static:
-after changing `channels` / `channel_types` / `plot_channels` / `machine_id` in
-`daq_config_defaults.json`, regenerate it and re-import it in Grafana
-(Dashboards → Import; same uid, so the existing dashboard is updated in place):
+show/print:
+ssh 'eduard.almar@local.eurecat.org'@172.20.48.28 "docker exec influxdb influx -database sensor_data -execute 'SELECT * FROM sensor_data'"
 
-```
-py generate_grafana_dashboard.py
-```
+delete: 
+ssh 'eduard.almar@local.eurecat.org'@172.20.48.28 "docker exec influxdb influx -database sensor_data -execute 'DELETE FROM sensor_data'"
+
+download:
+ssh 'eduard.almar@local.eurecat.org'@172.20.48.28 "docker exec influxdb influx -database sensor_data -execute 'SELECT * FROM sensor_data' -format csv" > /mnt/c/Users/eduard.almar/Downloads/sensor_data_dump.csv
+
+grafana	
+http://172.20.48.28:3000/
+
+influxdb 
+http://172.20.48.28:8086/

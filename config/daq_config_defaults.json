@@ -13,6 +13,7 @@
     "mqtt_enabled": false,
     "machine_id": "55t",
     "min_cycle_s": 2.0,
+    "inter_cycle_gap_s": 0.5,
     "trigger_mode": "Inductive",
     "trigger_wiring": "digital",
     "digital_map": {"D4": "Inductive", "D5": "Machine_signal"},

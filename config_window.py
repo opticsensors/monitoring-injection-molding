@@ -313,11 +313,11 @@ class DaqConfigWindow(QtWidgets.QDialog):
             "Batches that cannot be delivered are kept in 'pending/' and retried.")
         cloud_layout.addWidget(self.mqttCheckBox, 0, 0, 1, 2)
         cloud_layout.addWidget(QtWidgets.QLabel("Machine ID:"), 1, 0)
-        self.machineIdEdit = QtWidgets.QLineEdit()
-        self.machineIdEdit.setMaximumWidth(combo_w)
-        self.machineIdEdit.setToolTip(
-            "Machine identifier sent with every record (e.g. 160t).")
-        cloud_layout.addWidget(self.machineIdEdit, 1, 1)
+        self.machineIdCombo = self._combo([('160t', '160t'), ('55t', '55t')])
+        self.machineIdCombo.setMaximumWidth(combo_w)
+        self.machineIdCombo.setToolTip(
+            "Machine identifier sent with every record (pick 160t or 55t).")
+        cloud_layout.addWidget(self.machineIdCombo, 1, 1)
         cloud_layout.setColumnStretch(2, 1)
         cloud_group.setLayout(cloud_layout)
         layout.addWidget(cloud_group)
@@ -483,7 +483,10 @@ class DaqConfigWindow(QtWidgets.QDialog):
 
         # Cloud upload
         self.mqttCheckBox.setChecked(bool(d.get('mqtt_enabled', False)))
-        self.machineIdEdit.setText(str(d.get('machine_id', '160t')))
+        machine_id = str(d.get('machine_id', '160t'))
+        if self.machineIdCombo.findData(machine_id) < 0:  # keep any legacy id selectable
+            self.machineIdCombo.addItem(machine_id, machine_id)
+        self._select_data(self.machineIdCombo, machine_id)
 
         # Digital trigger mapping (the trigger is always read from D4 / D5)
         dmap = d.get('digital_map', {'D4': 'Inductive', 'D5': 'Machine_signal'})
@@ -599,7 +602,7 @@ class DaqConfigWindow(QtWidgets.QDialog):
             'machine_layout': self.machineLayoutCombo.currentData(),
             'plot_channels': plot_channels,
             'mqtt_enabled': self.mqttCheckBox.isChecked(),
-            'machine_id': self.machineIdEdit.text().strip() or '160t',
+            'machine_id': self.machineIdCombo.currentData() or '160t',
             'trigger_mode': trigger_mode,
             'trigger_wiring': trigger_wiring,
             'digital_map': digital_map,

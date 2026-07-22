@@ -105,6 +105,67 @@ def pan_icon():
     return _finish(pm, p)
 
 
+def cloud_icon():
+    """A simple cloud outline in black edges (send the session to the cloud/MQTT)."""
+    s = _ICON_PX
+    pm, p = _canvas()
+    _pen(p, s, width_frac=0.06)
+    p.setBrush(QtCore.Qt.NoBrush)
+    # Flat bottom with three rounded humps on top, drawn as one closed curve.
+    yb = 0.64 * s
+    path = QtGui.QPainterPath(QtCore.QPointF(0.26 * s, yb))
+    path.quadTo(0.08 * s, yb,           0.15 * s, 0.48 * s)   # left shoulder up
+    path.quadTo(0.19 * s, 0.30 * s,     0.41 * s, 0.37 * s)   # left hump
+    path.quadTo(0.51 * s, 0.20 * s,     0.65 * s, 0.35 * s)   # centre hump (tallest)
+    path.quadTo(0.83 * s, 0.28 * s,     0.85 * s, 0.50 * s)   # right hump
+    path.quadTo(0.93 * s, yb,           0.74 * s, yb)         # right shoulder down
+    path.closeSubpath()                                        # flat base back to start
+    p.drawPath(path)
+    return _finish(pm, p)
+
+
+def save_icon():
+    """A monochrome floppy-disk (save), black line art to match the cloud icon."""
+    s = _ICON_PX
+    pm, p = _canvas()
+    _pen(p, s, width_frac=0.06)
+    p.setBrush(QtCore.Qt.NoBrush)
+    # Body with the classic chamfered top-right corner.
+    x0, y0, x1, y1 = 0.22 * s, 0.22 * s, 0.78 * s, 0.78 * s
+    chamf = 0.14 * s
+    body = QtGui.QPainterPath(QtCore.QPointF(x0, y0))
+    body.lineTo(x1 - chamf, y0)
+    body.lineTo(x1, y0 + chamf)
+    body.lineTo(x1, y1)
+    body.lineTo(x0, y1)
+    body.closeSubpath()
+    p.drawPath(body)
+    # Top shutter (the metal slider), inset from the body edges.
+    p.drawRect(QtCore.QRectF(0.34 * s, y0, 0.28 * s, 0.16 * s))
+    # Label area at the bottom.
+    p.drawRect(QtCore.QRectF(0.32 * s, 0.50 * s, 0.36 * s, 0.28 * s))
+    return _finish(pm, p)
+
+
+def eye_icon():
+    """An open eye (toggles visibility of the faint past-cycle ghost curves)."""
+    s = _ICON_PX
+    pm, p = _canvas()
+    _pen(p, s, width_frac=0.06)
+    p.setBrush(QtCore.Qt.NoBrush)
+    # Almond eye outline: two lids meeting at the left/right corners.
+    left = QtCore.QPointF(0.12 * s, 0.50 * s)
+    right = QtCore.QPointF(0.88 * s, 0.50 * s)
+    path = QtGui.QPainterPath(left)
+    path.quadTo(QtCore.QPointF(0.50 * s, 0.20 * s), right)   # upper lid
+    path.quadTo(QtCore.QPointF(0.50 * s, 0.80 * s), left)    # lower lid
+    p.drawPath(path)
+    # Filled pupil in the centre.
+    p.setBrush(_COLOR)
+    p.drawEllipse(QtCore.QPointF(0.50 * s, 0.50 * s), 0.10 * s, 0.10 * s)
+    return _finish(pm, p)
+
+
 def measure_icon():
     """Two vertical cursor lines with a horizontal measuring arrow between them."""
     s = _ICON_PX

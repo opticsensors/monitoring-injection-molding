@@ -144,7 +144,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.cycle_mode = (self.trigger_mode != 'None')  # If True, trigger controls cycle start/end
         self.current_cycle = 0  # Current cycle number (1-based when active)
         self.cycle_max_x = 0  # Maximum X value seen across all cycles
-        self.completed_cycles_data = []  # List of (xdata, ydata) for completed cycles
+        self.completed_cycles_data = []  # (cycle_num, cycle_start_s, xdata, ydata) per cycle; used for the manual cloud resend
         self.completed_cycles_plots = []  # List of plot items for completed cycles
         self.cycle_label = None  # Label showing current cycle number
 
@@ -188,8 +188,12 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self._mqtt_selftest_thread = None  # one-time cloud connectivity self-test
         self.session_id = None      # timestamp id shared by all cycles of a session
         self.session_start_epoch = None  # wall clock (epoch s) at monitoring start
+        self._session_streamed = False   # True once this session's data went to the cloud
         # Cycles shorter than this are treated as trigger noise and discarded
         self.min_cycle_s = float(CONFIG_DEFAULTS.get('min_cycle_s', 1.0))
+        # Debounce after a cycle ends before a new HIGH can start the next one
+        # (JSON only; falls back to 2.0 - the old hard-coded value - if absent)
+        self.inter_cycle_gap_s = float(CONFIG_DEFAULTS.get('inter_cycle_gap_s', 2.0))
         
         #LABELS:
         self.x_Label = 'Time [s]'
@@ -209,11 +213,13 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.nextButton.clicked.connect(self.next_Session)
         # Run save_Session function when saveSessionButton is clicked:
         self.saveSessionButton.clicked.connect(self.save_Session)
+        self.sendSessionButton.clicked.connect(self.send_Session_to_cloud)
         # Plot-tool buttons (Home resets the view; the others are exclusive toggles):
         self.homeButton.clicked.connect(self.resetPlotView)
         self.zoomButton.toggled.connect(lambda on: self._on_tool_toggled('zoom', on))
         self.panButton.toggled.connect(lambda on: self._on_tool_toggled('pan', on))
         self.cursorButton.toggled.connect(lambda on: self._on_tool_toggled('cursor', on))
+        self.hideGhostsButton.toggled.connect(self._on_hide_ghosts_toggled)
 
         # Live matplotlib-style x/y coordinate readout (bottom-right of each
         # plot, light grey). One per tab; each scene persists across plot
@@ -524,6 +530,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.removeDeviceButton.setEnabled(True)
         self.nextButton.setEnabled(True)
         self.saveSessionButton.setEnabled(True)
+        # Offer the manual cloud send only if this session did not already stream live
+        self.sendSessionButton.setEnabled(not self._session_streamed)
 
     def stop_message(self):
         '''
@@ -644,6 +652,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.stopButton.setEnabled(True)
         self.removeDeviceButton.setEnabled(False)
         self.saveSessionButton.setEnabled(False)
+        self.sendSessionButton.setEnabled(False)
         
     def start_monitoring(self):
         '''
@@ -671,6 +680,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             self.startButton.setEnabled(False)
             self.findDeviceButton.setEnabled(False)
             self.removeDeviceButton.setEnabled(False)
+            self.saveSessionButton.setEnabled(False)
+            self.sendSessionButton.setEnabled(False)
 
             self.SubplotSetup()
             self.graphThread = GraphThread(self.dataQueue, self.sensors[:self.nplots], self.time_lim,
@@ -866,7 +877,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.plot_is_live = live
         has_plots = bool(self.splotlist or self.machine_splotlist)
         enable = (not live) and has_plots
-        for btn in (self.homeButton, self.zoomButton, self.panButton, self.cursorButton):
+        for btn in (self.homeButton, self.zoomButton, self.panButton,
+                    self.cursorButton, self.hideGhostsButton):
             btn.setEnabled(enable)
         if live:
             for btn in (self.zoomButton, self.panButton, self.cursorButton):
@@ -892,6 +904,12 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         ToolViewBox.tool_mode = self.tool_mode
         # Cursor lines may only be dragged while the cursor tool is active
         self._set_cursor_lines_movable(self.tool_mode == 'cursor')
+
+    def _on_hide_ghosts_toggled(self, hide):
+        """Eye toggle: show/hide every faint past-cycle ghost curve at once."""
+        for ghost_plots in self.completed_cycles_plots:
+            for item in ghost_plots:
+                item.setVisible(not hide)
 
     def resetPlotView(self):
         """Home: restore the ranges the live auto-scaling last applied."""
@@ -1102,7 +1120,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             f'<p>Cycle {cycle_num} ended (duration: {xdata[-1]:.2f}s)</p>' if xdata
             else f'<p>Cycle {cycle_num} ended</p>')
         save_cycle_id(cycle_num)  # survives restarts / power loss (cycle_id.txt)
-        self.completed_cycles_data.append((xdata, ydata))
+        # Keep the cycle (with its start offset) so it can be resent to the cloud later.
+        self.completed_cycles_data.append((cycle_num, float(cycle_start_s), xdata, ydata))
         if xdata and xdata[-1] > self.cycle_max_x:
             self.cycle_max_x = xdata[-1]
             self._set_all_x_range(0, self.cycle_max_x * 1.05, padding=0)
@@ -1114,6 +1133,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         if self.mqtt_enabled and self.mqtt_publisher is not None and xdata and ydata:
             base_epoch = (self.session_start_epoch or datetime.now().timestamp()) + cycle_start_s
             self._publish_records(xdata, list(zip(*ydata)), cycle_num, base_epoch)
+            self._session_streamed = True  # streamed live -> block a duplicate manual send
 
     def onCycleDiscarded(self, cycle_num, duration):
         """A trigger blip shorter than min_cycle_s was dropped (number is reused)."""
@@ -1140,6 +1160,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             color = pg.mkColor(self.get_channel_color(i))
             color.setAlpha(alpha)
             ghost_item = pg.PlotDataItem(xdata, ydata[i], pen=pg.mkPen(color, width=1))
+            ghost_item.setVisible(not self.hideGhostsButton.isChecked())
             target.addItem(ghost_item)
             ghost_plots.append(ghost_item)
         self.completed_cycles_plots.append(ghost_plots)
@@ -1170,11 +1191,18 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         if self.mqtt_enabled and self.mqtt_publisher is not None and not self.cycle_mode:
             self._publish_records(xvals, yvals, 0,
                                   self.session_start_epoch or datetime.now().timestamp())
+            self._session_streamed = True  # streamed live -> block a duplicate manual send
 
     # ------------------------------------------------------------ cloud upload
-    def _ensure_mqtt_publisher(self):
-        """Start the background MQTT publisher (once) when cloud upload is on."""
-        if not self.mqtt_enabled or self.mqtt_publisher is not None:
+    def _ensure_mqtt_publisher(self, force=False):
+        """Start the background MQTT publisher (once) when cloud upload is on.
+
+        ``force=True`` starts it even when cloud upload is disabled - used by the
+        manual "send session" button so it works regardless of the config toggle.
+        """
+        if self.mqtt_publisher is not None:
+            return
+        if not self.mqtt_enabled and not force:
             return
         try:
             from mqtt_publisher import MqttPublisher
@@ -1229,6 +1257,50 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.messagesBox.appendHtml(
             '<p>Queued %d records for cloud upload (%s).</p>' % (len(records), what))
 
+    def send_Session_to_cloud(self):
+        """Manually push the whole finished session to the cloud in one shot.
+
+        Works even when cloud upload is disabled (spins the publisher up on
+        demand). Each cycle is replayed through the same _publish_records path as
+        live streaming, so the cloud records are identical. The button is disabled
+        after a live stream or a send (self._session_streamed), so this can never
+        double-publish.
+        """
+        if self._session_streamed:
+            self.messagesBox.appendHtml(
+                '<p style="color:orange;">Already uploaded - nothing to resend.</p>')
+            self.sendSessionButton.setEnabled(False)
+            return
+
+        self._ensure_mqtt_publisher(force=True)
+        if self.mqtt_publisher is None:
+            self.messagesBox.appendHtml(
+                '<p style="color:red;">Cloud send failed: MQTT publisher unavailable '
+                '(check .env / broker settings).</p>')
+            return
+
+        base = self.session_start_epoch or datetime.now().timestamp()
+        n_batches = 0
+        if self.cycle_mode:
+            for cycle_num, cycle_start_s, xdata, ydata in self.completed_cycles_data:
+                if not xdata or not ydata:
+                    continue
+                self._publish_records(xdata, list(zip(*ydata)), cycle_num, base + cycle_start_s)
+                n_batches += 1
+        elif self.xdata and self.ydata:
+            self._publish_records(self.xdata, self.ydata, 0, base)
+            n_batches += 1
+
+        if n_batches:
+            self._session_streamed = True          # block any further send of this session
+            self.sendSessionButton.setEnabled(False)
+            self.messagesBox.appendHtml(
+                '<p style="color:green;">Session queued for cloud upload '
+                '(%d %s).</p>' % (n_batches, 'cycles' if self.cycle_mode else 'batch'))
+        else:
+            self.messagesBox.appendHtml(
+                '<p style="color:orange;">Nothing to send - no finished session data.</p>')
+
     # ------------------------------------------------------------------- setup
     def reset_Data_n_Plot_Vars(self):
         '''Reset data storage and tear down all plot items/viewboxes on both tabs.'''
@@ -1279,6 +1351,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         # Reset cycle state
         self.current_cycle = 0
         self.cycle_max_x = 0
+        self._session_streamed = False  # fresh session: allow a manual cloud send again
         self.completed_cycles_data = []
         self.completed_cycles_plots = []
         self.cycle_labels = []
@@ -1610,6 +1683,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.stopButton.setEnabled(False)
         self.nextButton.setEnabled(False)
         self.saveSessionButton.setEnabled(False)
+        self.sendSessionButton.setEnabled(False)
         self.removeDeviceButton.setEnabled(False)
         self.stop_message()
         try:
@@ -1670,6 +1744,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                 self.mqtt_publisher.stop()
                 self.mqtt_publisher = None
         self.min_cycle_s = float(cfg.get('min_cycle_s', self.min_cycle_s))
+        self.inter_cycle_gap_s = float(cfg.get('inter_cycle_gap_s', self.inter_cycle_gap_s))
         self.trigger_mode = cfg.get('trigger_mode', 'None')
         self.trigger_wiring = cfg.get('trigger_wiring', 'digital')
         self.digital_map = dict(cfg.get('digital_map', self.digital_map))
@@ -2087,6 +2162,8 @@ class GraphThread(QtCore.QThread):
         self.waiting_for_first_cycle = True if self.cycle_mode else False
         # Cycles shorter than this are discarded as trigger noise
         self.min_cycle_s = float(main_window.min_cycle_s) if main_window else 1.0
+        # Quiet time required after a cycle ends before the next one may start
+        self.inter_cycle_gap_s = float(main_window.inter_cycle_gap_s) if main_window else 2.0
         if self.cycle_mode and self.cycle_base:
             logger.info("Resuming with cycle_id=%d (next cycle is %d)",
                         self.cycle_base, self.cycle_base + 1)
@@ -2243,7 +2320,7 @@ class GraphThread(QtCore.QThread):
                                                                float(self.cycle_start_time))
                             else:
                                 # Waiting for next cycle
-                                if i_is_high and (x_time - self.last_cycle_end_time) > 2.0:
+                                if i_is_high and (x_time - self.last_cycle_end_time) > self.inter_cycle_gap_s:
                                     # Start new cycle
                                     self.cycle_active = True
                                     self.current_cycle += 1
