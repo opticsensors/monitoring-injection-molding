@@ -1,8 +1,10 @@
 TODO:
 
-- a change in teh config channels, for isnatnce changing v_screw (CH6) to another thing like position or whartever will not update the hardcoded names in grafana and noder red... it is not robust to changes in the main program... 
+- a change in the config channels, for isnatnce changing v_screw (CH6) to another thing like position or whartever will not update the hardcoded names in grafana and node red... it is not robust to changes in the main program... 
 
-- change the button of machine from write to selectable box: 160t or 55t!!
+
+- I feel that the checks of the channels to display in display tab in config window, should be an extra row in the DAQ tab, because I feel it would be cleaner
+
 
 - 3) The driver quirk — daq_serial isn't "bad," but collect_data_binary1 is lossy by design
 
