@@ -85,6 +85,13 @@ units live only in the sensor registry). Both come from
 The CSV header and MQTT payload are byte-for-byte identical for the shared
 columns; keep `_channel_field_names()` the one place that names channels.
 
+`_saved_indices()` decides which channels are written; `_channel_field_names()`
+and `_saved_values()` are both built from it, so the header and every row stay the
+same length. If you add a code path that writes channel values, filter it through
+`_saved_values()`. (It drops `trigger`-category channels — a no-op now that the
+trigger is digital-only, but it keeps a hand-edited config from corrupting the
+CSV.)
+
 `cycle_id` is a monotonic per-machine counter persisted in `data/cycle_id.txt`
 across restarts. Discarded (too-short) cycles reuse the number, so there are no
 spurious gaps.
@@ -94,7 +101,37 @@ spurious gaps.
 `sensor_types.py` is the single source of truth: each channel type maps to a
 label, unit, and a `category` that decides conversion, colour, and which
 plot/axis it lands on (`temp`→mould-left, `moldP`→mould-right,
-`machine`→machine tab, `trigger`→drives cycles, not plotted).
+`machine`→machine tab, `trigger`→drives cycles; never plotted, saved or
+uploaded).
+
+### The trigger is one digital input, always
+
+There is a single trigger type, `trigger`, and it is only ever a **digital**
+input (D0..D6; `digital_bit()` gives Dn = bit 8+n, so D4 = bit 12). It is not
+selectable on an analog channel, and there is no `trigger_wiring` setting —
+`read_trigger_high()` reads one bit of the digital scan word, full stop.
+
+This mirrors the panel. Every source — manual switch, inductive sensor, machine
+signal — is wired **in parallel onto the main relay coil** (Schneider RXG, 24 VDC:
+A1 fed from all three, A2 to 0 V). That relay also switches the 24 V that takes
+the Kistler charge amps out of reset, and the DAQ reads its dry contact on a
+spare pole (COM 21 / NC 22 → D-pin / GND). So *amp in operate ⟺ D-pin HIGH ⟺
+cycle running*, on one contact, with no skew between the amp's integration window
+and the cycle boundary.
+
+`trigger_mode` (`None` | `Inductive` | `Machine` | `Manual`, `TRIGGER_MODES`) only
+records **which source is driving the relay** — every non-`None` mode reads the
+same input. `trigger_input()` finds it; moving the wire to another D pin is one
+dropdown, no code change.
+
+Two electrical constraints keep it this way: the digital inputs are idle-HIGH
+with internal pull-ups and only register a pull *down* to GND (hence a dry
+contact), and the machine's sourcing 0/10 V output both fails to drive them and
+overdrives a 5 V pin — so it gets an opto/SSR onto the relay coil rather than a
+wire to the DAQ.
+
+`normalize_trigger_type()` maps the old `Inductive` / `Machine_signal` / `I`
+values in a stored `digital_map` onto `trigger`, so old configs still load.
 
 ## Gotchas / conventions
 

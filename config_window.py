@@ -9,7 +9,8 @@ it never reaches into ``MainWindow`` internals.
 from PyQt5 import QtWidgets, QtCore
 
 from sensor_types import (
-    SENSOR_TYPES, SENSOR_TYPE_ORDER, TRIGGER_MODE_TO_TYPE, MACHINE_TYPES_ORDER,
+    SENSOR_TYPES, SENSOR_TYPE_ORDER, MACHINE_TYPES_ORDER,
+    TRIGGER_TYPE, TRIGGER_MODES, DIGITAL_INPUTS, normalize_trigger_type,
     sensor_category, sensor_label, sensor_unit, sensor_tooltip,
 )
 from config import CONFIG_DEFAULTS
@@ -22,7 +23,11 @@ class DaqConfigWindow(QtWidgets.QDialog):
 
     AVAILABLE_CHANNELS = list(range(8))         # CH0..CH7
     ALLOWED_VOLTAGE_RANGES = [0.2, 0.5, 1, 2, 5, 10]
-    LEGACY_TYPE_MAP = {'T': 'T_futaba', 'P': 'P_kistler', 'I': 'Inductive'}
+    # Legacy analog type codes. 'I' was an analog inductive trigger; triggers are
+    # digital-only now, so it maps to 'none'.
+    LEGACY_TYPE_MAP = {'T': 'T_futaba', 'P': 'P_kistler', 'I': 'none'}
+    # Shared vertical-header width so the analog and digital tables line up.
+    VHEADER_W = 110
 
     # Header of the cell being edited goes BOLD (like the analog table) instead of
     # the default blue "selected section" highlight. Applied to every config table.
@@ -46,6 +51,7 @@ class DaqConfigWindow(QtWidgets.QDialog):
         self.machine_res_edits = {}
         self.plot_var_checks = {}      # ch_num -> QCheckBox (rebuilt on refresh)
         self._plot_check_state = {}    # ch_num -> bool (persists across rebuilds)
+        self.digital_combos = {}       # 'D0'..'D6' -> QComboBox
 
         self.setupUi()
         self.loadDefaults()
@@ -72,20 +78,30 @@ class DaqConfigWindow(QtWidgets.QDialog):
             return t
         return self.LEGACY_TYPE_MAP.get(str(t), 'none')
 
-    def _make_type_combo(self):
-        """Per-channel sensor-type dropdown (analog types only; triggers live on
-        the digital-inputs table, never on an analog channel)."""
+    def _combo_of_types(self, codes):
+        """Sensor-type dropdown over `codes`, with per-item and live tooltips."""
         combo = QtWidgets.QComboBox()
-        for code in SENSOR_TYPE_ORDER:
-            if sensor_category(code) == 'trigger':
-                continue
+        for code in codes:
             combo.addItem(sensor_label(code), code)
             combo.setItemData(combo.count() - 1, sensor_tooltip(code), QtCore.Qt.ToolTipRole)
         combo.setMinimumWidth(120)
-        combo.setToolTip(sensor_tooltip('none'))
+        combo.setToolTip(sensor_tooltip(codes[0]))
         combo.currentIndexChanged.connect(
             lambda _i, c=combo: c.setToolTip(sensor_tooltip(c.currentData())))
         return combo
+
+    def _make_type_combo(self):
+        """Per-channel dropdown for the analog table: measurement types only.
+
+        The trigger is a digital input (the main relay contact), never an analog
+        channel, so it is not offered here.
+        """
+        return self._combo_of_types([c for c in SENSOR_TYPE_ORDER
+                                     if sensor_category(c) != 'trigger'])
+
+    def _make_digital_combo(self):
+        """Per-input dropdown for the digital table: 'none' or 'trigger'."""
+        return self._combo_of_types(['none', TRIGGER_TYPE])
 
     def _style_table_headers(self, table):
         """Make the active cell's row/column header render BOLD (no blue fill),
@@ -172,6 +188,7 @@ class DaqConfigWindow(QtWidgets.QDialog):
         self.channelTable.verticalHeader().setDefaultSectionSize(34)
         self.channelTable.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.channelTable.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self.channelTable.verticalHeader().setFixedWidth(self.VHEADER_W)
         header_h = self.channelTable.horizontalHeader().height()
         self.channelTable.setFixedHeight(header_h + 34 * 2 + 6)
         self.channelTable.setColumnWidth(0, 130)
@@ -181,42 +198,34 @@ class DaqConfigWindow(QtWidgets.QDialog):
         channel_group.setLayout(channel_layout)
         layout.addWidget(channel_group)
 
-        # -------- Digital channels table (triggers on D4 / D5) --------
+        # -------- Digital channels table (D0..D6, same layout as the analog one) --------
         digital_group = QtWidgets.QGroupBox("Digital channels")
         digital_layout = QtWidgets.QVBoxLayout()
 
         self.digitalTable = QtWidgets.QTableWidget()
-        self.digitalTable.setRowCount(1)     # Type only (no voltage range)
-        self.digitalTable.setColumnCount(2)  # D4, D5
-        self.digitalTable.setHorizontalHeaderLabels(["D4", "D5"])
+        self.digitalTable.setRowCount(1)                       # Type only (no voltage range)
+        self.digitalTable.setColumnCount(len(DIGITAL_INPUTS))  # D0..D6
+        self.digitalTable.setHorizontalHeaderLabels([f"{d}" for d in DIGITAL_INPUTS])
         self.digitalTable.setVerticalHeaderLabels(["Type"])
 
-        self.d4Combo = self._combo([(sensor_label('Inductive'), 'Inductive'),
-                                    (sensor_label('Machine_signal'), 'Machine_signal')])
-        self.d5Combo = self._combo([(sensor_label('Inductive'), 'Inductive'),
-                                    (sensor_label('Machine_signal'), 'Machine_signal')])
-        self.digitalTable.setCellWidget(0, 0, self.d4Combo)
-        self.digitalTable.setCellWidget(0, 1, self.d5Combo)
+        for col, name in enumerate(DIGITAL_INPUTS):
+            combo = self._make_digital_combo()
+            self.digitalTable.setCellWidget(0, col, combo)
+            self.digital_combos[name] = combo
 
-        # Keep this two-column table compact instead of spanning the window width.
-        dig_col_w, dig_vhead_w = 145, 55
-        self.digitalTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
-        self.digitalTable.setColumnWidth(0, dig_col_w)
-        self.digitalTable.setColumnWidth(1, dig_col_w)
-        self.digitalTable.verticalHeader().setFixedWidth(dig_vhead_w)
+        # Sized exactly like the analog table above: stretched columns, same row
+        # height and the same vertical-header width so the two line up.
+        self.digitalTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.digitalTable.verticalHeader().setFixedWidth(self.VHEADER_W)
         self.digitalTable.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
         self.digitalTable.verticalHeader().setDefaultSectionSize(34)
         self.digitalTable.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.digitalTable.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.digitalTable.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         dig_header_h = self.digitalTable.horizontalHeader().height()
         self.digitalTable.setFixedHeight(dig_header_h + 34 + 6)
-        self.digitalTable.setFixedWidth(dig_vhead_w + dig_col_w * 2 + 6)
         self._style_table_headers(self.digitalTable)
 
-        dig_row = QtWidgets.QHBoxLayout()
-        dig_row.addWidget(self.digitalTable)
-        dig_row.addStretch(1)
-        digital_layout.addLayout(dig_row)
+        digital_layout.addWidget(self.digitalTable)
         digital_group.setLayout(digital_layout)
         layout.addWidget(digital_group)
         layout.addStretch(1)
@@ -286,16 +295,16 @@ class DaqConfigWindow(QtWidgets.QDialog):
         trig_group = QtWidgets.QGroupBox("Trigger")
         trig_layout = QtWidgets.QGridLayout()
         trig_layout.addWidget(QtWidgets.QLabel("Trigger for cycle control:"), 0, 0)
-        self.triggerModeCombo = self._combo([
-            ("None", "None"),
-            ("Inductive", "Inductive"),
-            ("Machine", "Machine"),
-        ])
+        self.triggerModeCombo = self._combo([(m, m) for m in TRIGGER_MODES])
         self.triggerModeCombo.setToolTip(
             "What gates acquisition into cycles (all analog signals start/stop together):\n"
             "• None: continuous acquisition, no cycles.\n"
-            "• Inductive / Machine: each LOW→HIGH of that trigger starts a cycle;\n"
-            "  cycles overlay on the same plot with previous ones ghosted.")
+            "• Manual / Inductive / Machine: each LOW→HIGH starts a cycle; cycles\n"
+            "  overlay on the same plot with previous ones ghosted.\n\n"
+            "All three are read from the SAME digital input: they are wired in\n"
+            "parallel onto the main relay coil, and the DAQ reads that relay's\n"
+            "contact. Picking one here only records which source you are using -\n"
+            "set which input it is in the Digital channels table (DAQ tab).")
         self.triggerModeCombo.setMaximumWidth(combo_w)
         trig_layout.addWidget(self.triggerModeCombo, 0, 1)
         trig_layout.setColumnStretch(2, 1)
@@ -488,10 +497,13 @@ class DaqConfigWindow(QtWidgets.QDialog):
             self.machineIdCombo.addItem(machine_id, machine_id)
         self._select_data(self.machineIdCombo, machine_id)
 
-        # Digital trigger mapping (the trigger is always read from D4 / D5)
-        dmap = d.get('digital_map', {'D4': 'Inductive', 'D5': 'Machine_signal'})
-        self._select_data(self.d4Combo, dmap.get('D4', 'Inductive'))
-        self._select_data(self.d5Combo, dmap.get('D5', 'Machine_signal'))
+        # Digital inputs D0..D6: 'none' unless this is the trigger input.
+        # Legacy configs named it 'Inductive' / 'Machine_signal'; both normalise
+        # onto the single 'trigger' type.
+        dmap = d.get('digital_map', {})
+        for name in DIGITAL_INPUTS:
+            self._select_data(self.digital_combos[name],
+                              normalize_trigger_type(dmap.get(name, 'none')))
 
         # Conversion
         conv = d.get('conversion', {})
@@ -521,7 +533,8 @@ class DaqConfigWindow(QtWidgets.QDialog):
             self._warn(f"Please enter valid numeric values in DAQ / Display settings.\n\nError: {e}")
             return
 
-        # Gather enabled channels (triggers are digital-only, never on these)
+        # Gather enabled channels (measurement channels only - the trigger is a
+        # digital input, never an analog channel)
         channels, channel_types, voltage_ranges = [], [], []
         for ch_num in self.available_channels:
             code = self.channel_type_combos[ch_num].currentData()
@@ -554,16 +567,21 @@ class DaqConfigWindow(QtWidgets.QDialog):
             return
 
         trigger_mode = self.triggerModeCombo.currentData()
-        trigger_wiring = 'digital'   # triggers are always read from the digital inputs D4 / D5
-        digital_map = {'D4': self.d4Combo.currentData(), 'D5': self.d5Combo.currentData()}
+        digital_map = {name: combo.currentData()
+                       for name, combo in self.digital_combos.items()}
+        trigger_inputs = [n for n, c in digital_map.items() if c == TRIGGER_TYPE]
 
-        # The selected trigger mode must be mapped onto one of the digital inputs.
-        if trigger_mode != 'None':
-            wanted = TRIGGER_MODE_TO_TYPE[trigger_mode]
-            if wanted not in digital_map.values():
-                self._warn(f"Trigger mode '{trigger_mode}' needs digital input D4 or D5 mapped to "
-                           f"'{sensor_label(wanted)}'.\n\nFix the D4 / D5 mapping in the DAQ tab.")
-                return
+        # Exactly one input carries the main relay contact; more than one would
+        # leave the cycle logic silently picking the lowest-numbered.
+        if len(trigger_inputs) > 1:
+            self._warn("Only one digital input can be the trigger.\n\n"
+                       f"'{sensor_label(TRIGGER_TYPE)}' is set on {', '.join(sorted(trigger_inputs))}.")
+            return
+        if trigger_mode != 'None' and not trigger_inputs:
+            self._warn(f"Trigger mode '{trigger_mode}' needs one digital input (D0..D6) set to "
+                       f"'{sensor_label(TRIGGER_TYPE)}'.\n\nSet it in the Digital channels table "
+                       "on the DAQ tab.")
+            return
 
         # Conversion parameters
         try:
@@ -586,8 +604,11 @@ class DaqConfigWindow(QtWidgets.QDialog):
                 self._warn(f"Resolution for {sensor_label(code)} cannot be 0.")
                 return
 
-        # Channels ticked for plotting (unticked ones are still acquired/saved)
-        plot_channels = [ch for ch in channels if self._plot_check_state.get(ch, True)]
+        # Channels ticked for plotting (unticked ones are still acquired/saved).
+        # Trigger channels are never drawn as a line, so they never appear here.
+        plot_channels = [ch for ch, t in zip(channels, channel_types)
+                         if sensor_category(t) != 'trigger'
+                         and self._plot_check_state.get(ch, True)]
 
         cfg = {
             'monitoring_time_s': timeint,
@@ -604,7 +625,6 @@ class DaqConfigWindow(QtWidgets.QDialog):
             'mqtt_enabled': self.mqttCheckBox.isChecked(),
             'machine_id': self.machineIdCombo.currentData() or '160t',
             'trigger_mode': trigger_mode,
-            'trigger_wiring': trigger_wiring,
             'digital_map': digital_map,
             'conversion': conversion,
         }

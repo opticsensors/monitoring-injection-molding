@@ -24,7 +24,8 @@ import MainWindow
 from app_logging import setup_logging
 from config import CONFIG_DEFAULTS
 from sensor_types import (sensor_category, sensor_label, sensor_unit,
-                          TRIGGER_MODE_TO_TYPE)
+                          TRIGGER_TYPE, DIGITAL_INPUTS, digital_bit,
+                          normalize_trigger_type)
 from config_window import DaqConfigWindow
 from plot_tools import ToolViewBox, PassThroughViewBox
 
@@ -119,24 +120,18 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         # Deep-ish copy so edits from the config window don't mutate CONFIG_DEFAULTS
         self.conversion = {k: dict(v) for k, v in CONFIG_DEFAULTS.get('conversion', {}).items()}
 
-        # Trigger / cycle configuration
-        self.trigger_mode = CONFIG_DEFAULTS.get('trigger_mode', 'None')        # 'None'|'Inductive'|'Machine'
-        self.trigger_wiring = CONFIG_DEFAULTS.get('trigger_wiring', 'digital')  # always 'digital' (D4/D5)
-        self.digital_map = dict(CONFIG_DEFAULTS.get('digital_map', {'D4': 'Inductive', 'D5': 'Machine_signal'}))
+        # Trigger / cycle configuration.
+        # The trigger is always a digital input: every source (manual switch,
+        # inductive sensor, machine signal) is wired in parallel onto the main
+        # relay coil, and the DAQ reads that relay's dry contact. trigger_mode
+        # only records which source is in use - they all read the same input.
+        self.trigger_mode = CONFIG_DEFAULTS.get('trigger_mode', 'None')  # see TRIGGER_MODES
+        self.digital_map = dict(CONFIG_DEFAULTS.get('digital_map', {'D4': TRIGGER_TYPE}))
         self.machine_layout = CONFIG_DEFAULTS.get('machine_layout', 'shared')  # 'shared'|'separate'
 
-        # Trigger channel (analog wiring): index of the Inductive/Machine_signal channel.
-        # Kept named i_channel_* for continuity with the rest of the pipeline.
-        self.i_channel_index = None  # Index of the trigger channel in channel_types (analog wiring)
-        self.trigger_channel_index = None  # Alias, kept in sync by _update_i_channel_index
         self.i_channel_state = None  # Current state: 'LOW', 'HIGH', or None
         self.i_channel_transitions = []  # List of (x_time, 'UP' or 'DOWN') tuples
         self.i_channel_digital_values = []  # List of (x_time, 0 or 1) for saving
-        # Thresholds as percentage of ADC range (raw integer values)
-        self.i_threshold_low_pct = 0.20  # Below 20% = LOW state
-        self.i_threshold_high_pct = 0.80  # Above 80% = HIGH state
-        self.i_threshold_low = int(self.i_threshold_low_pct * self.adc_resolution)
-        self.i_threshold_high = int(self.i_threshold_high_pct * self.adc_resolution)
         self.i_arrow_scatter = None  # ScatterPlotItem for arrows
         self.i_lines_item = None  # PlotDataItem for vertical lines
         
@@ -234,25 +229,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         for n in range(self.nplots):
             self.plotDataItem_lst.append([])
         
-        # Find I channel index if present in defaults
-        self._update_i_channel_index()
-
         #Initial message:
         self.messagesBox.appendHtml('<p style="color:blue;">DAQ Monitoring System v2.0</p><p></p>')
-
-    def _update_i_channel_index(self):
-        """Locate the analog trigger channel (Inductive/Machine_signal), if any.
-
-        Only meaningful with analog trigger wiring; with digital wiring the trigger
-        is read from D4/D5 and this stays None.
-        """
-        self.i_channel_index = None
-        if self.trigger_wiring == 'analog':
-            for i, ct in enumerate(self.channel_types):
-                if sensor_category(ct) == 'trigger':
-                    self.i_channel_index = i
-                    break
-        self.trigger_channel_index = self.i_channel_index
 
     def get_channel_color(self, channel_index):
         """Colour for a channel based on its sensor category."""
@@ -331,57 +309,41 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                 res = c.get('resolution_mV', 10.0)
                 mv = volts * 1000.0
                 converted_values.append(initial + (mv / res if res else 0.0))
-            elif cat == 'trigger':
-                # Digital 0/1 by threshold on the raw count
-                if raw < self.i_threshold_low:
-                    converted_values.append(0)
-                elif raw > self.i_threshold_high:
-                    converted_values.append(1)
-                else:
-                    mid_point = (self.i_threshold_low + self.i_threshold_high) / 2
-                    converted_values.append(0 if raw < mid_point else 1)
             else:
                 converted_values.append(raw)
         return converted_values
 
-    def trigger_bit_index(self):
-        """Bit position of the active trigger inside the digital scan word.
-
-        The digital inputs are reported in the HIGH byte, so D4 = bit 12 and
-        D5 = bit 13 (confirmed on the bench 2026-07-08)."""
-        want = TRIGGER_MODE_TO_TYPE.get(self.trigger_mode)
-        if want is None:
-            return None
-        if self.digital_map.get('D4') == want:
-            return 12
-        if self.digital_map.get('D5') == want:
-            return 13
+    def trigger_input(self):
+        """Name of the digital input carrying the main relay contact, or None."""
+        for name in DIGITAL_INPUTS:
+            if normalize_trigger_type(self.digital_map.get(name)) == TRIGGER_TYPE:
+                return name
         return None
 
-    def read_trigger_high(self, ypoints_raw, digital_word, prev_high):
-        """Return True/False (HIGH/LOW) for the active trigger, or None if no trigger.
+    def trigger_bit_index(self):
+        """Bit position of the trigger inside the digital scan word.
 
-        Abstracts the physical source: an analog channel (thresholded, with
-        hysteresis) or a digital input bit (D4/D5). This is the single seam the
-        cycle logic uses, so analog->digital is a config change, not a code change.
-        Returns a reading whenever a trigger source exists (so arrows still work in
-        continuous mode); cycle gating is controlled separately by cycle_mode.
+        The digital inputs are reported in the HIGH byte, so Dn = bit 8+n
+        (D4 = bit 12, confirmed on the bench 2026-07-08). None when no trigger
+        mode is selected or no input is mapped."""
+        if self.trigger_mode == 'None':
+            return None
+        name = self.trigger_input()
+        return digital_bit(name) if name else None
+
+    def read_trigger_high(self, ypoints_raw, digital_word, prev_high):
+        """Return True/False (HIGH/LOW) for the trigger, or None if there is none.
+
+        The single seam the cycle logic reads the trigger through: one bit of the
+        digital scan word, the main relay's contact. Which input it is comes from
+        digital_map, so moving the wire to another D pin is a config change, not a
+        code change. Returns a reading whenever a trigger is mapped (so arrows
+        still work in continuous mode); cycle gating is controlled by cycle_mode.
         """
-        if self.trigger_wiring == 'analog':
-            idx = self.trigger_channel_index
-            if idx is None or idx >= len(ypoints_raw):
-                return None
-            raw = ypoints_raw[idx]
-            if raw > self.i_threshold_high:
-                return True
-            if raw < self.i_threshold_low:
-                return False
-            return bool(prev_high)  # hysteresis zone -> keep previous state
-        else:  # digital wiring
-            bit = self.trigger_bit_index()
-            if bit is None or digital_word is None:
-                return None
-            return bool((int(digital_word) >> bit) & 1)
+        bit = self.trigger_bit_index()
+        if bit is None or digital_word is None:
+            return None
+        return bool((int(digital_word) >> bit) & 1)
 
     def record_trigger_transition(self, x_time, is_high):
         """Record a LOW/HIGH edge for the arrow display (works for any trigger source)."""
@@ -405,7 +367,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                     n_analog = len(self.daq_channels)
                     digital_word = None
                     analog = list(values)
-                    if self.trigger_wiring == 'digital' and len(values) > n_analog:
+                    if len(values) > n_analog:
                         digital_word = values[n_analog]
                         analog = list(values[:n_analog])
                     if self.read_trigger_high(analog, digital_word, False):
@@ -495,7 +457,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                         else:
                             row_data.append(0)  # continuous / no cycle -> 0, like MQTT
                         row_data.append(self.xdata[i])
-                        row_data.extend(self.ydata[i])
+                        row_data.extend(self._saved_values(self.ydata[i]))
                         writer.writerow(row_data)
                 
                 logger.info("Session data saved to %s (%d rows)", fname[0], len(self.xdata))
@@ -1210,14 +1172,31 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             self.messagesBox.appendHtml(
                 '<p style="color:red;">Cloud upload disabled: %s</p>' % e)
 
+    def _saved_indices(self):
+        """Indices into daq_channels that are written to the CSV / sent to the cloud.
+
+        Trigger channels are excluded: an analog trigger (trigger_machine) is
+        acquired only to gate cycles, exactly like the digital inductive trigger,
+        and carries no measurement worth storing.
+        """
+        return [i for i in range(len(self.daq_channels))
+                if not (i < len(self.channel_types)
+                        and sensor_category(self.channel_types[i]) == 'trigger')]
+
+    def _saved_values(self, values):
+        """Pick the saved/published subset out of one full row of channel values."""
+        return [values[i] for i in self._saved_indices() if i < len(values)]
+
     def _channel_field_names(self):
         """Per-channel column/payload keys, e.g. CH2_P_kistler.
 
         The single source used for BOTH the CSV header and the MQTT payload, so
         the local and cloud schemas stay byte-for-byte identical (no units).
+        Order and length match _saved_values(), so the two never drift apart.
         """
         names = []
-        for i, ch in enumerate(self.daq_channels):
+        for i in self._saved_indices():
+            ch = self.daq_channels[i]
             if i < len(self.channel_types):
                 names.append(f'CH{ch}_{self.channel_types[i]}')
             else:
@@ -1242,7 +1221,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                    'machine_id': self.machine_id,
                    'session_id': self.session_id,
                    'cycle_id': cycle_id}
-            vals = rows[j] if j < len(rows) else []
+            vals = self._saved_values(rows[j]) if j < len(rows) else []
             for k, name in enumerate(names):
                 if k < len(vals):
                     rec[name] = vals[k]
@@ -1654,12 +1633,12 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         '''
         self.dataQueue = queue.Queue()
 
-        # Read the digital inputs (D4/D5) only when the trigger is wired there.
-        read_digital = (self.trigger_wiring == 'digital')
+        # The trigger always lives on a digital input, so the digital word is
+        # always part of the scan.
         self.DaqThread = DaqThread(self.daq_channels, self.voltage_ranges,
                                    self.daq_dec, self.daq_deca, self.daq_srate,
                                    self.dataQueue, self.sensors[:self.nplots],
-                                   read_digital=read_digital)
+                                   read_digital=True)
         self.DaqThread.ConnectSig.connect(self.HandleDaqConnectSig)
         self.DaqThread.readErrorSig.connect(self.HandleReadErrorSig)
 
@@ -1741,15 +1720,11 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.min_cycle_s = float(cfg.get('min_cycle_s', self.min_cycle_s))
         self.inter_cycle_gap_s = float(cfg.get('inter_cycle_gap_s', self.inter_cycle_gap_s))
         self.trigger_mode = cfg.get('trigger_mode', 'None')
-        self.trigger_wiring = cfg.get('trigger_wiring', 'digital')
         self.digital_map = dict(cfg.get('digital_map', self.digital_map))
         self.conversion = {k: dict(v) for k, v in cfg.get('conversion', self.conversion).items()}
         self.cycle_mode = (self.trigger_mode != 'None')
         self.nplots = len(self.daq_channels)
         self.sensors = [f'CH{ch}' for ch in self.daq_channels]
-
-        # Update trigger channel index (analog wiring)
-        self._update_i_channel_index()
 
         # Reset plot data structures for new number of channels
         self.plotDataItem_lst = []
@@ -1841,12 +1816,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
 
         # Trigger summary
         if cfg.get('trigger_mode', 'None') != 'None':
-            wiring = cfg.get('trigger_wiring', 'analog')
-            if wiring == 'digital':
-                dmap = cfg.get('digital_map', {})
-                where = f"digital inputs (D4={dmap.get('D4')}, D5={dmap.get('D5')})"
-            else:
-                where = "an analog channel"
+            where = self.trigger_input() or 'no digital input (!)'
             self.messagesBox.appendHtml('<p style="color:green;">Trigger: %s cycle control via %s</p>'
                                         % (cfg['trigger_mode'], where))
         else:
@@ -2212,14 +2182,13 @@ class GraphThread(QtCore.QThread):
                         self.serData = self.dataQueue.get_nowait()
                         x_time = self.serData[-1]
 
-                        # Split the scan into analog channels (+ optional digital word).
-                        # With digital trigger wiring the last pre-timestamp value is
-                        # the D4/D5 digital word, not an analog channel.
+                        # Split the scan into analog channels + the digital word:
+                        # the last pre-timestamp value is the D0..D6 word, not an
+                        # analog channel.
                         raw_all = self.serData[:-1]
                         n_analog = self.n_sensors
                         digital_word = None
-                        if (self.main_window and self.main_window.trigger_wiring == 'digital'
-                                and len(raw_all) > n_analog):
+                        if len(raw_all) > n_analog:
                             digital_word = raw_all[n_analog]
                         ypoints_raw = list(raw_all[:n_analog])
 
@@ -2401,19 +2370,13 @@ class GraphThread(QtCore.QThread):
             if i < len(new_y):
                 value = new_y[i]
                 
-                # Skip I channel for Y-axis scaling (it's 0/1 digital)
-                is_i_channel = (self.main_window and 
-                               self.main_window.i_channel_index is not None and 
-                               i == self.main_window.i_channel_index)
-                
-                if not is_i_channel:
-                    # Update historical min/max
-                    if value < self.y_min_hist[i]:
-                        self.y_min_hist[i] = value
-                        y_range_updated = True
-                    if value > self.y_max_hist[i]:
-                        self.y_max_hist[i] = value
-                        y_range_updated = True
+                # Update historical min/max
+                if value < self.y_min_hist[i]:
+                    self.y_min_hist[i] = value
+                    y_range_updated = True
+                if value > self.y_max_hist[i]:
+                    self.y_max_hist[i] = value
+                    y_range_updated = True
                 
                 # Update plot data
                 if len(self.ydata_plts[i]) <= self.n_disp_data_pts:
@@ -2426,16 +2389,6 @@ class GraphThread(QtCore.QThread):
             y_mins = []
             y_maxs = []
             for i in range(self.n_sensors):
-                # Skip I channel
-                is_i_channel = (self.main_window and 
-                               self.main_window.i_channel_index is not None and 
-                               i == self.main_window.i_channel_index)
-                
-                if is_i_channel:
-                    y_mins.append(0)
-                    y_maxs.append(1)
-                    continue
-                
                 if self.y_min_hist[i] != float('inf') and self.y_max_hist[i] != float('-inf'):
                     y_range = self.y_max_hist[i] - self.y_min_hist[i]
                     margin = y_range * (self.y_margin_factor - 1) / 2
@@ -2482,19 +2435,13 @@ class GraphThread(QtCore.QThread):
             if i < len(new_y):
                 value = new_y[i]
                 
-                # Skip I channel for Y-axis scaling (it's 0/1 digital)
-                is_i_channel = (self.main_window and 
-                               self.main_window.i_channel_index is not None and 
-                               i == self.main_window.i_channel_index)
-                
-                if not is_i_channel:
-                    # Update historical min/max
-                    if value < self.y_min_hist[i]:
-                        self.y_min_hist[i] = value
-                        y_range_updated = True
-                    if value > self.y_max_hist[i]:
-                        self.y_max_hist[i] = value
-                        y_range_updated = True
+                # Update historical min/max
+                if value < self.y_min_hist[i]:
+                    self.y_min_hist[i] = value
+                    y_range_updated = True
+                if value > self.y_max_hist[i]:
+                    self.y_max_hist[i] = value
+                    y_range_updated = True
                 
                 # Update plot data (no limit in cycle mode)
                 self.ydata_plts[i].append(value)
@@ -2504,15 +2451,6 @@ class GraphThread(QtCore.QThread):
             y_mins = []
             y_maxs = []
             for i in range(self.n_sensors):
-                is_i_channel = (self.main_window and 
-                               self.main_window.i_channel_index is not None and 
-                               i == self.main_window.i_channel_index)
-                
-                if is_i_channel:
-                    y_mins.append(0)
-                    y_maxs.append(1)
-                    continue
-                
                 if self.y_min_hist[i] != float('inf') and self.y_max_hist[i] != float('-inf'):
                     y_range = self.y_max_hist[i] - self.y_min_hist[i]
                     margin = y_range * (self.y_margin_factor - 1) / 2

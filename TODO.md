@@ -1,5 +1,13 @@
 TODO:
 
+MACHINE TRIGGER ISSUE --------------------------------
+
+the trigger is two wires that goe to + and - D5 pin in DAQ
+with a multimeter in the pins + and - of D5 I checked and it goes to 10v when the cycle is active
+D4 and the inductive work fine, but they are not connected directly with the inductive high low volatge! they go to relay and then the nc 22 and com 21 go to D4 + and - pins! when I put metal near inductive the relays activate and thge D4 goes from 0 to 1, until I remove the metal from the pin
+
+
+
 - a change in the config channels, for isnatnce changing v_screw (CH6) to another thing like position or whartever will not update the hardcoded names in grafana and node red... it is not robust to changes in the main program... 
 
 

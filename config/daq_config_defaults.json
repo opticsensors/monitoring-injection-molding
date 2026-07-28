@@ -15,8 +15,8 @@
     "min_cycle_s": 2.0,
     "inter_cycle_gap_s": 0.5,
     "trigger_mode": "Inductive",
-    "trigger_wiring": "digital",
-    "digital_map": {"D4": "Inductive", "D5": "Machine_signal"},
+    "digital_map": {"D0": "none", "D1": "none", "D2": "none", "D3": "none",
+                    "D4": "trigger", "D5": "none", "D6": "none"},
     "conversion": {
         "T_futaba":   {"deg_per_volt": 100.0},
         "P_kistler":  {"s0": 2.500, "s1": 2.508, "Qmax": 20000.0},
