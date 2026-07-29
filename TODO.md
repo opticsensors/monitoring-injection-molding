@@ -1,5 +1,16 @@
 TODO:
 
+1)  add a relaticve session cycle for user readability, we have this absolute cycle number that never resets and we use it to filetr ccyles in the database by id, however user might not want to read or annotate the number of the cycle if it is big, so we need a secondary cycle that is also saved and only for that session, and resets everytime we start again new cycle or click next, what are good name for these two columns ofor cycle id? you think is good idea to add a new column just for session id?
+
+2) add a way to display old cycles only, just for example previous cycle, intead of actuial + all old cycles in ligghter color, right now there is a way to remove 6the old cycles and leave actual, it would be nive if user could somehow naviagate to alder cycles only and just display them
+
+
+
+
+
+
+
+
 MACHINE TRIGGER ISSUE --------------------------------
 
 the trigger is two wires that goe to + and - D5 pin in DAQ

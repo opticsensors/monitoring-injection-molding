@@ -182,6 +182,9 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.mqtt_publisher = None  # created lazily when monitoring starts
         self._mqtt_selftest_thread = None  # one-time cloud connectivity self-test
         self.session_id = None      # timestamp id shared by all cycles of a session
+        # Global cycle_id the session started from: session_cycle is derived by
+        # subtracting it, so the relative counter can never drift (see _session_cycle).
+        self.session_cycle_base = 0
         self.session_start_epoch = None  # wall clock (epoch s) at monitoring start
         self._session_streamed = False   # True once this session's data went to the cloud
         # Cycles shorter than this are treated as trigger noise and discarded
@@ -431,8 +434,10 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         Save session dialog:
         Save a csv file with session data in converted physical units
         (same values as plotted/uploaded; analog trigger channels as 0/1).
-        The header (cycle_id, time_s, CH<n>_<type>) matches the MQTT payload
-        exactly; cycle_id is always present (0 = continuous / no cycle).
+        The header is session_id, cycle_id, session_cycle, time_s, CH<n>_<type>:
+        identity first, then time, then data. The channel columns and time_s
+        match the MQTT payload exactly; cycle_id is always present (0 =
+        continuous / no cycle) and session_cycle is its session-relative twin.
         '''
         fname = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Session Data as:', os.getenv('HOME'), 'CSV(*.csv)')
 
@@ -440,22 +445,29 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             with open(fname[0], 'w', newline='') as csv_file:
                 writer = csv.writer(csv_file, dialect='excel')
                 
-                # Header names are identical to the MQTT payload keys: cycle_id,
-                # time_s, then one CH<n>_<type> per channel (no units, so the CSV
-                # and cloud schemas match exactly). cycle_id is always present
-                # (0 = continuous / no cycle), like the MQTT cycle_id.
-                header = ["cycle_id", "time_s"]
+                # time_s and the CH<n>_<type> columns are named identically to the
+                # MQTT payload keys (no units), so the shared part of the local and
+                # cloud schemas matches byte for byte. session_id and session_cycle
+                # are the local additions: session_id already exists in the payload
+                # (it is an InfluxDB tag) and is written here so session_cycle has a
+                # scope - a relative number is only an identifier alongside it.
+                # session_cycle itself is CSV-only; the cloud can derive it from
+                # session_id + cycle_id, so it costs no schema churn there.
+                header = ["session_id", "cycle_id", "session_cycle", "time_s"]
                 header.extend(self._channel_field_names())
                 writer.writerow(header)
-                
+
                 # Write data
+                session = self.session_id or ''
                 for i in range(len(self.xdata)):
                     if i < len(self.ydata):
-                        row_data = []
+                        row_data = [session]
                         if self.cycle_numbers_data and i < len(self.cycle_numbers_data):
-                            row_data.append(self.cycle_numbers_data[i])
+                            cycle_num = self.cycle_numbers_data[i]
                         else:
-                            row_data.append(0)  # continuous / no cycle -> 0, like MQTT
+                            cycle_num = 0  # continuous / no cycle -> 0, like MQTT
+                        row_data.append(cycle_num)
+                        row_data.append(self._session_cycle(cycle_num))
                         row_data.append(self.xdata[i])
                         row_data.extend(self._saved_values(self.ydata[i]))
                         writer.writerow(row_data)
@@ -463,7 +475,12 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                 logger.info("Session data saved to %s (%d rows)", fname[0], len(self.xdata))
                 #Saved session message:
                 if self.cycle_mode and self.cycle_numbers_data:
-                    self.messagesBox.appendHtml('<p>Session data was saved with cycle numbers (converted physical units).</p>')
+                    # Report the session cycle count: it is what the operator writes
+                    # on the sample bags, so it is worth stating at save time.
+                    n_cycles = self._session_cycle(max(self.cycle_numbers_data))
+                    self.messagesBox.appendHtml(
+                        f'<p>Session data was saved: {n_cycles} cycle(s), session_cycle '
+                        f'1-{n_cycles} (converted physical units).</p>')
                 else:
                     self.messagesBox.appendHtml('<p>Session data was saved (converted physical units).</p>')
 
@@ -573,8 +590,12 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.findDeviceButton.setEnabled(False)
 
         self.SubplotSetup()
-        self.graphThread = GraphThread(self.dataQueue, self.sensors[:self.nplots], self.time_lim, 
+        self.graphThread = GraphThread(self.dataQueue, self.sensors[:self.nplots], self.time_lim,
                                        self.n_display_points, self.plot_refresh_rate, self)
+        # Next mints a new session_id above, so the relative cycle count restarts
+        # here too: the thread's cycle_base is the global counter this session
+        # starts from (see _session_cycle).
+        self.session_cycle_base = self.graphThread.cycle_base
         self.graphThread.graphUpdateSig.connect(self.ploter)
         self.graphThread.updateYAxisSig.connect(self.updateYAxisRanges)
         self.graphThread.updateArrowsSig.connect(self.updateArrows)
@@ -639,6 +660,9 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             self.SubplotSetup()
             self.graphThread = GraphThread(self.dataQueue, self.sensors[:self.nplots], self.time_lim,
                                            self.n_display_points, self.plot_refresh_rate, self)
+            # Global counter this session starts from; session_cycle counts up
+            # from 1 relative to it (see _session_cycle).
+            self.session_cycle_base = self.graphThread.cycle_base
             self.graphThread.graphUpdateSig.connect(self.ploter)
             self.graphThread.updateYAxisSig.connect(self.updateYAxisRanges)
             self.graphThread.updateArrowsSig.connect(self.updateArrows)
@@ -967,15 +991,44 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.deltaTLabel.setText(f'Δt: {dt_txt}')
         self.deltaPLabel.setText(f'ΔP: {dp_txt}')
 
+    def _session_cycle(self, cycle_num):
+        """Session-relative cycle number: 1 for the first cycle of this session.
+
+        Derived from the global counter (cycle_num - the cycle_id the session
+        started from) instead of being tracked as a second counter, so the two
+        can never drift: a discarded cycle reuses its global number, so the
+        relative one is reused for free. A falsy cycle_num (continuous mode, or
+        before the first cycle) stays 0, exactly like cycle_id.
+
+        The session boundary is where session_id is minted - Start and Next -
+        so Stop alone does not reset it: the finished session's data is still
+        in memory and savable until Next/Start replaces it.
+        """
+        if not cycle_num:
+            return 0
+        return cycle_num - self.session_cycle_base
+
+    def _cycle_label(self, cycle_num):
+        """'3 (#1487)' - session-relative number first, global cycle_id after it.
+
+        Used by the message log so it reads the same way as the toolbar readout.
+        """
+        return f'{self._session_cycle(cycle_num)} (#{cycle_num})'
+
     def _set_cycle_readout(self, cycle_num):
         """Show the cycle number in the toolbar readout box.
 
         Replaces the old light-grey TextItem that used to sit in the corner of
-        the plot; the number now lives beside the Δt / ΔP readings. A falsy
+        the plot; the number now lives beside the Δt / ΔP readings. Shows the
+        session-relative number (what the operator reads and writes on a sample
+        bag) with the global cycle_id after it as '#1487', so the database
+        number stays visible for finding the cycle in Grafana. A falsy
         cycle_num (0 / None, e.g. before the first cycle or in continuous mode)
         shows a placeholder.
         """
-        self.cycleReadoutLabel.setText(f'Cycle: {cycle_num}' if cycle_num else 'Cycle: --')
+        self.cycleReadoutLabel.setText(
+            f'Cycle: {self._session_cycle(cycle_num)}  (#{cycle_num})'
+            if cycle_num else 'Cycle: --')
 
     # ------------------------------------------------ live coordinate readout
     _COORD_TAGS = {
@@ -1056,7 +1109,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         """Handle waiting for first cycle signal."""
         nxt = getattr(self.graphThread, 'cycle_base', 0) + 1
         self.messagesBox.appendHtml(
-            f'<p style="color:orange;">Waiting for trigger to go HIGH to start cycle {nxt}...</p>')
+            f'<p style="color:orange;">Waiting for trigger to go HIGH to start '
+            f'cycle {self._cycle_label(nxt)}...</p>')
         self._set_cycle_readout(nxt)
 
     def onCycleStarted(self, cycle_num):
@@ -1064,14 +1118,16 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.current_cycle = cycle_num
         # Plot follows the new cycle: lock the tools and restore the live view
         self._set_plot_live(True)
-        self.messagesBox.appendHtml(f'<p style="color:green;">Cycle {cycle_num} started</p>')
+        self.messagesBox.appendHtml(
+            f'<p style="color:green;">Cycle {self._cycle_label(cycle_num)} started</p>')
         self._set_cycle_readout(cycle_num)
 
     def onCycleEnded(self, cycle_num, xdata, ydata, cycle_start_s):
         """Handle cycle ended: persist the counter, store data, draw the ghost."""
         self.messagesBox.appendHtml(
-            f'<p>Cycle {cycle_num} ended (duration: {xdata[-1]:.2f}s)</p>' if xdata
-            else f'<p>Cycle {cycle_num} ended</p>')
+            f'<p>Cycle {self._cycle_label(cycle_num)} ended '
+            f'(duration: {xdata[-1]:.2f}s)</p>' if xdata
+            else f'<p>Cycle {self._cycle_label(cycle_num)} ended</p>')
         save_cycle_id(cycle_num)  # survives restarts / power loss (cycle_id.txt)
         # Keep the cycle (with its start offset) so it can be resent to the cloud later.
         self.completed_cycles_data.append((cycle_num, float(cycle_start_s), xdata, ydata))
@@ -1091,7 +1147,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
     def onCycleDiscarded(self, cycle_num, duration):
         """A trigger blip shorter than min_cycle_s was dropped (number is reused)."""
         self.messagesBox.appendHtml(
-            f'<p style="color:orange;">Cycle {cycle_num} discarded '
+            f'<p style="color:orange;">Cycle {self._cycle_label(cycle_num)} discarded '
             f'({duration:.2f}s &lt; {self.min_cycle_s:.2f}s minimum - treated as noise)</p>')
         # Number is reused for the retry, so keep showing it while we wait again.
         self._set_cycle_readout(cycle_num)

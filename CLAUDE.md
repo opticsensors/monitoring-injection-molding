@@ -72,9 +72,11 @@ Two datasets that **share identical column/field names** (no units in any key �
 units live only in the sensor registry). Both come from
 `_channel_field_names()`, the single source for channel keys:
 
-- **Local CSV** (`save_Session`): `cycle_id, time_s, CH<n>_<type>, ...`
-  `cycle_id` is always present (0 = continuous); `time_s` is relative to the
-  session/cycle start.
+- **Local CSV** (`save_Session`):
+  `session_id, cycle_id, session_cycle, time_s, CH<n>_<type>, ...` — identity,
+  then time, then data. `cycle_id` is always present (0 = continuous);
+  `session_cycle` is its session-relative twin (also 0 in continuous mode);
+  `time_s` is relative to the session/cycle start.
 - **Cloud (MQTT)** (`_publish_records` → `nodered_function.js`): the same
   `cycle_id, time_s, CH<n>_<type>, ...` plus cloud-only metadata
   `timestamp_ns, machine_id, session_id`. In InfluxDB, `machine_id` / `cycle_id`
@@ -82,8 +84,12 @@ units live only in the sensor registry). Both come from
   The Node-RED function discovers channel fields per-record, so any channel
   config works without editing it.
 
-The CSV header and MQTT payload are byte-for-byte identical for the shared
-columns; keep `_channel_field_names()` the one place that names channels.
+`time_s` and the channel columns are byte-for-byte identical between the CSV
+header and the MQTT payload; keep `_channel_field_names()` the one place that
+names channels. The two schemas differ only in the identity columns:
+`session_cycle` is **CSV-only** (the cloud derives it from `session_id` +
+`cycle_id` when it needs it, so it costs no Node-RED or dashboard change), and
+`timestamp_ns` / `machine_id` stay cloud-only.
 
 `_saved_indices()` decides which channels are written; `_channel_field_names()`
 and `_saved_values()` are both built from it, so the header and every row stay the
@@ -92,9 +98,33 @@ same length. If you add a code path that writes channel values, filter it throug
 trigger is digital-only, but it keeps a hand-edited config from corrupting the
 CSV.)
 
+### Two cycle numbers, one counter
+
 `cycle_id` is a monotonic per-machine counter persisted in `data/cycle_id.txt`
-across restarts. Discarded (too-short) cycles reuse the number, so there are no
-spurious gaps.
+across restarts — the database key, never reset. Discarded (too-short) cycles
+reuse the number, so there are no spurious gaps.
+
+`session_cycle` is the human-readable one: 1, 2, 3… within the current session,
+for annotating sample bags and for seeing at a glance how many cycles a session
+produced. It is **derived, not counted** — `_session_cycle()` returns
+`cycle_id - session_cycle_base`, where `session_cycle_base` is the thread's
+`cycle_base` captured when the session starts. There is no second counter to
+drift, and discards reuse both numbers for free.
+
+A **session** runs from Start (or Next) until the next Start/Next — exactly the
+span of one `session_id`, which both paths mint. `session_cycle` resets there
+and nowhere else:
+
+- **Stop** ends acquisition but *not* the session: its data is still in memory
+  and Save/Send act on it (`stopReading` enables both), so the readout keeps
+  showing the final count.
+- **Save** is a read-only export and never a boundary — it is optional (a
+  cloud-only session is never saved) and may run more than once.
+- **Next** is only reachable after Stop and calls `reset_Data_n_Plot_Vars()`,
+  which is what actually retires a session.
+
+The toolbar readout and the message log both show the pair as
+`Cycle: 3  (#1487)` / `Cycle 3 (#1487) started` via `_cycle_label()`.
 
 ## Sensor registry
 

@@ -7,10 +7,17 @@ import matplotlib.pyplot as plt
 
 csv_file = r".\results\5mms.csv"
 
-# Column names (CHANGE THESE IF CSV CHANGES). The CSV header now matches the
-# MQTT keys exactly: cycle_id, time_s, then CH<n>_<type> with no units.
+# Column names (CHANGE THESE IF CSV CHANGES). The CSV header is
+# session_id, cycle_id, session_cycle, time_s, then CH<n>_<type> with no units;
+# time_s and the channel columns are named exactly like the MQTT keys.
+# Two cycle columns to choose from:
+#   'session_cycle' - 1, 2, 3... within the saved session (default: a session
+#                     normally saves to one file, so these are the numbers on
+#                     the sample bags)
+#   'cycle_id'      - the global counter that never resets; use it to line a
+#                     row up with Grafana / InfluxDB
 time_column = 'time_s'
-cycle_column = 'cycle_id'
+cycle_column = 'session_cycle'
 
 temperature_columns = ['CH0_T_futaba', 'CH1_T_futaba']
 pressure_columns = ['CH2_P_kistler', 'CH3_P_kistler']
