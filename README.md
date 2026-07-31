@@ -14,7 +14,7 @@ UPDATE photos: added new connector for machine outputs and rewired
 
 | Kistler Piezoelectric (0–2000 bar) | Futaba IR (60–430 ºC) | Inductive Proximity | 
 |:----------:|:---------:|:---------:|
-| <img src="./figures/pressure.png" alt="IME gauge" width="70%"/> | <img src="./figures/futaba ir.png" alt="HBM gauge" width="72%"/> | <img src="./figures/inductive.jpg" alt="HBM gauge" width="70%"/> |
+| <img src="./figures/pressure.png" alt="a" width="70%"/> | <img src="./figures/futaba ir.png" alt="b" width="72%"/> | <img src="./figures/inductive.jpg" alt="c" width="70%"/> |
 
 
 **Why piezoelectric over piezoresistive?**
@@ -27,9 +27,12 @@ IR sensors offer non-contact, fast-response measurement (<8ms) of melt temperatu
 
 ## 2. Circuit
 
-UPDATE: aux relay is two poles and uses instead of GND and A1, COM 21 and NC 22 to go to D5
+UPDATE: aux relay is two poles and uses instead of GND and A1, COM 21 and NC 22 to go to D4
+NEW UPDATE: moved to main relay: now this main relay dry contact is controlled by: inductive machine and manual triggers, in parallel
 
 Talk about the dry contact that means, that thanks to the pull down (or up?) resistor inside the D5 ensures just a contact to GND (NC, incverted logic, contact to ground is mnot 0, but 1) con make the logic/read go to 1 in the D5
+
+NEW UPDATE: we use a SSR relay in parallel with inductive and manual switch that acts like a switch controlled by the 0-10V signal.
 
 
 <img src="./figures/circuit3.png" alt="Circuit schematic" width="95%"/>
@@ -48,6 +51,8 @@ A 10 kΩ pull-down resistor between the main relay's NO contact and ground ensur
 
 
 # Software
+
+UPDATE demo and software
 
 ![Demo](figures/monitoring.gif)
 
@@ -75,3 +80,27 @@ http://172.20.48.28:3000/
 
 influxdb 
 http://172.20.48.28:8086/
+
+# Installation Manual
+
+## Futaba
+
+| Step | Description | Reference |
+|------|-------------|-----------|
+| 1 | Calibrate the sensor **with the mold open**. | <img src="./figures/Futaba calibration.jpg" alt="Futaba calibration" width="350"> |
+| 2 | Connect the Futaba inputs. | <img src="./figures/Futaba inputs.jpg" alt="Futaba inputs" width="350"> |
+| 3 | Connect the cables that stick out of the box to the preamplifiers. | <img src="./figures/Futaba preamplifiers installation 2.jpg" alt="Futaba preamplifiers" width="350"> |
+| 4 | Secure the preamplifiers using the threaded screws. | <img src="./figures/Futaba preamplifiers installation.jpg" alt="Futaba mounting" width="350"> |
+
+## Kistler
+
+| Step | Description | Reference |
+|------|-------------|-----------|
+| 1 | Connect the Kistler inputs 1 and 2. | <img src="./figures/Kistler inputs.jpg" alt="Kistler inputs" width="350"> |
+| 2 | Connect the mold pressure outputs. | <img src="./figures/Mold pressure outputs.jpg" alt="Kistler outputs" width="350"> |
+
+## Final Installation
+
+| Expected result |
+|-----------------|
+| <img src="./figures/Final result.jpg" alt="Final installation" width="500"> |
