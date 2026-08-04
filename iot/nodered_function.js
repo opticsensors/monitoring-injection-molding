@@ -33,9 +33,11 @@ msg.payload = records.map(r => {
     }
     return {
         measurement: "sensor_data",
+        // cycle_id is deliberately NOT a tag: it would create a new series
+        // per cycle. It is written as the numeric field cycle_num instead
+        // (see above), which Grafana partitions on client-side.
         tags: {
             machine_id: String(r.machine_id),
-            cycle_id: String(r.cycle_id),
             session_id: String(r.session_id || "")
         },
         fields: fields,

@@ -79,8 +79,10 @@ units live only in the sensor registry). Both come from
   `time_s` is relative to the session/cycle start.
 - **Cloud (MQTT)** (`_publish_records` → `nodered_function.js`): the same
   `cycle_id, time_s, CH<n>_<type>, ...` plus cloud-only metadata
-  `timestamp_ns, machine_id, session_id`. In InfluxDB, `machine_id` / `cycle_id`
-  / `session_id` are **tags**; identity is effectively `(machine_id, timestamp)`.
+  `timestamp_ns, machine_id, session_id`. In InfluxDB, `machine_id` and
+  `session_id` are **tags**; `cycle_id` is carried as the numeric **field**
+  `cycle_num` — deliberately not a tag, since one series per cycle would blow
+  up cardinality. Identity is effectively `(machine_id, session_id, timestamp)`.
   The Node-RED function discovers channel fields per-record, so any channel
   config works without editing it.
 
@@ -88,7 +90,7 @@ units live only in the sensor registry). Both come from
 header and the MQTT payload; keep `_channel_field_names()` the one place that
 names channels. The two schemas differ only in the identity columns:
 `session_cycle` is **CSV-only** (the cloud derives it from `session_id` +
-`cycle_id` when it needs it, so it costs no Node-RED or dashboard change), and
+`cycle_num` when it needs it, so it costs no Node-RED or dashboard change), and
 `timestamp_ns` / `machine_id` stay cloud-only.
 
 `_saved_indices()` decides which channels are written; `_channel_field_names()`

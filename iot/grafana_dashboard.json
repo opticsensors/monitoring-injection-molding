@@ -144,7 +144,7 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH0_T_futaba\", \"t_ms\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles GROUP BY \"cycle_id\"",
+          "query": "SELECT \"CH0_T_futaba\", \"t_ms\", \"cycle_num\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -156,7 +156,7 @@
           "id": "partitionByValues",
           "options": {
             "fields": [
-              "cycle_id"
+              "cycle_num"
             ],
             "keepFields": false,
             "naming": {
@@ -290,7 +290,7 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH1_T_futaba\", \"t_ms\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles GROUP BY \"cycle_id\"",
+          "query": "SELECT \"CH1_T_futaba\", \"t_ms\", \"cycle_num\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -302,7 +302,7 @@
           "id": "partitionByValues",
           "options": {
             "fields": [
-              "cycle_id"
+              "cycle_num"
             ],
             "keepFields": false,
             "naming": {
@@ -436,7 +436,7 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH2_P_kistler\", \"t_ms\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles GROUP BY \"cycle_id\"",
+          "query": "SELECT \"CH2_P_kistler\", \"t_ms\", \"cycle_num\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -448,7 +448,7 @@
           "id": "partitionByValues",
           "options": {
             "fields": [
-              "cycle_id"
+              "cycle_num"
             ],
             "keepFields": false,
             "naming": {
@@ -582,7 +582,7 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH3_P_kistler\", \"t_ms\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles GROUP BY \"cycle_id\"",
+          "query": "SELECT \"CH3_P_kistler\", \"t_ms\", \"cycle_num\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -594,7 +594,7 @@
           "id": "partitionByValues",
           "options": {
             "fields": [
-              "cycle_id"
+              "cycle_num"
             ],
             "keepFields": false,
             "naming": {
@@ -728,7 +728,7 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH5_P_machine\", \"t_ms\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles GROUP BY \"cycle_id\"",
+          "query": "SELECT \"CH5_P_machine\", \"t_ms\", \"cycle_num\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -740,7 +740,7 @@
           "id": "partitionByValues",
           "options": {
             "fields": [
-              "cycle_id"
+              "cycle_num"
             ],
             "keepFields": false,
             "naming": {
@@ -874,7 +874,7 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH6_vel_screw\", \"t_ms\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles GROUP BY \"cycle_id\"",
+          "query": "SELECT \"CH6_vel_screw\", \"t_ms\", \"cycle_num\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -886,7 +886,7 @@
           "id": "partitionByValues",
           "options": {
             "fields": [
-              "cycle_id"
+              "cycle_num"
             ],
             "keepFields": false,
             "naming": {
@@ -1020,7 +1020,7 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH7_pos_screw\", \"t_ms\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles GROUP BY \"cycle_id\"",
+          "query": "SELECT \"CH7_pos_screw\", \"t_ms\", \"cycle_num\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -1032,7 +1032,7 @@
           "id": "partitionByValues",
           "options": {
             "fields": [
-              "cycle_id"
+              "cycle_num"
             ],
             "keepFields": false,
             "naming": {

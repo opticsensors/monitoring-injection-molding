@@ -144,8 +144,8 @@ def chart_panel(datasource, pid, ch, ch_type, x, y):
             {
                 'datasource': dict(datasource),
                 'policy': 'default',
-                'query': (f'SELECT "{field}", "t_ms" FROM "sensor_data" '
-                          f'WHERE {WHERE} GROUP BY "cycle_id"'),
+                'query': (f'SELECT "{field}", "t_ms", "cycle_num" FROM "sensor_data" '
+                          f'WHERE {WHERE}'),
                 'rawQuery': True,
                 'refId': 'A',
                 'resultFormat': 'table'
@@ -155,7 +155,7 @@ def chart_panel(datasource, pid, ch, ch_type, x, y):
         'transformations': [
             {
                 'id': 'partitionByValues',
-                'options': {'fields': ['cycle_id'], 'keepFields': False,
+                'options': {'fields': ['cycle_num'], 'keepFields': False,
                             'naming': {'asLabels': True}}
             }
         ],

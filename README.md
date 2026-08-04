@@ -78,8 +78,8 @@ ssh 'eduard.almar@local.eurecat.org'@172.20.48.28 "docker exec influxdb influx -
 grafana	
 http://172.20.48.28:3000/
 
-influxdb 
-http://172.20.48.28:8086/
+nodered
+http://172.20.48.28:1880/
 
 # Installation Manual
 
