@@ -3,17 +3,15 @@ TODO ---------------------------------------------------------------------------
 
 - dejar mucho tiempo capturando datos: +100 seg y ver si le da lag al programa eso? parece que captura con lag cuando eso pasa!!! comprobarlo
 
-- in the config window of main, remove the ? button in the top right next to the close button
-
-- in the config window in the tab conversions make the table order be the same as the channel: first the pressure then the vel and finallt the pos, just a chnage in the rows order, nothing else.
-
-- 
 
 
 
 
 DONE -----------------------------------------------------------------------------------------
 
+- in the config window of main, remove the ? button in the top right next to the close button
+
+- in the config window in the tab conversions make the table order be the same as the channel: first the pressure then the vel and finallt the pos, just a chnage in the rows order, nothing else.
 
 - la visc si se deselecciona el boton tiene que desaparecer, su calculo (vuleve al estado inicial de --) y sus lineas en el grafico tienen que desaparecer, hasta que alguien vulva a clicar el boton y aparezcan de nuevo alli donde estaban, y el usuario puede moverlas justo como pasaba antes...
 

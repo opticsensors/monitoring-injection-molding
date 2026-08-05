@@ -1,5 +1,5 @@
 # `monitoring-injection-molding`
-Integration of temperature and pressure sensors inside the cavity of an injection mold with real-time monitoring. Automatic cycle detection via an inductive proximity sensor.
+Integration of temperature and pressure sensors inside the cavity of an injection mold with real-time monitoring. Automatic cycle detection via an inductive proximity sensor or machine trigger. The machine signals (injection pressure, screw speed and screw position) are read on the same DAQ scan as the in-mold sensors, so each detected cycle is saved with all channels time-aligned.
 
 # Hardware
 
@@ -10,7 +10,7 @@ UPDATE photos: added new connector for machine outputs and rewired
 <img src="./figures/circuit5.png" alt="Circuit schematic" width="95%"/>
 
 
-## 1. Sensors:
+## Mold sensors:
 
 | Kistler Piezoelectric (0–2000 bar) | Futaba IR (60–430 ºC) | Inductive Proximity | 
 |:----------:|:---------:|:---------:|
@@ -25,34 +25,40 @@ Injection molding involves rapid pressure spikes during filling. Piezoelectric s
 IR sensors offer non-contact, fast-response measurement (<8ms) of melt temperature, unaffected by mold conduction. Thermocouples, though cost-effective, can have their melt temperature readings altered by heat conduction from the surrounding mold steel.
 
 
-## 2. Circuit
+## Circuit
 
-UPDATE: aux relay is two poles and uses instead of GND and A1, COM 21 and NC 22 to go to D4
-NEW UPDATE: moved to main relay: now this main relay dry contact is controlled by: inductive machine and manual triggers, in parallel
-
-Talk about the dry contact that means, that thanks to the pull down (or up?) resistor inside the D5 ensures just a contact to GND (NC, incverted logic, contact to ground is mnot 0, but 1) con make the logic/read go to 1 in the D5
-
-NEW UPDATE: we use a SSR relay in parallel with inductive and manual switch that acts like a switch controlled by the 0-10V signal.
-
+The three trigger sources (manual switch, inductive proximity sensor and machine signal) are wired **in parallel onto the main relay coil**, so any of them energizes it and all can be active at the same time.
 
 <img src="./figures/circuit3.png" alt="Circuit schematic" width="95%"/>
 
 
-**Reset Signal**
-A 24 V reset signal is applied to the charge amplifier to discharge its internal capacitance and eliminate drift. This signal can be triggered by either a manual switch or the inductive proximity sensor (both work independently and can be active simultaneously).
-
 **Relay Logic**
-- Auxiliary relay: converts the sensor's electronic output into a mechanical contact, protecting the sensor electronics from the manual switch's direct 24 V supply.
-- Main relay: energizes when either the manual switch or the auxiliary relay contact closes (wired in parallel). The main relay output controls the load, in this case, the charge amplifier's trigger/reset input (pin 19).
+- Auxiliary relay: converts the inductive sensor's electronic output into a mechanical contact, protecting the sensor electronics from the manual switch's direct 24 V supply.
+- Solid-state relay: acts as a switch driven by the machine's 0–10 V output, keeping the machine side isolated from the coil.
+- Main relay: two poles. Pole 1 applies the 24 V reset signal to the charge amplifier's trigger/reset input (pin 19), discharging its internal capacitance to eliminate drift; pole 2 (COM 21 / NC 22) is a free contact wired to a DAQ digital input, which tells the program when to record.
+
+**Dry Contact**
+The DAQ digital inputs are idle-HIGH (internal pull-up) and only react to being pulled down to ground, hence the voltage-free contact: relay released, the input is grounded and reads 0; relay energized, the contact opens and it reads 1 = cycle running.
 
 **Pull-Down Resistor (10 kΩ)**
-A 10 kΩ pull-down resistor between the main relay's NO contact and ground ensures the trigger pin stays at a defined LOW state (0 V) when the relay is open, preventing false triggering from electrical noise.
+Between the main relay's NO contact and ground, it holds the charge amplifier's trigger pin at a defined LOW (0 V) while the relay is open, preventing false triggering from electrical noise.
 
+## Unit conversions:
+
+Raw 0–10 V readings (16-bit, 32768 counts full scale) are converted per channel type. The values below are the defaults in `config/daq_config_defaults.json`. For the machine signals, `R` is the resolution given by the machine (mV per unit) and `initial` the value at 0 V.
+
+| Signal | Conversion | Default |
+|--------|------------|---------|
+| Futaba (`T_futaba`) | `°C = V × deg_per_volt` | 100 °C/V |
+| Kistler (`P_kistler`) | `bar = raw × (Qmax / s) / 32768` | Qmax = 20000, s = 2.500 (first sensor) / 2.508 (second) |
+| Injection pressure (`P_machine`) | `bar = initial + mV / R` | R = 20 mV, initial = 0 |
+| Injection speed (`vel_screw`) | `cm³/s = initial + mV / R` | R = 100 mV, initial = 0 |
+| Screw position (`pos_screw`) | `mm = initial + mV / R` | R = 100 mV, initial = 0 |
 
 
 # Software
 
-UPDATE demo and software
+UPDATE demo and software (leave that as a reminder for me)
 
 ![Demo](figures/monitoring.gif)
 
@@ -61,25 +67,33 @@ UPDATE demo and software
 
 # IoT
 
-ADD how data is send via mqtt to node red and send the data to server...
-use the rpi repo readme for this!
+When cloud upload is enabled, each finished cycle is published as a batch of JSON records to the MQTT topic set in `.env` (e.g. `160t/sensors`) on the broker running in the server. Node-RED subscribes to that topic, turns every record into a point and writes it to the `sensor_data` database in InfluxDB, which Grafana reads to plot the cycles. Every record carries `timestamp_ns`, `machine_id`, `session_id`, `cycle_num` and one field per channel (`CH<n>_<type>`), using exactly the same names as the columns of the local CSV. If the broker is unreachable, the batches are stored in `data/pending/` and sent automatically once it is back, so no cycle is lost.
 
+Connect to the server:
+
+```shell
 ssh 'eduard.almar@local.eurecat.org'@172.20.48.28
+```
 
-show/print:
-ssh 'eduard.almar@local.eurecat.org'@172.20.48.28 "docker exec influxdb influx -database sensor_data -execute 'SELECT * FROM sensor_data'"
+Query the database (from the local machine, over ssh):
 
-delete: 
+```shell
+# print only the last 5 rows
+ssh 'eduard.almar@local.eurecat.org'@172.20.48.28 \
+"docker exec influxdb influx -database sensor_data -execute 'SELECT * FROM sensor_data ORDER BY time DESC LIMIT 5'"
+
+# delete
 ssh 'eduard.almar@local.eurecat.org'@172.20.48.28 "docker exec influxdb influx -database sensor_data -execute 'DELETE FROM sensor_data'"
 
-download:
+# download
 ssh 'eduard.almar@local.eurecat.org'@172.20.48.28 "docker exec influxdb influx -database sensor_data -execute 'SELECT * FROM sensor_data' -format csv" > /mnt/c/Users/eduard.almar/Downloads/sensor_data_dump.csv
+```
 
-grafana	
-http://172.20.48.28:3000/
+| Service | URL | How to load the code in `/iot` |
+|---------|-----|--------------------------------|
+| Grafana | http://172.20.48.28:3000/ | Edit > Settings > JSON model, and paste `grafana_dashboard.json` |
+| Node-RED | http://172.20.48.28:1880/ | batch tab > function 1, and paste `nodered_function.js` |
 
-nodered
-http://172.20.48.28:1880/
 
 # Installation Manual
 
@@ -87,7 +101,7 @@ http://172.20.48.28:1880/
 
 | Step | Description | Reference |
 |------|-------------|-----------|
-| 1 | Calibrate the sensor **with the mold open**. | <img src="./figures/Futaba calibration.jpg" alt="Futaba calibration" width="350"> |
+| 1 | Press the calibration button of the amplifier **with the mold open**. | <img src="./figures/Futaba calibration.jpg" alt="Futaba calibration" width="350"> |
 | 2 | Connect the Futaba inputs. | <img src="./figures/Futaba inputs.jpg" alt="Futaba inputs" width="350"> |
 | 3 | Connect the cables that stick out of the box to the preamplifiers. | <img src="./figures/Futaba preamplifiers installation 2.jpg" alt="Futaba preamplifiers" width="350"> |
 | 4 | Secure the preamplifiers using the threaded screws. | <img src="./figures/Futaba preamplifiers installation.jpg" alt="Futaba mounting" width="350"> |
