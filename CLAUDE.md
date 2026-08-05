@@ -152,10 +152,10 @@ spare pole (COM 21 / NC 22 → D-pin / GND). So *amp in operate ⟺ D-pin HIGH �
 cycle running*, on one contact, with no skew between the amp's integration window
 and the cycle boundary.
 
-`trigger_mode` (`None` | `Inductive` | `Machine` | `Manual`, `TRIGGER_MODES`) only
-records **which source is driving the relay** — every non-`None` mode reads the
-same input. `trigger_input()` finds it; moving the wire to another D pin is one
-dropdown, no code change.
+`trigger_mode` (`None` | `Inductive` | `Machine signal` | `Machine mold position` |
+`Manual`, `TRIGGER_MODES`) records **which source is driving the relay** — every
+non-`None` mode reads the same input. `trigger_input()` finds it; moving the wire
+to another D pin is one dropdown, no code change.
 
 Two electrical constraints keep it this way: the digital inputs are idle-HIGH
 with internal pull-ups and only register a pull *down* to GND (hence a dry
@@ -163,8 +163,34 @@ contact), and the machine's sourcing 0/10 V output both fails to drive them and
 overdrives a 5 V pin — so it gets an opto/SSR onto the relay coil rather than a
 wire to the DAQ.
 
+#### Polarity: one mode is active-LOW
+
+`Machine mold position` (`INVERTED_TRIGGER_MODES`) is the machine's 0-10 V
+mould-position output taken as a two-state signal: it sits at one rail while the
+mould is shut and at the other while it is open, and the SSR's ~4 V threshold is
+far from both, so the DAQ sees a clean digital edge. But it is the **inverse** of
+every other source — the SSR pulls in during the mould's *open* phase — so the
+input reads HIGH between cycles and LOW while the part is being made.
+
+`read_trigger_high()` XORs `trigger_is_inverted(trigger_mode)` into the bit and
+returns the **active sense**, not the raw pin. That is the only place polarity is
+known: cycle start/end, the arrows, the min-cycle discard and the pre-start check
+all keep reading `True` as "cycle running" whichever source is selected. If cycles
+come out inverted on the bench, the fix is switching between the two `Machine …`
+entries, not touching code.
+
+⚠️ Open hardware issue with this mode: the relay coil also gates the Kistler
+charge-amp reset, so driving it from mould-open leaves the amps in **reset during
+injection** — the cavity-pressure trace is destroyed at the source and no software
+can recover it. The proper fix is to invert *ahead of* the coil (an interposing
+relay whose NC contact feeds A1), which would also make this mode a pure label.
+The software inversion landed first, deliberately, to try the signal on the
+machine.
+
 `normalize_trigger_type()` maps the old `Inductive` / `Machine_signal` / `I`
-values in a stored `digital_map` onto `trigger`, so old configs still load.
+values in a stored `digital_map` onto `trigger`, and `normalize_trigger_mode()`
+maps a stored `trigger_mode` of `Machine` onto `Machine signal`
+(`LEGACY_TRIGGER_MODES`), so old configs still load.
 
 ## Cursor readout: Δt, ΔP and the viscosity
 

@@ -30,8 +30,10 @@ def load_config_defaults():
         "mqtt_enabled": False,
         "machine_id": "160t",
         "min_cycle_s": 1.0,
-        # Which source drives the main relay ('None'|'Inductive'|'Machine'|'Manual').
-        # All of them are read from the one digital input marked 'trigger' below.
+        # Which source drives the main relay (see TRIGGER_MODES: 'None' |
+        # 'Inductive' | 'Machine signal' | 'Machine mold position' | 'Manual').
+        # All of them are read from the one digital input marked 'trigger' below;
+        # 'Machine mold position' is the only active-LOW one.
         "trigger_mode": "Inductive",
         "digital_map": {"D0": "none", "D1": "none", "D2": "none", "D3": "none",
                         "D4": "trigger", "D5": "none", "D6": "none"},

@@ -36,7 +36,8 @@ sys.path.insert(0, str(ROOT))
 
 from config import CONFIG_DEFAULTS                                     # noqa: E402
 from sensor_types import (TRIGGER_TYPE, DIGITAL_INPUTS, digital_bit,   # noqa: E402
-                          normalize_trigger_type)
+                          normalize_trigger_type, normalize_trigger_mode,
+                          trigger_is_inverted)
 from daq_connectivity import Daq_serial                                # noqa: E402
 
 BINARY_METHOD = 1      # must match main.py
@@ -119,7 +120,8 @@ def main():
     n_analog = len(channels)
 
     # Replicates main.py trigger_bit_index(): which bit would actually gate cycles?
-    trigger_mode = CONFIG_DEFAULTS.get('trigger_mode', 'None')
+    trigger_mode = normalize_trigger_mode(CONFIG_DEFAULTS.get('trigger_mode', 'None'))
+    inverted = trigger_is_inverted(trigger_mode)   # cycle runs while the input is LOW
     digital_map = CONFIG_DEFAULTS.get('digital_map', {})
     active_bit = None
     active_name = None
@@ -136,6 +138,8 @@ def main():
         print("ACTIVE TRIGGER: none -- main.py will NEVER start a cycle with this config.")
     else:
         print(f"ACTIVE TRIGGER: {active_name} (bit {active_bit}) -- this is the bit main.py gates cycles on.")
+        print(f"POLARITY: cycle runs while {active_name} is "
+              f"{'LOW (inverted source)' if inverted else 'HIGH'}.")
     print("=" * 78)
     print()
     print("Exercise EVERY trigger source in turn: manual switch, inductive sensor,")
@@ -241,10 +245,14 @@ def main():
     else:
         s = bits[active_bit - 8]
         if s.edges > 0:
+            hi_pct = 100.0 * s.totals(now)[0] / max(sum(s.totals(now)), 1e-9)
+            active_pct = 100.0 - hi_pct if inverted else hi_pct
+            level = "LOW" if inverted else "HIGH"
             print(f"VERDICT: {active_name} is toggling ({s.edges} edges). main.py should now cut cycles.")
-            print(f"         HIGH = cycle running. {active_name} was HIGH "
-                  f"{100.0 * s.totals(now)[0] / max(sum(s.totals(now)), 1e-9):.0f}% of the time --")
-            print("         if that is inverted from your machine's mould-closed time, the polarity is backwards.")
+            print(f"         {level} = cycle running. {active_name} was {level} "
+                  f"{active_pct:.0f}% of the time --")
+            print("         if that is inverted from your machine's mould-closed time, the polarity is")
+            print("         backwards: switch between 'Machine signal' and 'Machine mold position'.")
         elif s.state == 0:
             print(f"VERDICT: {active_name} STUCK LOW, 0 edges -- the main relay never energised,")
             print("         or its contact is not reaching this input. Check COM 21 / NC 22 on the")

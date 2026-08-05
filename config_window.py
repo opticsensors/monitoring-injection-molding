@@ -11,6 +11,7 @@ from PyQt5 import QtWidgets, QtCore
 from sensor_types import (
     SENSOR_TYPES, SENSOR_TYPE_ORDER, MACHINE_CONVERSION_ORDER,
     TRIGGER_TYPE, TRIGGER_MODES, DIGITAL_INPUTS, normalize_trigger_type,
+    normalize_trigger_mode,
     sensor_category, sensor_label, sensor_unit, sensor_tooltip,
 )
 from config import CONFIG_DEFAULTS
@@ -303,12 +304,18 @@ class DaqConfigWindow(QtWidgets.QDialog):
         self.triggerModeCombo.setToolTip(
             "What gates acquisition into cycles (all analog signals start/stop together):\n"
             "• None: continuous acquisition, no cycles.\n"
-            "• Manual / Inductive / Machine: each LOW→HIGH starts a cycle; cycles\n"
-            "  overlay on the same plot with previous ones ghosted.\n\n"
-            "All three are read from the SAME digital input: they are wired in\n"
+            "• Manual / Inductive / Machine signal: each LOW→HIGH starts a cycle,\n"
+            "  the following HIGH→LOW ends it.\n"
+            "• Machine mold position: the SAME input read upside down - the cycle\n"
+            "  runs while it is LOW. The machine's 0-10 V mould-position output is\n"
+            "  the inverse of the other sources: it drives the SSR during the OPEN\n"
+            "  phase, so between cycles the input sits HIGH.\n"
+            "Cycles overlay on the same plot, with previous ones ghosted.\n\n"
+            "Every source is read from the SAME digital input: they are wired in\n"
             "parallel onto the main relay coil, and the DAQ reads that relay's\n"
-            "contact. Picking one here only records which source you are using -\n"
-            "set which input it is in the Digital channels table (DAQ tab).")
+            "contact. Picking one here records which source you are using and, with\n"
+            "it, the polarity - set which input it is in the Digital channels table\n"
+            "(DAQ tab).")
         self.triggerModeCombo.setMaximumWidth(combo_w)
         trig_layout.addWidget(self.triggerModeCombo, 0, 1)
         trig_layout.setColumnStretch(2, 1)
@@ -491,7 +498,8 @@ class DaqConfigWindow(QtWidgets.QDialog):
         # Plot layout
         self._select_data(self.moldAxesCombo, bool(d.get('separate_plots', False)))
         self._select_data(self.machineLayoutCombo, d.get('machine_layout', 'shared'))
-        self._select_data(self.triggerModeCombo, d.get('trigger_mode', 'None'))
+        self._select_data(self.triggerModeCombo,
+                          normalize_trigger_mode(d.get('trigger_mode', 'None')))
         self._refresh_plot_var_lists()
 
         # Cloud upload

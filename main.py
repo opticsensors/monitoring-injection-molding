@@ -25,7 +25,8 @@ from app_logging import setup_logging
 from config import CONFIG_DEFAULTS
 from sensor_types import (sensor_category, sensor_label, sensor_unit,
                           TRIGGER_TYPE, DIGITAL_INPUTS, digital_bit,
-                          normalize_trigger_type)
+                          normalize_trigger_type, normalize_trigger_mode,
+                          trigger_is_inverted)
 from config_window import DaqConfigWindow
 from plot_tools import ToolViewBox, PassThroughViewBox
 from rheology import apparent_viscosity, cross_section_mm2
@@ -125,8 +126,11 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         # The trigger is always a digital input: every source (manual switch,
         # inductive sensor, machine signal) is wired in parallel onto the main
         # relay coil, and the DAQ reads that relay's dry contact. trigger_mode
-        # only records which source is in use - they all read the same input.
-        self.trigger_mode = CONFIG_DEFAULTS.get('trigger_mode', 'None')  # see TRIGGER_MODES
+        # records which source is in use; they all read the same input, and the
+        # only thing that varies with the source is the polarity (mould position
+        # is active-LOW, see INVERTED_TRIGGER_MODES).
+        self.trigger_mode = normalize_trigger_mode(  # see TRIGGER_MODES
+            CONFIG_DEFAULTS.get('trigger_mode', 'None'))
         self.digital_map = dict(CONFIG_DEFAULTS.get('digital_map', {'D4': TRIGGER_TYPE}))
         self.machine_layout = CONFIG_DEFAULTS.get('machine_layout', 'shared')  # 'shared'|'separate'
 
@@ -344,18 +348,24 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         return digital_bit(name) if name else None
 
     def read_trigger_high(self, ypoints_raw, digital_word, prev_high):
-        """Return True/False (HIGH/LOW) for the trigger, or None if there is none.
+        """Return True/False (cycle active / idle) for the trigger, or None if there is none.
 
         The single seam the cycle logic reads the trigger through: one bit of the
         digital scan word, the main relay's contact. Which input it is comes from
         digital_map, so moving the wire to another D pin is a config change, not a
         code change. Returns a reading whenever a trigger is mapped (so arrows
         still work in continuous mode); cycle gating is controlled by cycle_mode.
+
+        The value returned is the *active* sense, not the raw pin: an active-LOW
+        source (mould position, see INVERTED_TRIGGER_MODES) is flipped here, so
+        everything downstream - cycle start/end, arrows, the pre-start check -
+        keeps reading True as "cycle running" whichever source is driving.
         """
         bit = self.trigger_bit_index()
         if bit is None or digital_word is None:
             return None
-        return bool((int(digital_word) >> bit) & 1)
+        high = bool((int(digital_word) >> bit) & 1)
+        return high != trigger_is_inverted(self.trigger_mode)
 
     def record_trigger_transition(self, x_time, is_high):
         """Record a LOW/HIGH edge for the arrow display (works for any trigger source)."""
@@ -365,10 +375,11 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.i_channel_state = new_state
 
     def check_trigger_initial_state(self):
-        """Return False if the active trigger is already HIGH before starting.
+        """Return False if the trigger is already active before starting.
 
-        Monitoring should begin from a LOW trigger. Returns True when it is safe to
-        proceed, including when no trigger is configured.
+        Monitoring should begin between cycles. Reads through read_trigger_high(),
+        so "active" already accounts for an inverted source. Returns True when it
+        is safe to proceed, including when no trigger is configured.
         """
         if self.trigger_mode == 'None':
             return True
@@ -583,10 +594,10 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         # Check trigger initial state
         if not self.check_trigger_initial_state():
             QtWidgets.QMessageBox.warning(self, "Trigger Warning",
-                f"The selected trigger ({self.trigger_mode}) is currently in HIGH state.\n\n"
-                "The signal must be LOW before starting monitoring.\n\n"
-                "Please ensure the trigger is in its inactive state and try again.")
-            self.messagesBox.appendHtml('<p style="color:red;">Cannot start: trigger is HIGH. Must be LOW to start.</p>')
+                f"The selected trigger ({self.trigger_mode}) is already active.\n\n"
+                "Monitoring must start between cycles, with the trigger inactive.\n\n"
+                "Please wait for the current cycle to finish and try again.")
+            self.messagesBox.appendHtml('<p style="color:red;">Cannot start: trigger already active. Must be inactive to start.</p>')
             return
 
         # Proceed with session setup
@@ -648,10 +659,10 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             # Check trigger initial state
             if not self.check_trigger_initial_state():
                 QtWidgets.QMessageBox.warning(self, "Trigger Warning",
-                    f"The selected trigger ({self.trigger_mode}) is currently in HIGH state.\n\n"
-                    "The signal must be LOW before starting monitoring.\n\n"
-                    "Please ensure the trigger is in its inactive state and try again.")
-                self.messagesBox.appendHtml('<p style="color:red;">Cannot start: trigger is HIGH. Must be LOW to start.</p>')
+                    f"The selected trigger ({self.trigger_mode}) is already active.\n\n"
+                    "Monitoring must start between cycles, with the trigger inactive.\n\n"
+                    "Please wait for the current cycle to finish and try again.")
+                self.messagesBox.appendHtml('<p style="color:red;">Cannot start: trigger already active. Must be inactive to start.</p>')
                 return
             
             self.reset_Data_n_Plot_Vars()
@@ -1873,7 +1884,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         _visc = cfg.get('viscosity', {})
         self.visc_L_mm = float(_visc.get('L_mm', self.visc_L_mm))
         self.visc_Rc_mm = float(_visc.get('Rc_mm', self.visc_Rc_mm))
-        self.trigger_mode = cfg.get('trigger_mode', 'None')
+        self.trigger_mode = normalize_trigger_mode(cfg.get('trigger_mode', 'None'))
         self.digital_map = dict(cfg.get('digital_map', self.digital_map))
         self.conversion = {k: dict(v) for k, v in cfg.get('conversion', self.conversion).items()}
         self.cycle_mode = (self.trigger_mode != 'None')
@@ -1969,10 +1980,13 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                                         % cfg.get('machine_id', self.machine_id))
 
         # Trigger summary
-        if cfg.get('trigger_mode', 'None') != 'None':
+        mode = normalize_trigger_mode(cfg.get('trigger_mode', 'None'))
+        if mode != 'None':
             where = self.trigger_input() or 'no digital input (!)'
-            self.messagesBox.appendHtml('<p style="color:green;">Trigger: %s cycle control via %s</p>'
-                                        % (cfg['trigger_mode'], where))
+            polarity = (' - inverted: the cycle runs while the input is LOW'
+                        if trigger_is_inverted(mode) else '')
+            self.messagesBox.appendHtml('<p style="color:green;">Trigger: %s cycle control via %s%s</p>'
+                                        % (mode, where, polarity))
         else:
             self.messagesBox.appendHtml('<p>Trigger: None (continuous acquisition)</p>')
 

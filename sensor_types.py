@@ -50,8 +50,24 @@ LEGACY_TRIGGER_TYPES = ('Inductive', 'Machine_signal', 'I')
 
 # Trigger modes offered for cycle control. They are labels for what is driving
 # the main relay - all of them are read from the same digital input, because all
-# of them are wired onto the same relay coil.
-TRIGGER_MODES = ['None', 'Inductive', 'Machine', 'Manual']
+# of them are wired onto the same relay coil. What can differ between them is the
+# polarity of that input: see INVERTED_TRIGGER_MODES.
+TRIGGER_MODES = ['None', 'Inductive', 'Machine signal', 'Machine mold position', 'Manual']
+
+# Modes whose input is active-LOW: the cycle runs while the digital input reads
+# LOW instead of HIGH.
+#
+# The machine's mould-position output is the inverse of every other source. It is
+# a 0-10 V position signal that sits at one end of its travel while the mould is
+# closed and at the other while it is open, so the SSR on the relay coil follows
+# the mould's OPEN phase: the relay is energised (input HIGH) between cycles and
+# released (input LOW) while the mould is shut and the part is being made.
+# Treating it as a digital input still works - the transition through the SSR's
+# ~4 V threshold is fast and far from both rails - it just runs the other way up.
+INVERTED_TRIGGER_MODES = ('Machine mold position',)
+
+# Trigger modes written by older configs -> their current name.
+LEGACY_TRIGGER_MODES = {'Machine': 'Machine signal', 'Machine_signal': 'Machine signal'}
 
 # Digital inputs. The DI-4108 reports them in the HIGH byte of the digital scan
 # word, so Dn is bit 8+n (D4 = bit 12, confirmed on the bench 2026-07-08).
@@ -63,6 +79,17 @@ def normalize_trigger_type(code):
     if code == TRIGGER_TYPE or code in LEGACY_TRIGGER_TYPES:
         return TRIGGER_TYPE
     return 'none'
+
+
+def normalize_trigger_mode(mode):
+    """Map a stored trigger_mode onto a current one ('None' when unknown)."""
+    mode = LEGACY_TRIGGER_MODES.get(mode, mode)
+    return mode if mode in TRIGGER_MODES else 'None'
+
+
+def trigger_is_inverted(mode):
+    """True when the cycle runs while the trigger input reads LOW."""
+    return normalize_trigger_mode(mode) in INVERTED_TRIGGER_MODES
 
 
 def digital_bit(name):
