@@ -35,6 +35,11 @@ def load_config_defaults():
         "trigger_mode": "Inductive",
         "digital_map": {"D0": "none", "D1": "none", "D2": "none", "D3": "none",
                         "D4": "trigger", "D5": "none", "D6": "none"},
+        # Runner geometry behind the apparent-viscosity readout (see rheology.py).
+        # L_mm is the distance between the two cavity-pressure sensors - both the
+        # melt-front travel Δx and the shear-stress length - and Rc_mm the runner
+        # radius. The cross-section A = π Rc² is derived, never stored.
+        "viscosity": {"L_mm": 100.0, "Rc_mm": 1.5},
         "conversion": {
             "T_futaba":   {"deg_per_volt": 100.0},
             "P_kistler":  {"s0": 2.500, "s1": 2.508, "Qmax": 20000.0},

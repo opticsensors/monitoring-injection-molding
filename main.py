@@ -28,6 +28,7 @@ from sensor_types import (sensor_category, sensor_label, sensor_unit,
                           normalize_trigger_type)
 from config_window import DaqConfigWindow
 from plot_tools import ToolViewBox, PassThroughViewBox
+from rheology import apparent_viscosity, cross_section_mm2
 
 logger = logging.getLogger('main')
 
@@ -155,6 +156,9 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self._last_plot_y = []                  # ... used for the cursor readout
         self.cursor_lines = {'t1': [], 't2': []}  # per key: [(plot, InfiniteLine)]
         self._cursor_sync_guard = False
+        # Cursors tool state before the plot went live, so a cycle that switches
+        # the tool off can switch it back on afterwards (see _set_plot_live).
+        self._cursor_tool_was_on = False
         self.cursor_pens = {
             't1': pg.mkPen('#E91E63', width=2, style=QtCore.Qt.DotLine),  # pink
             't2': pg.mkPen('#212121', width=2, style=QtCore.Qt.DotLine)}  # near-black
@@ -192,6 +196,11 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         # Debounce after a cycle ends before a new HIGH can start the next one
         # (JSON only; falls back to 2.0 - the old hard-coded value - if absent)
         self.inter_cycle_gap_s = float(CONFIG_DEFAULTS.get('inter_cycle_gap_s', 2.0))
+        # Runner geometry for the apparent-viscosity readout (JSON only, see
+        # rheology.py): sensor separation and runner radius, in mm.
+        _visc = CONFIG_DEFAULTS.get('viscosity', {})
+        self.visc_L_mm = float(_visc.get('L_mm', 100.0))
+        self.visc_Rc_mm = float(_visc.get('Rc_mm', 1.5))
         
         #LABELS:
         self.x_Label = 'Time [s]'
@@ -846,10 +855,11 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
     def _set_plot_live(self, live):
         """Enter/leave the live (auto-following) plot state.
 
-        The Home/Zoom/Pan/Cursors tools are only usable while the plot is
-        still. Entering live mid-interaction cancels the active tool, hides a
-        half-drawn zoom rectangle and snaps the view back to the default
-        ranges so the plot follows the incoming data again.
+        The Home/Zoom/Pan/Cursors tools and the x/y coordinate readout are only
+        usable while the plot is still. Entering live mid-interaction cancels
+        the active tool, hides a half-drawn zoom rectangle and the readout, and
+        snaps the view back to the default ranges so the plot follows the
+        incoming data again.
         """
         self.plot_is_live = live
         has_plots = bool(self.splotlist or self.machine_splotlist)
@@ -858,12 +868,23 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                     self.cursorButton, self.hideGhostsButton):
             btn.setEnabled(enable)
         if live:
+            # No mouse-move arrives while the cursor sits still, so a label left
+            # over from the previous still plot has to be cleared here.
+            self._hide_coord_readouts()
+            # Remember the Cursors tool so the capture only interrupts it: the
+            # lines are hidden for the cycle and put back when it ends.
+            self._cursor_tool_was_on = self.cursorButton.isChecked()
             for btn in (self.zoomButton, self.panButton, self.cursorButton):
                 if btn.isChecked():
                     btn.setChecked(False)  # emits toggled -> clears tool_mode
             for vb in self._tool_viewboxes:
                 vb.cancel_active_gesture()
             self.resetPlotView()
+        elif enable and self._cursor_tool_was_on:
+            # Cycle captured: restore the cursors the operator had placed, where
+            # they were. ΔP and η recompute against the curve now on screen.
+            self._cursor_tool_was_on = False
+            self.cursorButton.setChecked(True)  # emits toggled -> shows the lines
 
     def _on_tool_toggled(self, name, checked):
         """Keep Zoom/Pan/Cursors mutually exclusive; update the global mode."""
@@ -879,8 +900,11 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         elif self.tool_mode == name:
             self.tool_mode = None
         ToolViewBox.tool_mode = self.tool_mode
-        # Cursor lines may only be dragged while the cursor tool is active
-        self._set_cursor_lines_movable(self.tool_mode == 'cursor')
+        # The Cursors tool owns its lines: they are only drawn, draggable and
+        # measured while it is active. Switching to Zoom/Pan unchecks Cursors
+        # with its signals blocked, so this has to run for every tool, not just
+        # for 'cursor' - which is why it sits after the mutual-exclusion block.
+        self._set_cursor_lines_shown(self.tool_mode == 'cursor')
 
     def _on_hide_ghosts_toggled(self, hide):
         """Eye toggle: show/hide every faint past-cycle ghost curve at once."""
@@ -904,12 +928,23 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                                   for setter, _ in self.y_axis_groups]
 
     # ------------------------------------------------------- time cursor lines
-    def _iter_subplots(self):
-        return list(self.splotlist) + list(self.machine_splotlist)
+    def _cursor_subplots(self):
+        """Subplots the time cursors live on: the Mold-sensors tab only.
+
+        Δt is read against the Futaba/Kistler traces and ΔP against the cavity
+        pressures, so the lines belong on that tab. The Machine-data tab shares
+        the same X range but nothing there is measured, so drawing them on it
+        would only add clutter.
+        """
+        return list(self.splotlist)
 
     def _on_cursor_click(self, button, x):
         """Place/move a time cursor: left -> t1, right -> t2, middle -> clear."""
         if self.plot_is_live or self.tool_mode != 'cursor':
+            return
+        # The cursors are a Mold-sensors tool: a click on the Machine tab must
+        # not move lines that are not drawn there (see _cursor_subplots).
+        if self.plotTabs.currentWidget() is not self.GraphArea:
             return
         if button == QtCore.Qt.LeftButton:
             self._place_cursor('t1', x)
@@ -920,10 +955,10 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self._update_cursor_readout()
 
     def _place_cursor(self, key, x):
-        """Create the key's line on every subplot (first use) or move it there.
+        """Create the key's line on every Mold-tab subplot (first use) or move it.
 
-        The same time position is mirrored on all subplots of both tabs, since
-        every X axis shows the same time range.
+        The same time position is mirrored across those subplots, since every X
+        axis shows the same time range.
         """
         if self.cursor_lines[key]:
             self._move_cursor_lines(key, x)
@@ -931,7 +966,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         pen = self.cursor_pens[key]
         hover = pg.mkPen(pen.color(), width=4)
         label_pos = 0.95 if key == 't1' else 0.88  # keep the two labels apart
-        for sp in self._iter_subplots():
+        for sp in self._cursor_subplots():
             line = pg.InfiniteLine(pos=x, angle=90, movable=True, pen=pen,
                                    hoverPen=hover, label=key,
                                    labelOpts={'position': label_pos,
@@ -968,28 +1003,67 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                     pass
             self.cursor_lines[key] = []
 
-    def _set_cursor_lines_movable(self, movable):
+    def _set_cursor_lines_shown(self, shown):
+        """Show/hide the t1-t2 lines and refresh the readout to match.
+
+        Hiding keeps the line objects and their positions, so switching the
+        Cursors tool back on brings them back exactly where they were, still
+        draggable - unlike a middle-click, which deletes them for good.
+        """
         for key in ('t1', 't2'):
             for _, line in self.cursor_lines[key]:
-                line.setMovable(movable)
+                line.setVisible(shown)
+                line.setMovable(shown)
+        self._update_cursor_readout()
 
     def _cursor_x(self, key):
         entries = self.cursor_lines[key]
         return entries[0][1].value() if entries else None
 
     def _update_cursor_readout(self):
-        """Refresh the Δt / ΔP label from the cursor lines and on-screen curves."""
-        x1 = self._cursor_x('t1')
-        x2 = self._cursor_x('t2')
-        dt_txt = dp_txt = '--'
+        """Refresh the Δt / ΔP / η labels from the cursor lines and on-screen curves.
+
+        The rheology follows the same inputs as ΔP, so it is recomputed here -
+        i.e. on every cursor placement, drag and clear - and never goes stale
+        against the two numbers it is derived from.
+
+        All three read '--' whenever the lines are not on the plot, whether
+        they were never placed or the Cursors tool is off: a measurement with no
+        visible lines behind it has nothing the operator can check it against.
+        """
+        shown = self.cursorButton.isChecked()
+        x1 = self._cursor_x('t1') if shown else None
+        x2 = self._cursor_x('t2') if shown else None
+        dt_txt = dp_txt = eta_txt = '--'
+        rheo = None
         if x1 is not None and x2 is not None:
             t_lo, t_hi = sorted((x1, x2))
-            dt_txt = f'{t_hi - t_lo:.3f} s'
+            dt = t_hi - t_lo
+            dt_txt = f'{dt:.3f} s'
             dp = self._pressure_drop_at(t_hi)
             if dp is not None:
                 dp_txt = f'{dp:.1f} bar'
+                rheo = apparent_viscosity(dt, dp, self.visc_L_mm, self.visc_Rc_mm)
+                if rheo is not None:
+                    eta_txt = f'{rheo.eta:,.1f} Pa·s'
         self.deltaTLabel.setText(f'Δt: {dt_txt}')
         self.deltaPLabel.setText(f'ΔP: {dp_txt}')
+        self.viscosityLabel.setText(f'η: {eta_txt}')
+        self.viscosityLabel.setToolTip(self._viscosity_tooltip(rheo))
+
+    def _viscosity_tooltip(self, rheo):
+        """Full breakdown behind the η reading: Q, τ, γ̇a and the geometry used."""
+        head = (f'Apparent viscosity from Δt and ΔP, for a runner of '
+                f'L = {self.visc_L_mm:g} mm and Rc = {self.visc_Rc_mm:g} mm '
+                f'(A = {cross_section_mm2(self.visc_Rc_mm):.5f} mm²).')
+        if rheo is None:
+            return (f'{head}\n\nNeeds both cursor lines placed and at least two '
+                    f'cavity-pressure curves on screen.')
+        return (f'{head}\n\n'
+                f'Q  = {rheo.Q:,.1f} mm³/s\t(flow rate, A·Δx/Δt)\n'
+                f'τ  = {rheo.tau:,.0f} Pa\t(wall shear stress, ΔP·Rc/2L)\n'
+                f'γ̇a = {rheo.gamma_dot:,.1f} 1/s\t(apparent shear rate, 4Q/πRc³)\n'
+                f'η  = {rheo.eta:,.1f} Pa·s\t(τ/γ̇a)')
 
     def _session_cycle(self, cycle_num):
         """Session-relative cycle number: 1 for the first cycle of this session.
@@ -1058,8 +1132,25 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self._coord_readouts[which].append(
             {'item': item, 'vb': main_plot.vb, 'axes': axes})
 
+    def _hide_coord_readouts(self, which=None):
+        """Hide the x/y readouts of one tab, or of both when `which` is None."""
+        groups = ([self._coord_readouts.get(which, ())] if which
+                  else self._coord_readouts.values())
+        for entries in groups:
+            for e in entries:
+                e['item'].hide()
+
     def _update_coord_readouts(self, which, scene_pos):
-        """Refresh the x/y readout under the cursor for one tab (mold/machine)."""
+        """Refresh the x/y readout under the cursor for one tab (mold/machine).
+
+        Silent while the plot is live: during a cycle the curves move under the
+        cursor, so the numbers would be read off a point that is already gone.
+        The readout comes back as soon as the cycle is captured and the plot
+        stands still (same rule as the Home/Zoom/Pan/Cursor tools).
+        """
+        if self.plot_is_live:
+            self._hide_coord_readouts(which)
+            return
         for e in self._coord_readouts.get(which, ()):
             vb = e['vb']
             try:
@@ -1390,11 +1481,12 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         # Reset plot-tool state (the line items died with canvas.clear())
         self._tool_viewboxes = []
         self.cursor_lines = {'t1': [], 't2': []}
+        self._cursor_tool_was_on = False   # nothing left to restore next cycle
         self._last_plot_x = []
         self._last_plot_y = []
         self._default_x_range = None
         self._default_y_ranges = []
-        self._update_cursor_readout()  # back to 'Δt: -- | ΔP: --'
+        self._update_cursor_readout()  # back to 'Δt: -- | ΔP: -- | η: --'
 
         for n in range(self.nplots):
             self.ydata_plts.append([])
@@ -1775,6 +1867,12 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                 self.mqtt_publisher = None
         self.min_cycle_s = float(cfg.get('min_cycle_s', self.min_cycle_s))
         self.inter_cycle_gap_s = float(cfg.get('inter_cycle_gap_s', self.inter_cycle_gap_s))
+        # Not offered in the config window: the geometry only changes when the
+        # mould does, so it is edited in the JSON. Read through cfg anyway so
+        # both configuration paths behave the same.
+        _visc = cfg.get('viscosity', {})
+        self.visc_L_mm = float(_visc.get('L_mm', self.visc_L_mm))
+        self.visc_Rc_mm = float(_visc.get('Rc_mm', self.visc_Rc_mm))
         self.trigger_mode = cfg.get('trigger_mode', 'None')
         self.digital_map = dict(cfg.get('digital_map', self.digital_map))
         self.conversion = {k: dict(v) for k, v in cfg.get('conversion', self.conversion).items()}

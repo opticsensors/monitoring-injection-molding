@@ -819,7 +819,7 @@
             "properties": [
               {
                 "id": "custom.axisLabel",
-                "value": "vel_screw [mm/s]"
+                "value": "vel_screw [cm³/s]"
               }
             ]
           }

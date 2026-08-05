@@ -180,8 +180,9 @@ class Ui_MainWindow(object):
         readoutFont.setPointSize(10)
         readoutLayout = QtWidgets.QHBoxLayout(self.readoutBox)
         readoutLayout.setContentsMargins(12, 0, 12, 0)
-        readoutLayout.setSpacing(22)  # gap between the three readings
-        # Cycle number, then Δt, then ΔP - laid out left to right, tight.
+        readoutLayout.setSpacing(22)  # gap between the four readings
+        # Cycle number, then Δt, then ΔP, then the viscosity computed from the
+        # last two - laid out left to right, tight.
         self.cycleReadoutLabel = QtWidgets.QLabel(self.readoutBox)
         self.cycleReadoutLabel.setFont(readoutFont)
         self.cycleReadoutLabel.setObjectName("cycleReadoutLabel")
@@ -191,9 +192,15 @@ class Ui_MainWindow(object):
         self.deltaPLabel = QtWidgets.QLabel(self.readoutBox)
         self.deltaPLabel.setFont(readoutFont)
         self.deltaPLabel.setObjectName("deltaPLabel")
+        # Apparent viscosity: the headline number, with Q / τ / γ̇a behind its
+        # own tooltip, which MainWindow refreshes together with the value.
+        self.viscosityLabel = QtWidgets.QLabel(self.readoutBox)
+        self.viscosityLabel.setFont(readoutFont)
+        self.viscosityLabel.setObjectName("viscosityLabel")
         readoutLayout.addWidget(self.cycleReadoutLabel)
         readoutLayout.addWidget(self.deltaTLabel)
         readoutLayout.addWidget(self.deltaPLabel)
+        readoutLayout.addWidget(self.viscosityLabel)
         self.horizontalLayout_3.addWidget(self.readoutBox)
         self.horizontalLayout_3.addStretch(1)
 
@@ -269,13 +276,15 @@ class Ui_MainWindow(object):
         self.homeButton.setToolTip(_translate("MainWindow", "Home - reset the view to the automatic range"))
         self.zoomButton.setToolTip(_translate("MainWindow", "Zoom - drag a rectangle to zoom in (available when the plot is not updating)"))
         self.panButton.setToolTip(_translate("MainWindow", "Pan - drag the plot to move around (available when the plot is not updating)"))
-        self.cursorButton.setToolTip(_translate("MainWindow", "Time cursors - left-click: t1 line, right-click: t2 line, middle-click: clear. Drag a line to fine-tune."))
+        self.cursorButton.setToolTip(_translate("MainWindow", "Time cursors - left-click: t1 line, right-click: t2 line, middle-click: clear. Drag a line to fine-tune. Switching the tool off hides the lines and blanks the readout; switching it back on restores them where they were."))
         self.hideGhostsButton.setToolTip(_translate("MainWindow", "Hide previous cycles - toggle the faint past-cycle (ghost) curves on/off"))
         self.cycleReadoutLabel.setText(_translate("MainWindow", "Cycle: --"))
         self.deltaTLabel.setText(_translate("MainWindow", "Δt: --"))
         self.deltaPLabel.setText(_translate("MainWindow", "ΔP: --"))
+        self.viscosityLabel.setText(_translate("MainWindow", "η: --"))
         self.readoutBox.setToolTip(_translate("MainWindow",
             "Cycle = current injection-cycle number.\n"
             "Δt = time between the two cursor lines.\n"
             "ΔP = difference between the two plotted cavity-pressure curves where the later line crosses them (always positive).\n"
-            "Requires both lines and at least two pressure curves on screen."))
+            "η = apparent viscosity computed from Δt and ΔP (hover it for Q, τ and γ̇a).\n"
+            "The three read -- unless the Cursors tool is on with both lines placed and at least two pressure curves on screen."))

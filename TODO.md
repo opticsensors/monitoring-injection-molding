@@ -1,4 +1,46 @@
-TODO:
+TODO -----------------------------------------------------------------------------------------
+
+
+- dejar mucho tiempo capturando datos: +100 seg y ver si le da lag al programa eso? parece que captura con lag cuando eso pasa!!! comprobarlo
+
+- in the config window of main, remove the ? button in the top right next to the close button
+
+- in the config window in the tab conversions make the table order be the same as the channel: first the pressure then the vel and finallt the pos, just a chnage in the rows order, nothing else.
+
+- 
+
+
+
+
+DONE -----------------------------------------------------------------------------------------
+
+
+- la visc si se deselecciona el boton tiene que desaparecer, su calculo (vuleve al estado inicial de --) y sus lineas en el grafico tienen que desaparecer, hasta que alguien vulva a clicar el boton y aparezcan de nuevo alli donde estaban, y el usuario puede moverlas justo como pasaba antes...
+
+- cambiar unidades de vel inyeccion de mm/s a cm3/s
+- deshabilitar el lector de coordenadas en tiempo real mientras el ciclo se esta capturando! solo que se muestre cuando el ciclo ya se ha capturado!!
+
+calculo visc:
+Compute the apparent viscosity of the polymer from Δt (s) and ΔP (bar).
+
+Constants:
+Δx = L = 100 mm
+Rc = 1.5 mm
+A = πRc² = 7.06858 mm²
+
+Equations:
+
+Q = A(Δx/Δt)
+
+τ = (ΔP × 100000 × 0.0015)/(2 × 0.1)   [Pa]
+
+γ̇a = 4Q/(π × 1.5³)   [s⁻¹]
+
+η = τ/γ̇a   [Pa·s]
+
+Return:
+Q (mm³/s), τ (Pa), γ̇a (s⁻¹), and η (Pa·s).
+
 
 - REMOVE cycle_id, and use only cycle_num:
 
@@ -148,27 +190,16 @@ window into one empty-tag trace. That part is not undoable.
 3. Load the dashboard and check the two cosmetic i
 
 
-
-
-
-
-
 - add a way to display old cycles only, just for example previous cycle, intead of actuial + all old cycles in ligghter color, right now there is a way to remove 6the old cycles and leave actual, it would be nive if user could somehow naviagate to alder cycles only and just display them
 
 - CH0_T_futaba, CH1_T_futaba (°C) · CH2_P_kistler, CH3_P_kistler (bar) · CH5_P_machine (bar) · CH6_vel_screw (mm/s) · CH7_pos_screw (mm) are the units correct in all of them, i remeber one of them should be in cm3/s or some other units different from machine?
 
 
-
-
-
-
-
-
-DONE -------------------------------------------------
+- cambiar unidades de vel inyeccion de mm/s a cm3/s
+- deshabilitar el lector de coordenadas en tiempo real mientras el ciclo se esta capturando! solo que se muestre cuando el ciclo ya se ha capturado!!
 
 1)  add a relaticve session cycle for user readability, we have this absolute cycle number that never resets and we use it to filetr ccyles in the database by id, however user might not want to read or annotate the number of the cycle if it is big, so we need a secondary cycle that is also saved and only for that session, and resets everytime we start again new cycle or click next, what are good name for these two columns ofor cycle id? you think is good idea to add a new column just for session id?
 
-MACHINE TRIGGER ISSUE --------------------------------
 
 the trigger is two wires that goe to + and - D5 pin in DAQ
 with a multimeter in the pins + and - of D5 I checked and it goes to 10v when the cycle is active

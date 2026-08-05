@@ -4,7 +4,7 @@
 //   CH5_P_machine, CH6_vel_screw, CH7_pos_screw}, ...]
 // Channel keys are CH<hw-channel>_<sensor_type>, named by the app from its
 // channel config, and the values are already converted to physical units
-// (degC, bar, mm/s, mm). The channel set is discovered per record, so any
+// (degC, bar, cm3/s, mm). The channel set is discovered per record, so any
 // channel configuration works without touching this function.
 const records = msg.payload;
 

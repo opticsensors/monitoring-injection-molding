@@ -9,7 +9,7 @@ it never reaches into ``MainWindow`` internals.
 from PyQt5 import QtWidgets, QtCore
 
 from sensor_types import (
-    SENSOR_TYPES, SENSOR_TYPE_ORDER, MACHINE_TYPES_ORDER,
+    SENSOR_TYPES, SENSOR_TYPE_ORDER, MACHINE_CONVERSION_ORDER,
     TRIGGER_TYPE, TRIGGER_MODES, DIGITAL_INPUTS, normalize_trigger_type,
     sensor_category, sensor_label, sensor_unit, sensor_tooltip,
 )
@@ -40,6 +40,10 @@ class DaqConfigWindow(QtWidgets.QDialog):
         super(DaqConfigWindow, self).__init__(parent)
         self.setWindowTitle("DAQ Configuration")
         self.setModal(True)
+        # Drop the title-bar "?" (What's This) button Qt puts on dialogs by
+        # default: nothing here implements context help, and every field already
+        # explains itself through its tooltip. Close stays.
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
 
         self.available_channels = list(self.AVAILABLE_CHANNELS)
         self.num_channels = len(self.available_channels)
@@ -406,15 +410,15 @@ class DaqConfigWindow(QtWidgets.QDialog):
         mach_group = QtWidgets.QGroupBox("Machine variables")
         mach_layout = QtWidgets.QVBoxLayout()
 
-        n_mach = len(MACHINE_TYPES_ORDER)
+        n_mach = len(MACHINE_CONVERSION_ORDER)
         self.machineTable = QtWidgets.QTableWidget()
         self.machineTable.setRowCount(n_mach)
         self.machineTable.setColumnCount(2)
         self.machineTable.setHorizontalHeaderLabels(["Initial value", "Resolution (mV)"])
         self.machineTable.setVerticalHeaderLabels(
-            [f"{sensor_label(c)} [{sensor_unit(c)}]" for c in MACHINE_TYPES_ORDER])
+            [f"{sensor_label(c)} [{sensor_unit(c)}]" for c in MACHINE_CONVERSION_ORDER])
 
-        for row, code in enumerate(MACHINE_TYPES_ORDER):
+        for row, code in enumerate(MACHINE_CONVERSION_ORDER):
             init_edit = QtWidgets.QLineEdit()
             self.machine_init_edits[code] = init_edit
             self.machineTable.setCellWidget(row, 0, init_edit)
@@ -513,7 +517,7 @@ class DaqConfigWindow(QtWidgets.QDialog):
         self.kistlerS0Edit.setText(str(k.get('s0', 2.500)))
         self.kistlerS1Edit.setText(str(k.get('s1', 2.508)))
         self.kistlerQmaxEdit.setText(str(k.get('Qmax', 20000.0)))
-        for code in MACHINE_TYPES_ORDER:
+        for code in MACHINE_CONVERSION_ORDER:
             c = conv.get(code, {})
             self.machine_init_edits[code].setText(str(c.get('initial', 0.0)))
             self.machine_res_edits[code].setText(str(c.get('resolution_mV', 10.0)))
@@ -591,7 +595,7 @@ class DaqConfigWindow(QtWidgets.QDialog):
                               's1': float(self.kistlerS1Edit.text()),
                               'Qmax': float(self.kistlerQmaxEdit.text())},
             }
-            for code in MACHINE_TYPES_ORDER:
+            for code in MACHINE_CONVERSION_ORDER:
                 conversion[code] = {
                     'initial': float(self.machine_init_edits[code].text()),
                     'resolution_mV': float(self.machine_res_edits[code].text()),
@@ -599,7 +603,7 @@ class DaqConfigWindow(QtWidgets.QDialog):
         except ValueError as e:
             self._warn(f"Please enter valid numbers in the Conversion tab.\n\nError: {e}")
             return
-        for code in MACHINE_TYPES_ORDER:
+        for code in MACHINE_CONVERSION_ORDER:
             if conversion[code]['resolution_mV'] == 0:
                 self._warn(f"Resolution for {sensor_label(code)} cannot be 0.")
                 return

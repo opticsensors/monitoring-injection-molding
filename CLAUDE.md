@@ -44,7 +44,8 @@ per process.
 
 ```
 main.py, MainWindow.py, graphswidget.py, plot_tools.py, plot_icons.py,
-config.py, config_window.py, sensor_types.py, app_logging.py, mqtt_publisher.py
+config.py, config_window.py, sensor_types.py, rheology.py, app_logging.py,
+mqtt_publisher.py
                                     ← the GUI app; all import each other flatly,
                                       so they must stay together on sys.path
 config/    daq_config_defaults.json ← hand-maintained channel layout (source of truth)
@@ -164,6 +165,48 @@ wire to the DAQ.
 
 `normalize_trigger_type()` maps the old `Inductive` / `Machine_signal` / `I`
 values in a stored `digital_map` onto `trigger`, so old configs still load.
+
+## Cursor readout: Δt, ΔP and the viscosity
+
+The toolbar readout box shows `Cycle | Δt | ΔP | η`. Δt is the gap between the
+two time cursors and ΔP the spread between the plotted cavity-pressure curves at
+the later cursor (`_pressure_drop_at`). η is derived from exactly those two
+numbers by `rheology.apparent_viscosity()`, so it is recomputed inside
+`_update_cursor_readout()` — the one place Δt and ΔP are produced — and cannot go
+stale against them. All four quantities (Q, τ, γ̇a, η) are returned; the label
+shows η and `_viscosity_tooltip()` puts the rest, plus the geometry used, in its
+tooltip.
+
+The cursors are a **Mold-sensors tab** tool: `_cursor_subplots()` returns
+`splotlist` only, so no line is ever drawn on the Machine tab, and
+`_on_cursor_click` ignores clicks made while that tab is on top (they would
+otherwise drag lines the operator cannot see). Both ends of the measurement —
+Δt against the Futaba/Kistler traces, ΔP between the cavity pressures — live on
+that tab, and nothing on the Machine tab is measured.
+
+### The Cursors tool owns the lines
+
+`_set_cursor_lines_shown()` is the single switch: the lines are drawn, draggable
+and measured **only** while the Cursors tool is checked, and all three readings
+fall back to `--` otherwise. Hiding keeps the `InfiniteLine` objects in
+`cursor_lines`, so re-checking the tool restores them at the same positions —
+only a middle-click (`_clear_cursor_lines`) deletes them. It is called at the end
+of `_on_tool_toggled` for *every* tool, because switching to Zoom/Pan unchecks
+Cursors with its signals blocked, so no `toggled` ever fires for it.
+
+Going live unchecks the tool, which would otherwise make a capture lose the
+operator's cursors. `_set_plot_live` therefore records `_cursor_tool_was_on` on
+the way in and re-checks the button on the way out, so a cycle only *interrupts*
+the measurement: the lines come back where they were and ΔP/η recompute against
+the curve that just replaced the old one.
+
+`rheology.py` is pure (no Qt/DAQ). Its geometry comes from `viscosity` in
+`config/daq_config_defaults.json` — `L_mm` (the cavity-pressure sensor
+separation, which is both the melt-front travel Δx and the shear-stress length)
+and `Rc_mm` (runner radius). The cross-section `A = π Rc²` is **derived**
+(`cross_section_mm2()`), never stored, so it cannot disagree with the radius.
+The constants are JSON-only — not exposed in the config window, since they only
+change when the mould does.
 
 ## Gotchas / conventions
 

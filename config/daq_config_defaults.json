@@ -17,6 +17,7 @@
     "trigger_mode": "Inductive",
     "digital_map": {"D0": "none", "D1": "none", "D2": "none", "D3": "none",
                     "D4": "trigger", "D5": "none", "D6": "none"},
+    "viscosity": {"L_mm": 100.0, "Rc_mm": 1.5},
     "conversion": {
         "T_futaba":   {"deg_per_volt": 100.0},
         "P_kistler":  {"s0": 2.500, "s1": 2.508, "Qmax": 20000.0},

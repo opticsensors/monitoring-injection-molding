@@ -27,8 +27,9 @@ SENSOR_TYPES = {
                        'tooltip': 'Cavity pressure sensor (Kistler). Raw 0-10 V mapped to bar.'},
     'P_machine':      {'label': 'P_machine',         'category': 'machine', 'unit': 'bar',
                        'tooltip': 'Machine signal - Presión específica inyección (specific injection pressure) → bar.'},
-    'vel_screw':      {'label': 'vel_screw',         'category': 'machine', 'unit': 'mm/s',
-                       'tooltip': 'Machine signal - Veloc. inyección (injection speed) → mm/s.'},
+    'vel_screw':      {'label': 'vel_screw',         'category': 'machine', 'unit': 'cm³/s',
+                       'tooltip': 'Machine signal - Veloc. inyección (injection speed) → cm³/s.\n'
+                                  'The machine outputs a volumetric flow rate, not a linear speed.'},
     'pos_screw':      {'label': 'pos_screw',         'category': 'machine', 'unit': 'mm',
                        'tooltip': 'Machine signal - Posición husillo (screw position) → mm.'},
     'trigger':        {'label': 'trigger',            'category': 'trigger', 'unit': '',
@@ -76,6 +77,10 @@ def digital_bit(name):
 MACHINE_TYPES_ORDER = ['pos_screw', 'vel_screw', 'P_machine']
 MACHINE_LEFT_TYPES = ['pos_screw', 'vel_screw']   # two left axes
 MACHINE_RIGHT_TYPES = ['P_machine']              # one right axis
+
+# Config window, Conversion tab: rows follow the channel order (P_machine on
+# CH5, vel_screw on CH6, pos_screw on CH7), not the plot's axis stacking above.
+MACHINE_CONVERSION_ORDER = ['P_machine', 'vel_screw', 'pos_screw']
 
 
 def sensor_category(type_str):
