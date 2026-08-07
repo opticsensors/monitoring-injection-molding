@@ -5,7 +5,7 @@ Integration of temperature and pressure sensors inside the cavity of an injectio
 
 UPDATE photos: added new connector for machine outputs and rewired 
 
-<img src="./figures/circuit4.jpg" alt="Circuit schematic" width="95%"/>
+<img src="./figures/hardware.png" alt="Circuit schematic" width="95%"/>
 
 
 ## Mold sensors:
