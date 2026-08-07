@@ -7,8 +7,6 @@ UPDATE photos: added new connector for machine outputs and rewired
 
 <img src="./figures/circuit4.jpg" alt="Circuit schematic" width="95%"/>
 
-<img src="./figures/circuit5.png" alt="Circuit schematic" width="95%"/>
-
 
 ## Mold sensors:
 
@@ -45,16 +43,19 @@ Between the main relay's NO contact and ground, it holds the charge amplifier's 
 
 ## Unit conversions:
 
-Raw 0–10 V readings (16-bit, 32768 counts full scale) are converted per channel type. The values below are the defaults in `config/daq_config_defaults.json`. For the machine signals, `R` is the resolution given by the machine (mV per unit) and `initial` the value at 0 V.
+Every channel is read as a raw ADC count and first scaled to volts. The DAQ input range is ±10 V with a 16-bit signed converter, so 32768 counts = 10 V:
+
+`V = raw × 10 / 32768`
+
+That voltage is then converted per channel type. The values below are the defaults in `config/daq_config_defaults.json`. For the machine signals, `R` is the resolution given by the machine (mV per unit) and `initial` the value at 0 V.
 
 | Signal | Conversion | Default |
 |--------|------------|---------|
 | Futaba (`T_futaba`) | `°C = V × deg_per_volt` | 100 °C/V |
-| Kistler (`P_kistler`) | `bar = raw × (Qmax / s) / 32768` | Qmax = 20000, s = 2.500 (first sensor) / 2.508 (second) |
+| Kistler (`P_kistler`) | `bar = V × (Qmax / s) / 10` | Qmax = 20000 pC, s = 2.500 |
 | Injection pressure (`P_machine`) | `bar = initial + mV / R` | R = 20 mV, initial = 0 |
 | Injection speed (`vel_screw`) | `cm³/s = initial + mV / R` | R = 100 mV, initial = 0 |
 | Screw position (`pos_screw`) | `mm = initial + mV / R` | R = 100 mV, initial = 0 |
-
 
 # Software
 
@@ -67,7 +68,7 @@ UPDATE demo and software (leave that as a reminder for me)
 
 # IoT
 
-When cloud upload is enabled, each finished cycle is published as a batch of JSON records to the MQTT topic set in `.env` (e.g. `160t/sensors`) on the broker running in the server. Node-RED subscribes to that topic, turns every record into a point and writes it to the `sensor_data` database in InfluxDB, which Grafana reads to plot the cycles. Every record carries `timestamp_ns`, `machine_id`, `session_id`, `cycle_num` and one field per channel (`CH<n>_<type>`), using exactly the same names as the columns of the local CSV. If the broker is unreachable, the batches are stored in `data/pending/` and sent automatically once it is back, so no cycle is lost.
+When cloud upload is enabled, each finished cycle is published as a batch of JSON records to the topic `<machine_id>/sensors` (e.g. `160t/sensors`) on the broker running in the server (`BROKER` / `PORT` in `.env`). The topic follows the Machine ID picked in the config window, so moving the box between machines is one dropdown. Node-RED subscribes to `+/sensors`, turns every record into a point and writes it to InfluxDB, which Grafana reads to plot the cycles. Every record carries `timestamp_ns`, `machine_id`, `session_id`, `cycle_id` and one field per channel (`CH<n>_<type>`), using exactly the same names as the columns of the local CSV. If the broker is unreachable, the batches are stored in `data/pending/` and sent automatically once it is back, so no cycle is lost.
 
 Connect to the server:
 

@@ -5,7 +5,10 @@ Publishes cycle/session data batches (list-of-record dicts) to an MQTT broker
 from a background worker thread, so the GUI never blocks on the network.
 
 Connection settings come from a ``.env`` file next to this module with the
-keys ``BROKER``, ``PORT``, ``TOPIC``, ``user`` and ``password``.
+keys ``BROKER``, ``PORT``, ``user`` and ``password`` - where the broker is and
+how to log in. The topics are *not* configured there: they are derived from the
+``machine_id`` chosen in the config window (see ``data_topic``), so one setting
+names the machine everywhere.
 
 Batches that cannot be delivered (broker down, no network) are spilled to the
 ``pending/`` folder on disk and drained automatically once the broker is
@@ -35,6 +38,24 @@ PENDING_DIR = _MODULE_DIR / 'data' / 'pending'
 
 logger = logging.getLogger('mqtt_publisher')
 
+# One topic per machine, both derived from machine_id - never configured
+# separately, so the topic and the machine_id tag on the records can never
+# disagree. Node-RED subscribes to the wildcard '+/sensors', so a new machine
+# needs no server-side change; that also means the 'sensors' suffix is part of
+# the contract with the flow and must not be made configurable here.
+DATA_TOPIC_SUFFIX = 'sensors'
+STATUS_TOPIC_SUFFIX = 'status'
+
+
+def data_topic(machine_id):
+    """Topic a machine's cycle batches are published to: '<machine_id>/sensors'."""
+    return f"{machine_id}/{DATA_TOPIC_SUFFIX}"
+
+
+def status_topic(machine_id):
+    """Health-check topic for a machine: '<machine_id>/status'. Never carries data."""
+    return f"{machine_id}/{STATUS_TOPIC_SUFFIX}"
+
 
 def _read_env_file(path):
     """Minimal .env fallback parser (KEY=VALUE lines, strips quotes)."""
@@ -56,19 +77,18 @@ def load_settings():
 
     The file is read directly (never through os.environ) so keys like ``user``
     cannot collide with same-named Windows/shell environment variables.
-    Raises RuntimeError if BROKER, PORT or TOPIC is missing.
+    Raises RuntimeError if BROKER or PORT is missing. The topic is not read
+    here - it comes from machine_id via ``data_topic``.
     """
     vals = dotenv_values(ENV_FILE) if dotenv_values else _read_env_file(ENV_FILE)
     broker = (vals.get('BROKER') or '').strip()
     port = (vals.get('PORT') or '').strip()
-    topic = (vals.get('TOPIC') or '').strip()
-    if not broker or not port or not topic:
+    if not broker or not port:
         raise RuntimeError(
-            f"MQTT settings missing. Set BROKER, PORT and TOPIC in {ENV_FILE}")
+            f"MQTT settings missing. Set BROKER and PORT in {ENV_FILE}")
     return {
         'broker': broker,
         'port': int(port),
-        'topic': topic,
         'user': vals.get('user') or '',
         'password': vals.get('password') or '',
     }
@@ -100,8 +120,9 @@ def check_connectivity(machine_id='machine-01', progress=None, connect_timeout=5
         _p('fail', f"MQTT settings error: {e}")
         return False, False
 
-    broker, port, topic = settings['broker'], settings['port'], settings['topic']
-    _p('info', f"Cloud self-test: broker {broker}:{port}, data topic {topic}")
+    broker, port = settings['broker'], settings['port']
+    _p('info', f"Cloud self-test: broker {broker}:{port}, "
+               f"data topic {data_topic(machine_id)}")
 
     # 1) TCP reachability to the broker (LAN or cloud) -------------------------
     try:
@@ -151,7 +172,7 @@ def check_connectivity(machine_id='machine-01', progress=None, connect_timeout=5
     _p('ok', "MQTT broker: connected (credentials accepted)")
 
     # 3) QoS-1 test publish to the health topic (never the data topic) ---------
-    health_topic = f"{machine_id}/status"
+    health_topic = status_topic(machine_id)
     published = False
     try:
         payload = json.dumps({'status': 'healthcheck',
@@ -181,7 +202,7 @@ class MqttPublisher:
     """Background MQTT publisher with disk spill-over for offline periods.
 
     Usage:
-        pub = MqttPublisher(machine_id='160t')  # reads .env, raises if missing
+        pub = MqttPublisher(machine_id='160t')  # -> topic '160t/sensors'
         pub.start()
         pub.publish_records([{...}, {...}])     # one batch = one MQTT message
         pub.stop()
@@ -190,6 +211,9 @@ class MqttPublisher:
     def __init__(self, machine_id='machine-01'):
         self.settings = load_settings()
         self.machine_id = str(machine_id)
+        # Derived, not configured: a throwaway machine_id therefore diverts the
+        # data away from a real machine's topic as well as retagging it.
+        self.topic = data_topic(self.machine_id)
         self._queue = queue.Queue()
         self._stop_event = threading.Event()
         self._worker = threading.Thread(target=self._run, daemon=True,
@@ -216,7 +240,7 @@ class MqttPublisher:
         if rc == 0:
             logger.info("MQTT connected to %s:%s (topic %s)",
                         self.settings['broker'], self.settings['port'],
-                        self.settings['topic'])
+                        self.topic)
         else:
             logger.error("MQTT connect failed rc=%s", rc)
 
@@ -287,13 +311,12 @@ class MqttPublisher:
                 logger.warning("MQTT not connected, batch will be spilled to disk")
                 return False
             payload = json.dumps(records)
-            info = self.client.publish(self.settings['topic'], payload, qos=1)
+            info = self.client.publish(self.topic, payload, qos=1)
             info.wait_for_publish(timeout=5)
             if info.is_published():
-                logger.info("Published %d records to %s",
-                            len(records), self.settings['topic'])
+                logger.info("Published %d records to %s", len(records), self.topic)
                 return True
-            logger.error("Publish to %s failed rc=%s", self.settings['topic'], info.rc)
+            logger.error("Publish to %s failed rc=%s", self.topic, info.rc)
             return False
         except Exception as e:
             logger.exception("Error publishing to MQTT: %s", e)

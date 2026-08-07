@@ -1322,7 +1322,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             s = self.mqtt_publisher.settings
             self.messagesBox.appendHtml(
                 '<p style="color:green;">Cloud upload enabled - MQTT broker %s:%d, topic %s</p>'
-                % (s['broker'], s['port'], s['topic']))
+                % (s['broker'], s['port'], self.mqtt_publisher.topic))
         except Exception as e:
             self.mqtt_publisher = None
             self.mqtt_enabled = False

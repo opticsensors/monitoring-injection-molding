@@ -329,14 +329,16 @@ class DaqConfigWindow(QtWidgets.QDialog):
         self.mqttCheckBox.setToolTip(
             "Publish each completed cycle (or the whole session in continuous mode)\n"
             "to the MQTT broker configured in the .env file\n"
-            "(BROKER / PORT / TOPIC / user / password).\n"
+            "(BROKER / PORT / user / password).\n"
+            "The topic is not configured there: it is '<Machine ID>/sensors'.\n"
             "Batches that cannot be delivered are kept in 'pending/' and retried.")
         cloud_layout.addWidget(self.mqttCheckBox, 0, 0, 1, 2)
         cloud_layout.addWidget(QtWidgets.QLabel("Machine ID:"), 1, 0)
         self.machineIdCombo = self._combo([('160t', '160t'), ('55t', '55t')])
         self.machineIdCombo.setMaximumWidth(combo_w)
         self.machineIdCombo.setToolTip(
-            "Machine identifier sent with every record (pick 160t or 55t).")
+            "Machine identifier sent with every record (pick 160t or 55t).\n"
+            "It also selects the MQTT topic, '<Machine ID>/sensors'.")
         cloud_layout.addWidget(self.machineIdCombo, 1, 1)
         cloud_layout.setColumnStretch(2, 1)
         cloud_group.setLayout(cloud_layout)

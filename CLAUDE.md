@@ -244,7 +244,14 @@ change when the mould does.
 - **Plot rebuilds**: rebuilding plots on the *current* tab yields no resize
   event; force a scene-level relayout (`_relayout_canvas`), not a widget resize
   (which Windows coalesces away).
-- **MQTT**: never test-publish to a real machine's production topic
-  (e.g. `160t/sensors`). Use a throwaway `machine_id`.
+- **MQTT topics are derived, never configured**: `data_topic()` /
+  `status_topic()` in `mqtt_publisher.py` build `<machine_id>/sensors` and
+  `<machine_id>/status` from the `machine_id` in the config window. `.env` holds
+  only `BROKER` / `PORT` / `user` / `password` — there is no `TOPIC` key, so the
+  topic and the `machine_id` tag on the records cannot disagree. The `sensors`
+  suffix is part of the contract with Node-RED's `+/sensors` subscription: a new
+  machine needs no server-side change, but renaming the suffix breaks ingestion.
+  Never test-publish to a real machine's production topic (e.g. `160t/sensors`)
+  — a throwaway `machine_id` now diverts the data topic too, not just the tag.
 - Windows console is cp1252 — set `PYTHONIOENCODING=utf-8` when printing
   `Δ`, `°`, etc. in test scripts.
