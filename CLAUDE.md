@@ -3,6 +3,14 @@
 Project context for Claude Code. Keep this current when structure, commands, or
 key conventions change.
 
+## Local reference notes
+
+When present, start with `docs/INDEX.md` for the detailed code map, behavior,
+data contracts, troubleshooting, and source-review caveats. These notes are
+local-only and Git-ignored; they are not available in a fresh clone. Run
+`py -3.11 docs/reference_index.py --check` to check their source snapshot,
+then read changed code and update the affected notes before refreshing it.
+
 ## What this is
 
 A PyQt5 desktop app that monitors an **injection-moulding machine** through a

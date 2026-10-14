@@ -10,6 +10,7 @@ __pycache__/
 
 # Dev notes / scratch (kept locally, not versioned)
 PROMPT.md
+/docs/
 
 # Runtime output + state: logs, MQTT offline spool, saved sessions, cycle counter.
 # The new layout keeps these under data/; the old top-level names are retained
