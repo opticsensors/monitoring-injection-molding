@@ -1,41 +1,13 @@
-"""Regenerate ``grafana_dashboard.json`` from ``daq_config_defaults.json``.
+"""Regenerate the metadata-aware Grafana dashboard from channel defaults.
 
-The cloud pipeline adapts to the channel configuration automatically at every
-stage except the Grafana dashboard, which is a static JSON document:
-
-  app (main.py)           publishes one ``CH<n>_<type>`` key per configured
-                          channel, values already in physical units
-  Node-RED (function)     discovers the channel fields dynamically - no edits
-                          needed when the configuration changes
-  grafana_dashboard.json  STATIC - regenerate it with this script
-
-So whenever ``channels`` / ``channel_types`` / ``plot_channels`` (or
-``machine_id``) change in ``daq_config_defaults.json``, run:
-
-    py generate_grafana_dashboard.py
-
-and re-import ``grafana_dashboard.json`` in Grafana (Dashboards -> Import).
-The dashboard ``uid`` is preserved, so the import updates the existing
-dashboard in place instead of creating a new one.
-
-Note: the in-app config window does NOT write ``daq_config_defaults.json``;
-that file is the hand-maintained source of truth for the machine's channel
-layout, and it is what both the app (at startup) and this script read.
-
-What is generated:
-  * one xychart panel (cycles overlaid) per channel in ``plot_channels`` whose
-    sensor type is a real signal (trigger/none types are skipped), titled
-    ``<sensor label> (CH<n>)`` with y-axis ``label [unit]`` from
-    sensor_types.py and x-axis ``t [ms]``
-  * a collapsed Export row with a table of every configured real channel
-  * the ``machine_id`` dashboard variable defaults to the config's machine
-    (added to the variable's options if missing)
-
-Dashboard identity (uid, datasource, variables, refresh, time range...) is
-preserved from the existing ``grafana_dashboard.json``, so that file must
-exist - restore it from git if it was lost.
+Preserves the dashboard identity and Influx datasource, builds PostgreSQL
+metadata selectors and bounded Influx waveform panels. Run from repo root:
+    py -3.11 scripts/generate_grafana_dashboard.py --postgres-uid ACTUAL_UID
+Then import iot/grafana_dashboard.json. This script never contacts the server.
+Run setup preferences do not alter the hand-maintained channel defaults file.
 """
 import json
+import argparse
 import sys
 from pathlib import Path
 
@@ -46,12 +18,13 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from sensor_types import sensor_category, sensor_label, sensor_unit
+from dashboard_metadata import POSTGRES, variables, metadata_panel
 
 CONFIG_FILE = ROOT / 'config' / 'daq_config_defaults.json'
 DASHBOARD_FILE = ROOT / 'iot' / 'grafana_dashboard.json'
 
-# InfluxQL filter shared by every panel: one machine, last N cycles.
-WHERE = "\"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles"
+# Exact scoped predicates come from the PostgreSQL catalog, including nanosecond bounds.
+WHERE = "(${cycle_predicate:raw})"
 
 
 def find_influx_datasource(dash):
@@ -144,7 +117,7 @@ def chart_panel(datasource, pid, ch, ch_type, x, y):
             {
                 'datasource': dict(datasource),
                 'policy': 'default',
-                'query': (f'SELECT "{field}", "t_ms", "cycle_num" FROM "sensor_data" '
+                'query': (f'SELECT "{field}", "t_ms", "cycle_num", "machine_id", "session_id" FROM "autogen"."sensor_data" '
                           f'WHERE {WHERE}'),
                 'rawQuery': True,
                 'refId': 'A',
@@ -155,7 +128,7 @@ def chart_panel(datasource, pid, ch, ch_type, x, y):
         'transformations': [
             {
                 'id': 'partitionByValues',
-                'options': {'fields': ['cycle_num'], 'keepFields': False,
+                'options': {'fields': ['machine_id', 'session_id', 'cycle_num'], 'keepFields': False,
                             'naming': {'asLabels': True}}
             }
         ],
@@ -196,14 +169,14 @@ def export_row(datasource, row_id, y, fields_sql):
                     {
                         'datasource': dict(datasource),
                         'policy': 'default',
-                        'query': (f'SELECT {fields_sql}, "cycle_num", "t_ms" '
-                                  f'FROM "sensor_data" WHERE {WHERE}'),
+                        'query': (f'SELECT {fields_sql}, "cycle_num", "t_ms", "machine_id", "session_id" '
+                                  f'FROM "autogen"."sensor_data" WHERE {WHERE}'),
                         'rawQuery': True,
                         'refId': 'A',
                         'resultFormat': 'table'
                     }
                 ],
-                'title': 'Export data (all channels, last N cycles)',
+                'title': 'Export data (selected cycles, all channels)',
                 'type': 'table'
             }
         ],
@@ -213,11 +186,17 @@ def export_row(datasource, row_id, y, fields_sql):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--postgres-uid', help='UID of the deployed PostgreSQL Grafana datasource')
+    args = parser.parse_args()
     if not DASHBOARD_FILE.exists():
         sys.exit(f'{DASHBOARD_FILE.name} not found - restore it from git first '
                  '(it provides the dashboard uid, datasource and variables).')
     cfg = json.loads(CONFIG_FILE.read_text(encoding='utf-8'))
     dash = json.loads(DASHBOARD_FILE.read_text(encoding='utf-8'))
+    existing_pg = next((v.get('datasource', {}).get('uid') for v in dash.get('templating', {}).get('list', [])
+                        if v.get('datasource', {}).get('type') == POSTGRES['type']), None)
+    POSTGRES['uid'] = args.postgres_uid or existing_pg or 'cycle-metadata'
     datasource = find_influx_datasource(dash)
 
     channels = cfg['channels']
@@ -245,20 +224,16 @@ def main():
     fields_sql = ', '.join(f'"CH{ch}_{type_by_ch[ch]}"' for ch in export_chs)
     panels.append(export_row(datasource, len(panel_chs) + 1,
                              ((len(panel_chs) + 1) // 2) * 8, fields_sql))
+    panels.append(metadata_panel(len(panel_chs) + 3, ((len(panel_chs) + 1) // 2) * 8 + 2))
     dash['panels'] = panels
 
-    # Default machine selection follows the config (option added if missing).
-    machine_id = str(cfg.get('machine_id', '160t'))
-    for var in dash.get('templating', {}).get('list', []):
-        if var.get('name') != 'machine_id':
-            continue
-        values = [opt['value'] for opt in var.get('options', [])]
-        if machine_id not in values:
-            values.append(machine_id)
-        var['options'] = [{'selected': v == machine_id, 'text': v, 'value': v}
-                          for v in values]
-        var['query'] = ', '.join(values)
-        var['current'] = {'text': machine_id, 'value': machine_id}
+    machine_id = str(cfg.get('machine_id', '55t'))
+    dash['templating'] = {'list': variables(machine_id)}
+    dash['refresh'] = '5s'
+    dash['timepicker'] = {'hidden': False}
+    dash['description'] = ('Select cycles in PostgreSQL, then read their exact identity/time ranges from InfluxDB. '
+                           'Time range applies to observed cycle start. Blank numeric filters include unknown values. '
+                           'Refresh cycle variables after changing metadata; verify automatic refresh on the deployed Grafana version.')
 
     DASHBOARD_FILE.write_text(json.dumps(dash, indent=2, ensure_ascii=False) + '\n',
                               encoding='utf-8')

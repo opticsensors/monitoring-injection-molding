@@ -6,7 +6,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 from graphswidget import GraphsWidget
 from plot_icons import (home_icon, zoom_icon, pan_icon, measure_icon, eye_icon,
-                        cloud_icon, save_icon)
+                        cloud_icon, save_icon, history_icon)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -103,6 +103,12 @@ class Ui_MainWindow(object):
         self.sendSessionButton.setIconSize(QtCore.QSize(22, 22))
         self.sendSessionButton.setObjectName("sendSessionButton")
         self.horizontalLayout_3.addWidget(self.sendSessionButton)
+        self.historyButton = QtWidgets.QPushButton(self.frame)
+        self.historyButton.setFixedSize(40, 40)
+        self.historyButton.setIcon(history_icon())
+        self.historyButton.setIconSize(QtCore.QSize(22, 22))
+        self.historyButton.setObjectName("historyButton")
+        self.horizontalLayout_3.addWidget(self.historyButton)
 
         # Plot tools (matplotlib-style): Home / Zoom / Pan / Time cursors + readout.
         # Wider gap so they read as a separate group. All start disabled; they are
@@ -269,8 +275,10 @@ class Ui_MainWindow(object):
         self.startButton.setToolTip(_translate("MainWindow", "Start"))
         self.nextButton.setToolTip(_translate("MainWindow", "Next"))
         self.stopButton.setToolTip(_translate("MainWindow", "Stop"))
-        self.saveSessionButton.setToolTip(_translate("MainWindow", "Save Session"))
+        self.saveSessionButton.setToolTip(_translate("MainWindow", "Save session: waveforms, cycle summary and metadata"))
         self.sendSessionButton.setToolTip(_translate("MainWindow", "Send session to cloud (MQTT) - uploads the whole finished session at once; disabled once it has streamed or been sent"))
+        self.historyButton.setToolTip(_translate("MainWindow", "Cycle history — view cycles and edit part measurements"))
+        self.historyButton.setAccessibleName(_translate("MainWindow", "Cycle history"))
         # Plot-tool buttons are icon-only (matplotlib-style, see plot_icons.py);
         # they are enabled only while the plot is still. Name them via tooltips.
         self.homeButton.setToolTip(_translate("MainWindow", "Home - reset the view to the automatic range"))

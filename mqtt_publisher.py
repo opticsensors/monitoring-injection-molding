@@ -1,19 +1,19 @@
 """
 MQTT cloud publisher.
 
-Publishes cycle/session data batches (list-of-record dicts) to an MQTT broker
+Publishes legacy record batches and versioned capture/measurement messages to an MQTT broker
 from a background worker thread, so the GUI never blocks on the network.
 
 Connection settings come from a ``.env`` file next to this module with the
 keys ``BROKER``, ``PORT``, ``user`` and ``password`` - where the broker is and
 how to log in. The topics are *not* configured there: they are derived from the
-``machine_id`` chosen in the config window (see ``data_topic``), so one setting
+``machine_id`` chosen in the Run setup panel (see ``data_topic``), so one setting
 names the machine everywhere.
 
 Batches that cannot be delivered (broker down, no network) are spilled to the
 ``pending/`` folder on disk and drained automatically once the broker is
-reachable again - so no cycle is ever lost. Activity goes to the shared
-application log (see app_logging.py).
+reachable again. In-memory work is not crash-durable and broker ACK is not
+database confirmation. Activity goes to the shared application log (see app_logging.py).
 
 Pure Python (threading / queue / paho-mqtt / python-dotenv): no Qt, no DAQ.
 """
@@ -270,7 +270,7 @@ class MqttPublisher:
 
     # -------------------------------------------------------------- enqueue
     def publish_records(self, records):
-        """Queue one batch (list of dicts) for publishing. Thread-safe, instant."""
+        """Queue a legacy record list or a v1 message. Retry/ACK behavior is unchanged."""
         if records:
             self._queue.put(records)
 
@@ -302,6 +302,12 @@ class MqttPublisher:
                 self._spill_to_disk(records)
 
     # -------------------------------------------------------------- internals
+    @staticmethod
+    def _describe(payload):
+        if isinstance(payload, dict):
+            return f"{payload.get('kind', 'message')} ({len(payload.get('samples', []))} samples)"
+        return f"legacy batch ({len(payload)} records)"
+
     def _publish(self, records):
         """Returns True only if the broker has acknowledged the message."""
         if not records:
@@ -314,7 +320,7 @@ class MqttPublisher:
             info = self.client.publish(self.topic, payload, qos=1)
             info.wait_for_publish(timeout=5)
             if info.is_published():
-                logger.info("Published %d records to %s", len(records), self.topic)
+                logger.info("Published %s to %s", self._describe(records), self.topic)
                 return True
             logger.error("Publish to %s failed rc=%s", self.topic, info.rc)
             return False
@@ -328,7 +334,7 @@ class MqttPublisher:
             PENDING_DIR.mkdir(parents=True, exist_ok=True)
             path = PENDING_DIR / f"batch_{time.time_ns()}.json"
             path.write_text(json.dumps(records))
-            logger.warning("Spilled %d records to %s", len(records), path.name)
+            logger.warning("Spilled %s to %s", self._describe(records), path.name)
         except Exception as e:
             logger.exception("Failed to spill batch to disk: %s", e)
 
@@ -351,7 +357,7 @@ class MqttPublisher:
             if self._publish(records):
                 try:
                     path.unlink()
-                    logger.info("Drained pending %s (%d records)", path.name, len(records))
+                    logger.info("Drained pending %s (%s)", path.name, self._describe(records))
                 except OSError as e:
                     logger.exception("Couldn't remove %s: %s", path.name, e)
             else:

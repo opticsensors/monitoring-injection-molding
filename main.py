@@ -10,7 +10,6 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 import pyqtgraph as pg
 import sys
 import os
-import csv
 import daq_connectivity as daq  # Import DAQ library
 from time import sleep
 from time import perf_counter
@@ -19,6 +18,7 @@ import logging
 import queue
 import numpy as np
 from pathlib import Path
+from copy import deepcopy
 
 import MainWindow
 from app_logging import setup_logging
@@ -28,6 +28,7 @@ from sensor_types import (sensor_category, sensor_label, sensor_unit,
                           normalize_trigger_type, normalize_trigger_mode,
                           trigger_is_inverted)
 from config_window import DaqConfigWindow
+from metadata_controller import MetadataController
 from plot_tools import ToolViewBox, PassThroughViewBox
 from rheology import apparent_viscosity, cross_section_mm2
 
@@ -39,7 +40,7 @@ CYCLE_ID_FILE = Path(__file__).parent / 'data' / 'cycle_id.txt'
 
 
 def load_cycle_id():
-    """Last completed cycle number for this machine (0 if none yet)."""
+    """Last retained cycle number for this installation (0 if none yet)."""
     try:
         return int(CYCLE_ID_FILE.read_text().strip())
     except (OSError, ValueError):
@@ -63,7 +64,7 @@ def save_cycle_id(cid):
 # User Interface threads: ################################################################
 ##########################################################################################
 # The main GUI window class:
-class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
+class MainWindow(MetadataController, QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
     """Main window of the GUI:
 
     Shows buttons for configuration, to connect or disconnect DAQ communication, start/stop reading, save session data and exit app;
@@ -245,6 +246,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         for n in range(self.nplots):
             self.plotDataItem_lst.append([])
         
+        self.initialize_metadata()
         #Initial message:
         self.messagesBox.appendHtml('<p style="color:blue;">DAQ Monitoring System v2.0</p><p></p>')
 
@@ -415,10 +417,11 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
 
         if reply == QtWidgets.QMessageBox.Close:
             logger.info("Application closing (user confirmed)")
+            self._shutdown_daq()
+            QtWidgets.QApplication.processEvents()  # deliver final capture signals
             if self.mqtt_publisher is not None:
                 self.mqtt_publisher.stop()
-            self._shutdown_daq()
-            app.quit()
+            QtWidgets.QApplication.instance().quit()
         else:
             try:
                 event.ignore()
@@ -435,6 +438,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         gt = getattr(self, 'graphThread', None)
         if gt is not None:
             try:
+                gt.stop_reason = "application_close"
                 gt.stop_Thread()
                 gt.wait(1000)
             except Exception:
@@ -450,59 +454,16 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             logger.exception("Error shutting down DAQ: %s", e)
 
     def save_Session(self):
-        '''
-        Save session dialog:
-        Save a csv file with session data in converted physical units
-        (same values as plotted/uploaded; analog trigger channels as 0/1).
-        The header is session_id, cycle_id, session_cycle, time_s, CH<n>_<type>:
-        identity first, then time, then data. The channel columns and time_s
-        match the MQTT payload exactly; cycle_id is always present (0 =
-        continuous / no cycle) and session_cycle is its session-relative twin.
-        '''
-        fname = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Session Data as:', os.getenv('HOME'), 'CSV(*.csv)')
-
-        if fname[0] != '':
-            with open(fname[0], 'w', newline='') as csv_file:
-                writer = csv.writer(csv_file, dialect='excel')
-                
-                # time_s and the CH<n>_<type> columns are named identically to the
-                # MQTT payload keys (no units), so the shared part of the local and
-                # cloud schemas matches byte for byte. session_id and session_cycle
-                # are the local additions: session_id already exists in the payload
-                # (it is an InfluxDB tag) and is written here so session_cycle has a
-                # scope - a relative number is only an identifier alongside it.
-                # session_cycle itself is CSV-only; the cloud can derive it from
-                # session_id + cycle_id, so it costs no schema churn there.
-                header = ["session_id", "cycle_id", "session_cycle", "time_s"]
-                header.extend(self._channel_field_names())
-                writer.writerow(header)
-
-                # Write data
-                session = self.session_id or ''
-                for i in range(len(self.xdata)):
-                    if i < len(self.ydata):
-                        row_data = [session]
-                        if self.cycle_numbers_data and i < len(self.cycle_numbers_data):
-                            cycle_num = self.cycle_numbers_data[i]
-                        else:
-                            cycle_num = 0  # continuous / no cycle -> 0, like MQTT
-                        row_data.append(cycle_num)
-                        row_data.append(self._session_cycle(cycle_num))
-                        row_data.append(self.xdata[i])
-                        row_data.extend(self._saved_values(self.ydata[i]))
-                        writer.writerow(row_data)
-                
-                logger.info("Session data saved to %s (%d rows)", fname[0], len(self.xdata))
-                #Saved session message:
-                if self.cycle_mode and self.cycle_numbers_data:
-                    # Report the session cycle count: it is what the operator writes
-                    # on the sample bags, so it is worth stating at save time.
-                    n_cycles = self._session_cycle(max(self.cycle_numbers_data))
-                    self.messagesBox.appendHtml(
-                        f'<p>Session data was saved: {n_cycles} cycle(s), session_cycle '
-                        f'1-{n_cycles} (converted physical units).</p>')
-                else:
-                    self.messagesBox.appendHtml('<p>Session data was saved (converted physical units).</p>')
+        """Manual waveform CSV, cycle-summary CSV and full metadata JSON export."""
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Session Data as:', '', 'CSV (*.csv)')
+        if path:
+            try:
+                self.save_session_export(path)
+                self.messagesBox.appendPlainText(
+                    'Saved waveform CSV, cycle summary (.cycles.csv), and full metadata (.metadata.json).')
+            except (OSError, ValueError, KeyError) as exc:
+                logger.exception('Could not save session')
+                QtWidgets.QMessageBox.warning(self, 'Save session', str(exc))
 
     def stopReading(self):
         '''
@@ -510,18 +471,18 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         '''
         logger.info("Monitoring stopped (session %s)", self.session_id)
         self.stopSig.emit()
-        self.is_monitoring = False  # Add this line
+        self.is_monitoring = False  # New setup waits for the final-data signal
         self._set_plot_live(False)  # plot no longer follows data: tools usable
-        sleep(0.2)
+        # Final-data signal enables Save/Next after the worker finishes.
 
         #Enable/Disable buttons:
         self.stopButton.setEnabled(False)
         self.startButton.setEnabled(False)  # Explicitly disable Start button
-        self.removeDeviceButton.setEnabled(True)
-        self.nextButton.setEnabled(True)
-        self.saveSessionButton.setEnabled(True)
+        self.removeDeviceButton.setEnabled(False)
+        self.nextButton.setEnabled(False)
+        self.saveSessionButton.setEnabled(False)
         # Offer the manual cloud send only if this session did not already stream live
-        self.sendSessionButton.setEnabled(not self._session_streamed)
+        self.sendSessionButton.setEnabled(False)
 
     def stop_message(self):
         '''
@@ -542,7 +503,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         '''
         self.disconnectSig.emit()
         self.stopThreadSig.emit()
-        self.is_monitoring = False  
+        self.is_monitoring = False
+        self.daq_connected = False
         sleep(0.2)
         
         try:
@@ -570,6 +532,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         Initially defined configuration is assumed.
         Verify DAQ connection before starting, reconnect if needed.
         '''
+        if not self.prepare_run_setup():
+            return
         # Re-arm the DAQ for the next session. Reuse the still-open connection
         # (like the first Start does) instead of closing and reopening the COM
         # port back-to-back, which raced the Windows handle release and failed
@@ -602,8 +566,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
 
         # Proceed with session setup
         self.reset_Data_n_Plot_Vars()
-        self.session_id = datetime.now().strftime('%Y%m%d_%H%M%S')
-        self.session_start_epoch = datetime.now().timestamp()
+        self.begin_metadata_session()
         logger.info("Monitoring session %s starting (trigger=%s)", self.session_id, self.trigger_mode)
         self._ensure_mqtt_publisher()
         self.startButton.setEnabled(False)
@@ -656,6 +619,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         - Emit start signal.
         '''
         if self.daq_connected:
+            if not self.prepare_run_setup():
+                return
             # Check trigger initial state
             if not self.check_trigger_initial_state():
                 QtWidgets.QMessageBox.warning(self, "Trigger Warning",
@@ -666,8 +631,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                 return
             
             self.reset_Data_n_Plot_Vars()
-            self.session_id = datetime.now().strftime('%Y%m%d_%H%M%S')
-            self.session_start_epoch = datetime.now().timestamp()
+            self.begin_metadata_session()
             logger.info("Monitoring session %s starting (trigger=%s)", self.session_id, self.trigger_mode)
             self._ensure_mqtt_publisher()
 
@@ -1215,16 +1179,17 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             f'cycle {self._cycle_label(nxt)}...</p>')
         self._set_cycle_readout(nxt)
 
-    def onCycleStarted(self, cycle_num):
+    def onCycleStarted(self, cycle_num, snapshot, start_s):
         """Handle cycle started signal."""
         self.current_cycle = cycle_num
+        self.capture_started(cycle_num, snapshot, start_s)
         # Plot follows the new cycle: lock the tools and restore the live view
         self._set_plot_live(True)
         self.messagesBox.appendHtml(
             f'<p style="color:green;">Cycle {self._cycle_label(cycle_num)} started</p>')
         self._set_cycle_readout(cycle_num)
 
-    def onCycleEnded(self, cycle_num, xdata, ydata, cycle_start_s):
+    def onCycleEnded(self, cycle_num, xdata, ydata, cycle_start_s, details):
         """Handle cycle ended: persist the counter, store data, draw the ghost."""
         self.messagesBox.appendHtml(
             f'<p>Cycle {self._cycle_label(cycle_num)} ended '
@@ -1240,17 +1205,14 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.createGhostPlots(xdata, ydata, cycle_num)
         # Trigger is LOW until the next cycle: the plot is still, tools usable
         self._set_plot_live(False)
-        # ydata arrives per-channel; transpose to per-sample rows for the payload
-        if self.mqtt_enabled and self.mqtt_publisher is not None and xdata and ydata:
-            base_epoch = (self.session_start_epoch or datetime.now().timestamp()) + cycle_start_s
-            self._publish_records(xdata, list(zip(*ydata)), cycle_num, base_epoch)
-            self._session_streamed = True  # streamed live -> block a duplicate manual send
+        self.capture_finished(cycle_num, xdata, list(zip(*ydata)), cycle_start_s, details)
 
     def onCycleDiscarded(self, cycle_num, duration):
         """A trigger blip shorter than min_cycle_s was dropped (number is reused)."""
         self.messagesBox.appendHtml(
             f'<p style="color:orange;">Cycle {self._cycle_label(cycle_num)} discarded '
             f'({duration:.2f}s &lt; {self.min_cycle_s:.2f}s minimum - treated as noise)</p>')
+        self._capture_starts.pop(cycle_num, None)
         # Number is reused for the retry, so keep showing it while we wait again.
         self._set_cycle_readout(cycle_num)
         self._set_plot_live(False)
@@ -1298,26 +1260,47 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.ydata_raw = yvals_raw
         self.cycle_numbers_data = cycle_numbers if cycle_numbers else []
         logger.info("Session %s finished: %d samples collected", self.session_id, len(xvals))
-        # Continuous (no-trigger) mode: upload the whole session as one batch
-        if self.mqtt_enabled and self.mqtt_publisher is not None and not self.cycle_mode:
-            self._publish_records(xvals, yvals, 0,
-                                  self.session_start_epoch or datetime.now().timestamp())
-            self._session_streamed = True  # streamed live -> block a duplicate manual send
+        if not self.cycle_mode and xvals:
+            self.capture_finished(0, xvals, yvals, 0.0,
+                                  {"status": "interrupted" if self.graphThread.stop_reason in ("device_error", "processing_error") else "complete",
+                                   "reason": self.graphThread.stop_reason})
+        self.is_monitoring = False
+        self.runSetup.machine.setEnabled(True)
+        self.removeDeviceButton.setEnabled(self.daq_connected)
+        self.nextButton.setEnabled(self.daq_connected)
+        self.saveSessionButton.setEnabled(bool(xvals))
+        self.sendSessionButton.setEnabled(bool(xvals) and not self._session_streamed)
+        # A new GraphThread is created for Next; release the old worker's inbound
+        # connections so finished sessions are not retained by repeated connects.
+        daq_thread = getattr(self, 'DaqThread', None)
+        if daq_thread is not None:
+            try:
+                daq_thread.readQueueSig.disconnect(self.graphThread.readQueue)
+            except (TypeError, RuntimeError):
+                pass
+        try:
+            self.stopSig.disconnect(self.graphThread.stop_Thread)
+        except (TypeError, RuntimeError):
+            pass
 
     # ------------------------------------------------------------ cloud upload
-    def _ensure_mqtt_publisher(self, force=False):
+    def _ensure_mqtt_publisher(self, force=False, machine_id=None):
         """Start the background MQTT publisher (once) when cloud upload is on.
 
         ``force=True`` starts it even when cloud upload is disabled - used by the
         manual "send session" button so it works regardless of the config toggle.
         """
-        if self.mqtt_publisher is not None:
-            return
         if not self.mqtt_enabled and not force:
             return
+        machine_id = machine_id or self.machine_id
+        if self.mqtt_publisher is not None:
+            if self.mqtt_publisher.machine_id == machine_id:
+                return
+            self.mqtt_publisher.stop()
+            self.mqtt_publisher = None
         try:
             from mqtt_publisher import MqttPublisher
-            self.mqtt_publisher = MqttPublisher(machine_id=self.machine_id)
+            self.mqtt_publisher = MqttPublisher(machine_id=machine_id)
             self.mqtt_publisher.start()
             s = self.mqtt_publisher.settings
             self.messagesBox.appendHtml(
@@ -1361,33 +1344,10 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                 names.append(f'CH{ch}')
         return names
 
-    def _publish_records(self, xdata, rows, cycle_id, base_epoch):
-        """Queue one batch for cloud upload.
-
-        rows holds one entry per sample, each a sequence of converted channel
-        values in daq_channels order. cycle_id 0 means a full continuous
-        session. base_epoch is the wall-clock instant (epoch seconds) of
-        xdata's zero, used to stamp every record with an absolute timestamp.
-        """
-        if self.mqtt_publisher is None or not xdata:
-            return
-        names = self._channel_field_names()
-        records = []
-        for j, x in enumerate(xdata):
-            rec = {'timestamp_ns': int((base_epoch + x) * 1e9),
-                   'time_s': round(float(x), 6),
-                   'machine_id': self.machine_id,
-                   'session_id': self.session_id,
-                   'cycle_id': cycle_id}
-            vals = self._saved_values(rows[j]) if j < len(rows) else []
-            for k, name in enumerate(names):
-                if k < len(vals):
-                    rec[name] = vals[k]
-            records.append(rec)
-        self.mqtt_publisher.publish_records(records)
-        what = f'cycle {cycle_id}' if cycle_id else 'full session'
-        self.messagesBox.appendHtml(
-            '<p>Queued %d records for cloud upload (%s).</p>' % (len(records), what))
+    def _publish_records(self, xdata, rows, cycle_id, base_epoch=None):
+        """Publish the frozen capture; base_epoch remains a compatibility argument."""
+        if self.mqtt_publisher is not None and xdata:
+            self.publish_capture(xdata, rows, cycle_id)
 
     def send_Session_to_cloud(self):
         """Manually push the whole finished session to the cloud in one shot.
@@ -1396,15 +1356,15 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         demand). Each cycle is replayed through the same _publish_records path as
         live streaming, so the cloud records are identical. The button is disabled
         after a live stream or a send (self._session_streamed), so this can never
-        double-publish.
+        repeat a manual enqueue. MQTT duplicate delivery is still possible.
         """
         if self._session_streamed:
             self.messagesBox.appendHtml(
-                '<p style="color:orange;">Already uploaded - nothing to resend.</p>')
+                '<p style="color:orange;">Already queued. Database storage is unconfirmed.</p>')
             self.sendSessionButton.setEnabled(False)
             return
 
-        self._ensure_mqtt_publisher(force=True)
+        self._ensure_mqtt_publisher(force=True, machine_id=self._session_machine_id)
         if self.mqtt_publisher is None:
             self.messagesBox.appendHtml(
                 '<p style="color:red;">Cloud send failed: MQTT publisher unavailable '
@@ -1812,6 +1772,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         '''
         Handle DAQ read errors
         '''
+        if hasattr(self, "graphThread"):
+            self.graphThread.stop_reason = "device_error"
         self.stopReading()
         self.stopButton.setEnabled(False)
         self.nextButton.setEnabled(False)
@@ -1847,7 +1809,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         '''
         Configure DAQ parameters
         '''
-        self.ModuleSelectWin = DaqConfigWindow()
+        self.ModuleSelectWin = DaqConfigWindow(initial_config=self.active_configuration())
         self.ModuleSelectWin.configSignal.connect(self.cnfg_Sig_Received)
         self.ModuleSelectWin.show()
 
@@ -1902,6 +1864,9 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                     "trigger=%s, machine_id=%s, mqtt=%s",
                     self.daq_channels, self.channel_types, self.daq_srate, self.daq_dec,
                     self.trigger_mode, self.machine_id, self.mqtt_enabled)
+        self.run_settings['machine_id'] = self.machine_id
+        self.runSetup.set_values(self.run_settings)
+        self.refresh_run_snapshot()
         self.config_message(cfg)
         self.findDeviceButton.setEnabled(True)
 
@@ -2251,8 +2216,8 @@ class GraphThread(QtCore.QThread):
     graphUpdateSig = QtCore.pyqtSignal(list, list)
     updateYAxisSig = QtCore.pyqtSignal(list, list)
     updateArrowsSig = QtCore.pyqtSignal(list, float, float)  # transitions, x_min, x_max
-    cycleStartedSig = QtCore.pyqtSignal(int)  # cycle_number
-    cycleEndedSig = QtCore.pyqtSignal(int, list, list, float)  # cycle_number, xdata, ydata, cycle start (session-relative s)
+    cycleStartedSig = QtCore.pyqtSignal(int, object, float)  # ID, frozen settings, start offset
+    cycleEndedSig = QtCore.pyqtSignal(int, list, list, float, object)  # cycle_number, xdata, ydata, cycle start (session-relative s)
     cycleDiscardedSig = QtCore.pyqtSignal(int, float)  # cycle_number, duration_s (too short, dropped as noise)
     cycleWaitingSig = QtCore.pyqtSignal()  # Emitted when waiting for first cycle
     updateXAxisRangeSig = QtCore.pyqtSignal(float, float)  # x_min, x_max for waiting mode
@@ -2261,6 +2226,7 @@ class GraphThread(QtCore.QThread):
         super(QtCore.QThread, self).__init__()
 
         self.readQSigRec = False
+        self.stop_reason = "operator_stop"
         self.stopThread = False
         self.dataQueue = dataQueue
         self.read_period = read_period
@@ -2326,6 +2292,7 @@ class GraphThread(QtCore.QThread):
 
     def run(self):
         t0 = perf_counter()
+        session_started = t0
         waiting_start_time = perf_counter()  # Track when waiting started
         last_heartbeat = perf_counter()  # Periodic "still alive" log line
         
@@ -2338,7 +2305,7 @@ class GraphThread(QtCore.QThread):
             if self.stopThread:
                 break
                 
-            if self.readQSigRec:
+            if not self.dataQueue.empty():
                 plot_T_F = False
                 t1 = perf_counter()
                 timer = t1 - t0
@@ -2392,7 +2359,7 @@ class GraphThread(QtCore.QThread):
                                     self.cycle_start_time = x_time
                                     self.cycle_xdata = []
                                     self.cycle_ydata = []
-                                    self.cycleStartedSig.emit(self.current_cycle)
+                                    self.cycleStartedSig.emit(self.current_cycle, deepcopy(self.main_window._run_snapshot), float(x_time))
                                     logger.info("Cycle %d started at t=%.3fs", self.current_cycle, x_time)
                                 #else:
                                 #    # Update X-axis to show waiting time in seconds
@@ -2449,7 +2416,8 @@ class GraphThread(QtCore.QThread):
                                         self.cycleEndedSig.emit(self.current_cycle,
                                                                self.cycle_xdata.copy(),
                                                                [list(y) for y in zip(*self.cycle_ydata)] if self.cycle_ydata else [],
-                                                               float(self.cycle_start_time))
+                                                               float(self.cycle_start_time),
+                                                               {"end_s": x_time, "status": "complete", "reason": "trigger"})
                             else:
                                 # Waiting for next cycle
                                 if i_is_high and (x_time - self.last_cycle_end_time) > self.inter_cycle_gap_s:
@@ -2463,7 +2431,7 @@ class GraphThread(QtCore.QThread):
                                     self.xdata_plts = []
                                     for i in range(len(self.ydata_plts)):
                                         self.ydata_plts[i] = []
-                                    self.cycleStartedSig.emit(self.current_cycle)
+                                    self.cycleStartedSig.emit(self.current_cycle, deepcopy(self.main_window._run_snapshot), float(x_time))
                                     logger.info("Cycle %d started at t=%.3fs", self.current_cycle, x_time)
                                 # Don't save data between cycles
                         else:
@@ -2476,7 +2444,13 @@ class GraphThread(QtCore.QThread):
                             self.update_graph_data_only(x_time, ypoints_converted)
                         
                         processed_count += 1
-                    except:
+                    except queue.Empty:
+                        break
+                    except Exception:
+                        logger.exception("Failed to process DAQ sample")
+                        self.stop_reason = "processing_error"
+                        self.monitTimeEndSig.emit()
+                        self.stopThread = True
                         break
 
                 # Check stop condition after processing
@@ -2494,7 +2468,7 @@ class GraphThread(QtCore.QThread):
 
                 if plot_T_F and self._plot_dirty and len(self.xdata_plts) > 0:
                     self._plot_dirty = False
-                    self.graphUpdateSig.emit(self.xdata_plts, self.ydata_plts)
+                    self.graphUpdateSig.emit(self.xdata_plts.copy(), [y.copy() for y in self.ydata_plts])
                     
                     # Update arrows for I channel (only in non-cycle mode)
                     if not self.cycle_mode and self.i_channel_transitions:
@@ -2512,11 +2486,18 @@ class GraphThread(QtCore.QThread):
 
             sleep(0.001)
 
-            # Check monitoring time limit (only when not in waiting mode)
-            if not self.waiting_for_first_cycle and len(self.xdata) > 0 and self.xdata[-1] > self.read_period:
+            # Session duration includes waiting time, independently of cycle-relative X.
+            if perf_counter() - session_started >= self.read_period:
+                self.stop_reason = "duration_limit"
                 self.monitTimeEndSig.emit()
                 self.stopThread = True
         
+        # Preserve an interrupted cycle with its original identity/settings.
+        if self.cycle_mode and self.cycle_active and self.cycle_xdata:
+            self.cycle_active = False
+            self.cycleEndedSig.emit(self.current_cycle, self.cycle_xdata.copy(),
+                [list(y) for y in zip(*self.cycle_ydata)], float(self.cycle_start_time),
+                {"status": "interrupted", "reason": self.stop_reason, "end_s": None})
         # Clean exit - emit final data
         self.graphEndSig.emit(self.xdata, self.ydata, self.ydata_raw, self.cycle_numbers)
 

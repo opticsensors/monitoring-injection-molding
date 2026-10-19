@@ -144,7 +144,7 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH0_T_futaba\", \"t_ms\", \"cycle_num\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
+          "query": "SELECT \"CH0_T_futaba\", \"t_ms\", \"cycle_num\", \"machine_id\", \"session_id\" FROM \"autogen\".\"sensor_data\" WHERE (${cycle_predicate:raw})",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -156,6 +156,8 @@
           "id": "partitionByValues",
           "options": {
             "fields": [
+              "machine_id",
+              "session_id",
               "cycle_num"
             ],
             "keepFields": false,
@@ -290,7 +292,7 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH1_T_futaba\", \"t_ms\", \"cycle_num\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
+          "query": "SELECT \"CH1_T_futaba\", \"t_ms\", \"cycle_num\", \"machine_id\", \"session_id\" FROM \"autogen\".\"sensor_data\" WHERE (${cycle_predicate:raw})",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -302,6 +304,8 @@
           "id": "partitionByValues",
           "options": {
             "fields": [
+              "machine_id",
+              "session_id",
               "cycle_num"
             ],
             "keepFields": false,
@@ -436,7 +440,7 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH2_P_kistler\", \"t_ms\", \"cycle_num\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
+          "query": "SELECT \"CH2_P_kistler\", \"t_ms\", \"cycle_num\", \"machine_id\", \"session_id\" FROM \"autogen\".\"sensor_data\" WHERE (${cycle_predicate:raw})",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -448,6 +452,8 @@
           "id": "partitionByValues",
           "options": {
             "fields": [
+              "machine_id",
+              "session_id",
               "cycle_num"
             ],
             "keepFields": false,
@@ -582,7 +588,7 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH3_P_kistler\", \"t_ms\", \"cycle_num\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
+          "query": "SELECT \"CH3_P_kistler\", \"t_ms\", \"cycle_num\", \"machine_id\", \"session_id\" FROM \"autogen\".\"sensor_data\" WHERE (${cycle_predicate:raw})",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -594,6 +600,8 @@
           "id": "partitionByValues",
           "options": {
             "fields": [
+              "machine_id",
+              "session_id",
               "cycle_num"
             ],
             "keepFields": false,
@@ -728,7 +736,7 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH5_P_machine\", \"t_ms\", \"cycle_num\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
+          "query": "SELECT \"CH5_P_machine\", \"t_ms\", \"cycle_num\", \"machine_id\", \"session_id\" FROM \"autogen\".\"sensor_data\" WHERE (${cycle_predicate:raw})",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -740,6 +748,8 @@
           "id": "partitionByValues",
           "options": {
             "fields": [
+              "machine_id",
+              "session_id",
               "cycle_num"
             ],
             "keepFields": false,
@@ -874,7 +884,7 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH6_vel_screw\", \"t_ms\", \"cycle_num\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
+          "query": "SELECT \"CH6_vel_screw\", \"t_ms\", \"cycle_num\", \"machine_id\", \"session_id\" FROM \"autogen\".\"sensor_data\" WHERE (${cycle_predicate:raw})",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -886,6 +896,8 @@
           "id": "partitionByValues",
           "options": {
             "fields": [
+              "machine_id",
+              "session_id",
               "cycle_num"
             ],
             "keepFields": false,
@@ -1020,7 +1032,7 @@
             "uid": "aemj80lun4u0wc"
           },
           "policy": "default",
-          "query": "SELECT \"CH7_pos_screw\", \"t_ms\", \"cycle_num\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
+          "query": "SELECT \"CH7_pos_screw\", \"t_ms\", \"cycle_num\", \"machine_id\", \"session_id\" FROM \"autogen\".\"sensor_data\" WHERE (${cycle_predicate:raw})",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -1032,6 +1044,8 @@
           "id": "partitionByValues",
           "options": {
             "fields": [
+              "machine_id",
+              "session_id",
               "cycle_num"
             ],
             "keepFields": false,
@@ -1110,18 +1124,57 @@
                 "uid": "aemj80lun4u0wc"
               },
               "policy": "default",
-              "query": "SELECT \"CH0_T_futaba\", \"CH1_T_futaba\", \"CH2_P_kistler\", \"CH3_P_kistler\", \"CH5_P_machine\", \"CH6_vel_screw\", \"CH7_pos_screw\", \"cycle_num\", \"t_ms\" FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id' AND \"cycle_num\" > $max_cycle_num - $n_cycles",
+              "query": "SELECT \"CH0_T_futaba\", \"CH1_T_futaba\", \"CH2_P_kistler\", \"CH3_P_kistler\", \"CH5_P_machine\", \"CH6_vel_screw\", \"CH7_pos_screw\", \"cycle_num\", \"t_ms\", \"machine_id\", \"session_id\" FROM \"autogen\".\"sensor_data\" WHERE (${cycle_predicate:raw})",
               "rawQuery": true,
               "refId": "A",
               "resultFormat": "table"
             }
           ],
-          "title": "Export data (all channels, last N cycles)",
+          "title": "Export data (selected cycles, all channels)",
           "type": "table"
         }
       ],
       "title": "Export",
       "type": "row"
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Selected cycles and part measurements",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cycle-metadata"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cycle-metadata"
+          },
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT observed_start, machine_id, session_id, cycle_id, session_cycle, material, mold_temperature_c, pressure_limit_bar, weight_g, length_mm, acquisition_status, sample_count FROM (SELECT * FROM monitoring.cycle_catalog WHERE waveform_status IN ('stored', 'legacy') AND $__timeFilter(observed_start) AND ('__all' = ANY(ARRAY[${machine_id:sqlstring}]::text[]) OR machine_id = ANY(ARRAY[${machine_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${session_id:sqlstring}]::text[]) OR session_id = ANY(ARRAY[${session_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${material:sqlstring}]::text[]) OR COALESCE(md5(material), '__unknown') = ANY(ARRAY[${material:sqlstring}]::text[])) AND mode = ${capture_mode:sqlstring} AND acquisition_status = ANY(ARRAY[${outcome:sqlstring}]::text[]) AND (NULLIF(${weight_min:sqlstring}, '')::double precision IS NULL OR weight_g >= NULLIF(${weight_min:sqlstring}, '')::double precision) AND (NULLIF(${weight_max:sqlstring}, '')::double precision IS NULL OR weight_g <= NULLIF(${weight_max:sqlstring}, '')::double precision) AND (NULLIF(${mold_min:sqlstring}, '')::double precision IS NULL OR mold_temperature_c >= NULLIF(${mold_min:sqlstring}, '')::double precision) AND (NULLIF(${mold_max:sqlstring}, '')::double precision IS NULL OR mold_temperature_c <= NULLIF(${mold_max:sqlstring}, '')::double precision) AND (NULLIF(${pressure_min:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar >= NULLIF(${pressure_min:sqlstring}, '')::double precision) AND (NULLIF(${pressure_max:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar <= NULLIF(${pressure_max:sqlstring}, '')::double precision) AND (NULLIF(${length_min:sqlstring}, '')::double precision IS NULL OR length_mm >= NULLIF(${length_min:sqlstring}, '')::double precision) AND (NULLIF(${length_max:sqlstring}, '')::double precision IS NULL OR length_mm <= NULLIF(${length_max:sqlstring}, '')::double precision) ORDER BY first_time_ns DESC, machine_id, session_id, cycle_id LIMIT LEAST(100, GREATEST(1, ${n_cycles:sqlstring}::integer))) AS recent WHERE ('__all' = ANY(ARRAY[${cycle:sqlstring}]::text[]) OR cycle_key = ANY(ARRAY[${cycle:sqlstring}]::text[]))"
+        }
+      ]
     }
   ],
   "preload": false,
@@ -1131,64 +1184,269 @@
   "templating": {
     "list": [
       {
+        "name": "machine_id",
+        "label": "Machine",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "cycle-metadata"
+        },
+        "query": "SELECT DISTINCT machine_id AS __text, machine_id AS __value FROM monitoring.cycle_catalog ORDER BY 1",
+        "definition": "SELECT DISTINCT machine_id AS __text, machine_id AS __value FROM monitoring.cycle_catalog ORDER BY 1",
+        "refresh": 2,
+        "sort": 0,
+        "hide": 0,
+        "multi": true,
+        "includeAll": true,
+        "allValue": "__all",
         "current": {
           "text": "55t",
           "value": "55t"
         },
-        "includeAll": false,
-        "label": "Machine",
-        "name": "machine_id",
+        "options": []
+      },
+      {
+        "name": "session_id",
+        "label": "Session",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "cycle-metadata"
+        },
+        "query": "SELECT DISTINCT session_id AS __text, session_id AS __value FROM monitoring.cycle_catalog WHERE ('__all' = ANY(ARRAY[${machine_id:sqlstring}]::text[]) OR machine_id = ANY(ARRAY[${machine_id:sqlstring}]::text[])) ORDER BY 1 DESC",
+        "definition": "SELECT DISTINCT session_id AS __text, session_id AS __value FROM monitoring.cycle_catalog WHERE ('__all' = ANY(ARRAY[${machine_id:sqlstring}]::text[]) OR machine_id = ANY(ARRAY[${machine_id:sqlstring}]::text[])) ORDER BY 1 DESC",
+        "refresh": 2,
+        "sort": 0,
+        "hide": 0,
+        "multi": true,
+        "includeAll": true,
+        "allValue": "__all",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      },
+      {
+        "name": "material",
+        "label": "Material",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "cycle-metadata"
+        },
+        "query": "SELECT DISTINCT COALESCE(material, '(unknown)') AS __text, COALESCE(md5(material), '__unknown') AS __value FROM monitoring.cycle_catalog ORDER BY 1",
+        "definition": "SELECT DISTINCT COALESCE(material, '(unknown)') AS __text, COALESCE(md5(material), '__unknown') AS __value FROM monitoring.cycle_catalog ORDER BY 1",
+        "refresh": 2,
+        "sort": 0,
+        "hide": 0,
+        "multi": true,
+        "includeAll": true,
+        "allValue": "__all",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      },
+      {
+        "name": "capture_mode",
+        "label": "Capture mode",
+        "type": "custom",
+        "query": "cycle,continuous",
+        "current": {
+          "text": "cycle",
+          "value": "cycle"
+        },
         "options": [
           {
-            "selected": false,
-            "text": "160t",
-            "value": "160t"
+            "text": "cycle",
+            "value": "cycle",
+            "selected": true
           },
           {
-            "selected": true,
-            "text": "55t",
-            "value": "55t"
+            "text": "continuous",
+            "value": "continuous",
+            "selected": false
           }
-        ],
-        "query": "160t, 55t",
-        "type": "custom"
+        ]
       },
       {
+        "name": "outcome",
+        "label": "Outcome",
+        "type": "custom",
+        "query": "complete,interrupted,legacy",
+        "multi": true,
         "current": {
-          "text": "1",
-          "value": "1"
+          "text": [
+            "complete",
+            "legacy"
+          ],
+          "value": [
+            "complete",
+            "legacy"
+          ]
         },
-        "label": "Last cycles",
-        "name": "n_cycles",
         "options": [
           {
-            "selected": true,
-            "text": "1",
-            "value": "1"
+            "text": "complete",
+            "value": "complete",
+            "selected": true
+          },
+          {
+            "text": "interrupted",
+            "value": "interrupted",
+            "selected": false
+          },
+          {
+            "text": "legacy",
+            "value": "legacy",
+            "selected": true
           }
-        ],
-        "query": "1",
-        "type": "textbox"
+        ]
       },
       {
+        "name": "n_cycles",
+        "label": "Latest cycles (max 100)",
+        "type": "textbox",
+        "query": "10",
+        "current": {
+          "text": "10",
+          "value": "10"
+        },
+        "options": []
+      },
+      {
+        "name": "weight_min",
+        "label": "Weight g min",
+        "type": "textbox",
+        "query": "",
         "current": {
           "text": "",
           "value": ""
         },
-        "datasource": {
-          "type": "influxdb",
-          "uid": "aemj80lun4u0wc"
+        "options": []
+      },
+      {
+        "name": "weight_max",
+        "label": "Weight g max",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
         },
-        "definition": "SELECT MAX(\"cycle_num\") FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id'",
-        "hide": 2,
-        "includeAll": false,
-        "name": "max_cycle_num",
-        "options": [],
-        "query": "SELECT MAX(\"cycle_num\") FROM \"sensor_data\" WHERE \"machine_id\" = '$machine_id'",
+        "options": []
+      },
+      {
+        "name": "mold_min",
+        "label": "Mold °C min",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": []
+      },
+      {
+        "name": "mold_max",
+        "label": "Mold °C max",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": []
+      },
+      {
+        "name": "pressure_min",
+        "label": "Limit bar min",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": []
+      },
+      {
+        "name": "pressure_max",
+        "label": "Limit bar max",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": []
+      },
+      {
+        "name": "length_min",
+        "label": "Spiral mm min",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": []
+      },
+      {
+        "name": "length_max",
+        "label": "Spiral mm max",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "options": []
+      },
+      {
+        "name": "cycle",
+        "label": "Cycles",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "cycle-metadata"
+        },
+        "query": "SELECT cycle_label AS __text, cycle_key AS __value FROM (SELECT * FROM monitoring.cycle_catalog WHERE waveform_status IN ('stored', 'legacy') AND $__timeFilter(observed_start) AND ('__all' = ANY(ARRAY[${machine_id:sqlstring}]::text[]) OR machine_id = ANY(ARRAY[${machine_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${session_id:sqlstring}]::text[]) OR session_id = ANY(ARRAY[${session_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${material:sqlstring}]::text[]) OR COALESCE(md5(material), '__unknown') = ANY(ARRAY[${material:sqlstring}]::text[])) AND mode = ${capture_mode:sqlstring} AND acquisition_status = ANY(ARRAY[${outcome:sqlstring}]::text[]) AND (NULLIF(${weight_min:sqlstring}, '')::double precision IS NULL OR weight_g >= NULLIF(${weight_min:sqlstring}, '')::double precision) AND (NULLIF(${weight_max:sqlstring}, '')::double precision IS NULL OR weight_g <= NULLIF(${weight_max:sqlstring}, '')::double precision) AND (NULLIF(${mold_min:sqlstring}, '')::double precision IS NULL OR mold_temperature_c >= NULLIF(${mold_min:sqlstring}, '')::double precision) AND (NULLIF(${mold_max:sqlstring}, '')::double precision IS NULL OR mold_temperature_c <= NULLIF(${mold_max:sqlstring}, '')::double precision) AND (NULLIF(${pressure_min:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar >= NULLIF(${pressure_min:sqlstring}, '')::double precision) AND (NULLIF(${pressure_max:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar <= NULLIF(${pressure_max:sqlstring}, '')::double precision) AND (NULLIF(${length_min:sqlstring}, '')::double precision IS NULL OR length_mm >= NULLIF(${length_min:sqlstring}, '')::double precision) AND (NULLIF(${length_max:sqlstring}, '')::double precision IS NULL OR length_mm <= NULLIF(${length_max:sqlstring}, '')::double precision) ORDER BY first_time_ns DESC, machine_id, session_id, cycle_id LIMIT LEAST(100, GREATEST(1, ${n_cycles:sqlstring}::integer))) AS recent",
+        "definition": "SELECT cycle_label AS __text, cycle_key AS __value FROM (SELECT * FROM monitoring.cycle_catalog WHERE waveform_status IN ('stored', 'legacy') AND $__timeFilter(observed_start) AND ('__all' = ANY(ARRAY[${machine_id:sqlstring}]::text[]) OR machine_id = ANY(ARRAY[${machine_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${session_id:sqlstring}]::text[]) OR session_id = ANY(ARRAY[${session_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${material:sqlstring}]::text[]) OR COALESCE(md5(material), '__unknown') = ANY(ARRAY[${material:sqlstring}]::text[])) AND mode = ${capture_mode:sqlstring} AND acquisition_status = ANY(ARRAY[${outcome:sqlstring}]::text[]) AND (NULLIF(${weight_min:sqlstring}, '')::double precision IS NULL OR weight_g >= NULLIF(${weight_min:sqlstring}, '')::double precision) AND (NULLIF(${weight_max:sqlstring}, '')::double precision IS NULL OR weight_g <= NULLIF(${weight_max:sqlstring}, '')::double precision) AND (NULLIF(${mold_min:sqlstring}, '')::double precision IS NULL OR mold_temperature_c >= NULLIF(${mold_min:sqlstring}, '')::double precision) AND (NULLIF(${mold_max:sqlstring}, '')::double precision IS NULL OR mold_temperature_c <= NULLIF(${mold_max:sqlstring}, '')::double precision) AND (NULLIF(${pressure_min:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar >= NULLIF(${pressure_min:sqlstring}, '')::double precision) AND (NULLIF(${pressure_max:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar <= NULLIF(${pressure_max:sqlstring}, '')::double precision) AND (NULLIF(${length_min:sqlstring}, '')::double precision IS NULL OR length_mm >= NULLIF(${length_min:sqlstring}, '')::double precision) AND (NULLIF(${length_max:sqlstring}, '')::double precision IS NULL OR length_mm <= NULLIF(${length_max:sqlstring}, '')::double precision) ORDER BY first_time_ns DESC, machine_id, session_id, cycle_id LIMIT LEAST(100, GREATEST(1, ${n_cycles:sqlstring}::integer))) AS recent",
         "refresh": 2,
-        "regex": "",
-        "skipUrlSync": true,
-        "type": "query"
+        "sort": 0,
+        "hide": 0,
+        "multi": true,
+        "includeAll": true,
+        "allValue": "__all",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      },
+      {
+        "name": "cycle_predicate",
+        "label": "Waveform bounds",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "cycle-metadata"
+        },
+        "query": "SELECT COALESCE(string_agg(influx_predicate, ' OR ' ORDER BY first_time_ns), '(time < 0 AND time > 0)') AS __text FROM (SELECT * FROM monitoring.cycle_catalog WHERE waveform_status IN ('stored', 'legacy') AND $__timeFilter(observed_start) AND ('__all' = ANY(ARRAY[${machine_id:sqlstring}]::text[]) OR machine_id = ANY(ARRAY[${machine_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${session_id:sqlstring}]::text[]) OR session_id = ANY(ARRAY[${session_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${material:sqlstring}]::text[]) OR COALESCE(md5(material), '__unknown') = ANY(ARRAY[${material:sqlstring}]::text[])) AND mode = ${capture_mode:sqlstring} AND acquisition_status = ANY(ARRAY[${outcome:sqlstring}]::text[]) AND (NULLIF(${weight_min:sqlstring}, '')::double precision IS NULL OR weight_g >= NULLIF(${weight_min:sqlstring}, '')::double precision) AND (NULLIF(${weight_max:sqlstring}, '')::double precision IS NULL OR weight_g <= NULLIF(${weight_max:sqlstring}, '')::double precision) AND (NULLIF(${mold_min:sqlstring}, '')::double precision IS NULL OR mold_temperature_c >= NULLIF(${mold_min:sqlstring}, '')::double precision) AND (NULLIF(${mold_max:sqlstring}, '')::double precision IS NULL OR mold_temperature_c <= NULLIF(${mold_max:sqlstring}, '')::double precision) AND (NULLIF(${pressure_min:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar >= NULLIF(${pressure_min:sqlstring}, '')::double precision) AND (NULLIF(${pressure_max:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar <= NULLIF(${pressure_max:sqlstring}, '')::double precision) AND (NULLIF(${length_min:sqlstring}, '')::double precision IS NULL OR length_mm >= NULLIF(${length_min:sqlstring}, '')::double precision) AND (NULLIF(${length_max:sqlstring}, '')::double precision IS NULL OR length_mm <= NULLIF(${length_max:sqlstring}, '')::double precision) ORDER BY first_time_ns DESC, machine_id, session_id, cycle_id LIMIT LEAST(100, GREATEST(1, ${n_cycles:sqlstring}::integer))) AS recent WHERE ('__all' = ANY(ARRAY[${cycle:sqlstring}]::text[]) OR cycle_key = ANY(ARRAY[${cycle:sqlstring}]::text[]))",
+        "definition": "SELECT COALESCE(string_agg(influx_predicate, ' OR ' ORDER BY first_time_ns), '(time < 0 AND time > 0)') AS __text FROM (SELECT * FROM monitoring.cycle_catalog WHERE waveform_status IN ('stored', 'legacy') AND $__timeFilter(observed_start) AND ('__all' = ANY(ARRAY[${machine_id:sqlstring}]::text[]) OR machine_id = ANY(ARRAY[${machine_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${session_id:sqlstring}]::text[]) OR session_id = ANY(ARRAY[${session_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${material:sqlstring}]::text[]) OR COALESCE(md5(material), '__unknown') = ANY(ARRAY[${material:sqlstring}]::text[])) AND mode = ${capture_mode:sqlstring} AND acquisition_status = ANY(ARRAY[${outcome:sqlstring}]::text[]) AND (NULLIF(${weight_min:sqlstring}, '')::double precision IS NULL OR weight_g >= NULLIF(${weight_min:sqlstring}, '')::double precision) AND (NULLIF(${weight_max:sqlstring}, '')::double precision IS NULL OR weight_g <= NULLIF(${weight_max:sqlstring}, '')::double precision) AND (NULLIF(${mold_min:sqlstring}, '')::double precision IS NULL OR mold_temperature_c >= NULLIF(${mold_min:sqlstring}, '')::double precision) AND (NULLIF(${mold_max:sqlstring}, '')::double precision IS NULL OR mold_temperature_c <= NULLIF(${mold_max:sqlstring}, '')::double precision) AND (NULLIF(${pressure_min:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar >= NULLIF(${pressure_min:sqlstring}, '')::double precision) AND (NULLIF(${pressure_max:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar <= NULLIF(${pressure_max:sqlstring}, '')::double precision) AND (NULLIF(${length_min:sqlstring}, '')::double precision IS NULL OR length_mm >= NULLIF(${length_min:sqlstring}, '')::double precision) AND (NULLIF(${length_max:sqlstring}, '')::double precision IS NULL OR length_mm <= NULLIF(${length_max:sqlstring}, '')::double precision) ORDER BY first_time_ns DESC, machine_id, session_id, cycle_id LIMIT LEAST(100, GREATEST(1, ${n_cycles:sqlstring}::integer))) AS recent WHERE ('__all' = ANY(ARRAY[${cycle:sqlstring}]::text[]) OR cycle_key = ANY(ARRAY[${cycle:sqlstring}]::text[]))",
+        "refresh": 2,
+        "sort": 0,
+        "hide": 2,
+        "multi": false,
+        "includeAll": false,
+        "allValue": null,
+        "current": {
+          "text": "(time < 0 AND time > 0)",
+          "value": "(time < 0 AND time > 0)"
+        },
+        "options": []
       }
     ]
   },
@@ -1197,10 +1455,11 @@
     "to": "now"
   },
   "timepicker": {
-    "hidden": true
+    "hidden": false
   },
   "timezone": "browser",
   "title": "Cycles overlaid (per channel)",
   "uid": "447204b8-d977-43d4-95a7-9d60c8458d78",
-  "version": 31
+  "version": 31,
+  "description": "Select cycles in PostgreSQL, then read their exact identity/time ranges from InfluxDB. Time range applies to observed cycle start. Blank numeric filters include unknown values. Refresh cycle variables after changing metadata; verify automatic refresh on the deployed Grafana version."
 }

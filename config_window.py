@@ -37,7 +37,7 @@ class DaqConfigWindow(QtWidgets.QDialog):
         "QHeaderView::section:checked { background-color: palette(button); font-weight: bold; }"
     )
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, initial_config=None):
         super(DaqConfigWindow, self).__init__(parent)
         self.setWindowTitle("DAQ Configuration")
         self.setModal(True)
@@ -58,6 +58,7 @@ class DaqConfigWindow(QtWidgets.QDialog):
         self._plot_check_state = {}    # ch_num -> bool (persists across rebuilds)
         self.digital_combos = {}       # 'D0'..'D6' -> QComboBox
 
+        self.initial_config = initial_config or CONFIG_DEFAULTS
         self.setupUi()
         self.loadDefaults()
         self.resize(1240, 680)
@@ -336,8 +337,9 @@ class DaqConfigWindow(QtWidgets.QDialog):
         cloud_layout.addWidget(QtWidgets.QLabel("Machine ID:"), 1, 0)
         self.machineIdCombo = self._combo([('160t', '160t'), ('55t', '55t')])
         self.machineIdCombo.setMaximumWidth(combo_w)
+        self.machineIdCombo.setEnabled(False)
         self.machineIdCombo.setToolTip(
-            "Machine identifier sent with every record (pick 160t or 55t).\n"
+            "Change the machine ID in the settings row below the main toolbar.\n"
             "It also selects the MQTT topic, '<Machine ID>/sensors'.")
         cloud_layout.addWidget(self.machineIdCombo, 1, 1)
         cloud_layout.setColumnStretch(2, 1)
@@ -464,7 +466,7 @@ class DaqConfigWindow(QtWidgets.QDialog):
 
     # ---------------------------------------------------------------- defaults
     def loadDefaults(self):
-        d = CONFIG_DEFAULTS
+        d = self.initial_config
 
         # Seed the plot-variable selection before touching the type combos
         # (changing a combo rebuilds the checklists from this state). Only seed

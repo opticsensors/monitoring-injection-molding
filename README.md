@@ -68,7 +68,59 @@ UPDATE demo and software (leave that as a reminder for me)
 
 # IoT
 
-When cloud upload is enabled, each finished cycle is published as a batch of JSON records to the topic `<machine_id>/sensors` (e.g. `160t/sensors`) on the broker running in the server (`BROKER` / `PORT` in `.env`). The topic follows the Machine ID picked in the config window, so moving the box between machines is one dropdown. Node-RED subscribes to `+/sensors`, turns every record into a point and writes it to InfluxDB, which Grafana reads to plot the cycles. Every record carries `timestamp_ns`, `machine_id`, `session_id`, `cycle_id` and one field per channel (`CH<n>_<type>`), using exactly the same names as the columns of the local CSV. If the broker is unreachable, the batches are stored in `data/pending/` and sent automatically once it is back, so no cycle is lost.
+The compact settings row below the toolbar accepts a machine ID, material/grade,
+mold-temperature setpoint (°C), and limit-pressure setting (bar). Blank values
+mean unknown. Use the **check mark** to apply edits to subsequent cycles;
+each cycle keeps the values present at its
+start. Change the machine only while stopped. These reusable operator settings
+are remembered in ignored `data/run_setup.json`; DAQ sampling settings remain
+unchanged.
+
+The **history icon** beside Save and Send opens **Cycle history**, listing
+recordings across sessions in this app run. Select
+the intended machine/session/cycle and enter one part's weight (g) and spiral
+length (mm). Corrections and clearing a value are supported. With MQTT enabled,
+measurement edits are queued separately from waveforms; **Send** in the history window
+is an explicit manual send when automatic MQTT is off. Load a saved metadata
+file with **Load…** to edit earlier sessions after restarting the application.
+
+**Save** writes three files together in the selected folder:
+
+- `recording.csv`: sensor readings, with columns `session_id, cycle_id,
+  session_cycle, timestamp_ns, time_s, CH<n>_<type>, ...` in that order.
+- `recording.cycles.csv`: one row per cycle with machine ID, session/cycle IDs,
+  material, mold setpoint, pressure settings, latest weight/spiral length,
+  acquisition mode/status/reason, sample count, exact time bounds and measurement
+  revision. Unknown values are blank; real zero measurements remain zero.
+- `recording.metadata.json`: full captured configuration, calibration, channel
+  units and measurements, retained for the history window's **Load…** action.
+
+Keep the files together. Join the CSVs on `session_id` and `cycle_id`; the cycle
+summary supplies `machine_id` for the server's full identity. Machine ID and
+sample index are not repeated in the waveform CSV. Use the waveform CSV with
+`scripts/plot_csv_raw.py`. Save again after editing measurements to update the
+exported companions; earlier exports do not update automatically.
+
+Recordings and unsaved measurements remain in memory; no automatic recording
+archive or recovery journal has been added. Interrupted cycles retain their
+identity and are labeled separately from completed cycles. Save/Next wait for
+final worker data; the monitoring-duration limit uses total session elapsed time.
+
+The cloud path is **MQTT ? Node-RED ? InfluxDB waveforms + PostgreSQL metadata ?
+Grafana**. One version-1 capture envelope carries cycle identity/settings once
+and the waveform samples separately. Influx retains `machine_id`/`session_id`
+tags and the numeric `cycle_num` field. PostgreSQL stores one metadata row per
+`(machine_id, session_id, cycle_id)`. Weight/length edits use independent,
+revisioned messages. Old queued record arrays remain supported by the new flow.
+
+Failed MQTT publishes continue to use `data/pending/` and retry on reconnection.
+Broker acknowledgement is not database confirmation; the GUI labels queued
+messages as unconfirmed. There is no new end-to-end delivery guarantee.
+
+**Deploy the server changes before using cloud upload from this version.** Follow
+[iot/SERVER_SETUP.md](iot/SERVER_SETUP.md) for backups, schema, complete Node-RED
+flow import, historical catalog backfill, Grafana configuration and rollback.
+No waveform migration or Influx field rename is required.
 
 Connect to the server:
 
@@ -93,7 +145,7 @@ ssh 'eduard.almar@local.eurecat.org'@172.20.48.28 "docker exec influxdb influx -
 | Service | URL | How to load the code in `/iot` |
 |---------|-----|--------------------------------|
 | Grafana | http://172.20.48.28:3000/ | Edit > Settings > JSON model, and paste `grafana_dashboard.json` |
-| Node-RED | http://172.20.48.28:1880/ | batch tab > function 1, and paste `nodered_function.js` |
+| Node-RED | http://172.20.48.28:1880/ | Import the complete `nodered_flows.json`; configure PostgreSQL and HTTP writer credentials as described in `SERVER_SETUP.md` |
 
 
 # Installation Manual

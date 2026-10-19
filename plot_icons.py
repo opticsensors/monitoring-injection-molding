@@ -147,6 +147,40 @@ def save_icon():
     return _finish(pm, p)
 
 
+def history_icon():
+    """A clock with a return arrow, for cycle history."""
+    s = _ICON_PX
+    pm, p = _canvas()
+    _pen(p, s, width_frac=0.06)
+    p.setBrush(QtCore.Qt.NoBrush)
+    p.drawArc(QtCore.QRectF(0.20 * s, 0.18 * s, 0.64 * s, 0.64 * s),
+              180 * 16, 315 * 16)
+    p.drawPolyline(QtGui.QPolygonF([
+        QtCore.QPointF(0.08 * s, 0.37 * s),
+        QtCore.QPointF(0.20 * s, 0.50 * s),
+        QtCore.QPointF(0.33 * s, 0.38 * s),
+    ]))
+    p.drawPolyline(QtGui.QPolygonF([
+        QtCore.QPointF(0.52 * s, 0.31 * s),
+        QtCore.QPointF(0.52 * s, 0.50 * s),
+        QtCore.QPointF(0.65 * s, 0.58 * s),
+    ]))
+    return _finish(pm, p)
+
+
+def apply_icon():
+    """A compact check mark, using the toolbar's monochrome strokes."""
+    s = _ICON_PX
+    pm, p = _canvas()
+    _pen(p, s)
+    p.drawPolyline(QtGui.QPolygonF([
+        QtCore.QPointF(0.22 * s, 0.51 * s),
+        QtCore.QPointF(0.42 * s, 0.71 * s),
+        QtCore.QPointF(0.79 * s, 0.29 * s),
+    ]))
+    return _finish(pm, p)
+
+
 def eye_icon():
     """An open eye (toggles visibility of the faint past-cycle ghost curves)."""
     s = _ICON_PX

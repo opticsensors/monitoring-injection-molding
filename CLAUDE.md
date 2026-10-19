@@ -35,7 +35,7 @@ The DAQ driver is a **separate editable package** at `../daq_connectivity`
 ```bash
 python scripts/test_hardware.py            # raw read of all channels incl. D4/D5
 python scripts/daq_diagnose.py             # scan-structure diagnostics (~40 s)
-python scripts/plot_csv_raw.py <file.csv>  # offline plot of a saved session
+python scripts/plot_csv_raw.py  # choose the waveform CSV in the file dialog; no CLI argument parser
 python scripts/generate_grafana_dashboard.py   # regen iot/grafana_dashboard.json from config
 ```
 
@@ -77,37 +77,45 @@ Because the app modules use **flat imports** (`import MainWindow`,
 
 ## Data schemas
 
-Two datasets that **share identical column/field names** (no units in any key —
-units live only in the sensor registry). Both come from
-`_channel_field_names()`, the single source for channel keys:
+The cycle-metadata implementation is in `cycle_metadata.py`,
+`metadata_controller.py` and `metadata_widgets.py`. Deployment instructions and
+message/storage behavior are in [iot/SERVER_SETUP.md](iot/SERVER_SETUP.md).
+Repository implementation does not imply that the live server is updated.
 
-- **Local CSV** (`save_Session`):
-  `session_id, cycle_id, session_cycle, time_s, CH<n>_<type>, ...` — identity,
-  then time, then data. `cycle_id` is always present (0 = continuous);
-  `session_cycle` is its session-relative twin (also 0 in continuous mode);
-  `time_s` is relative to the session/cycle start.
-- **Cloud (MQTT)** (`_publish_records` → `nodered_function.js`): the same
-  `cycle_id, time_s, CH<n>_<type>, ...` plus cloud-only metadata
-  `timestamp_ns, machine_id, session_id`. In InfluxDB, `machine_id` and
-  `session_id` are **tags**; `cycle_id` is carried as the numeric **field**
-  `cycle_num` — deliberately not a tag, since one series per cycle would blow
-  up cardinality. Identity is effectively `(machine_id, session_id, timestamp)`.
-  The Node-RED function discovers channel fields per-record, so any channel
-  config works without editing it.
+- **Manual Save:** waveform `.csv` with `session_id, cycle_id, session_cycle,
+  timestamp_ns, time_s, CH<n>_<type>, ...`; companion `.cycles.csv` with one row
+  per capture (machine ID, identity, settings, latest measurements, mode/outcome,
+  counts/bounds and revision). Join on `(session_id, cycle_id)`; the summary
+  supplies machine ID. Nulls are blank, zeros are preserved. Full manifests and
+  calibration/units remain in `.metadata.json`, which history Load still uses.
+  All files are staged before replacement; re-Save refreshes edited measurements.
+- **MQTT capture v1:** `schema_version=1`, `kind=capture`, `capture` (scoped
+  identity, immutable settings, status/count/exact bounds), `measurements`
+  (weight/length/revision), `samples` (decimal-string ns, index, relative time,
+  physical channel values). Metadata is not repeated in each sample.
+- **MQTT measurements v1:** `kind=measurements`, scoped identity and a complete
+  weight/length pair plus increasing revision/update ID. Explicit null clears a
+  value. Old retries must never overwrite newer measurements.
+- **Influx:** existing `machine_id` and `session_id` tags, `cycle_num` float
+  mapped to logical cycle_id, `t_ms`, channel floats; new captures add integer
+  `sample_index`. Do not rename historical fields or add a per-cycle tag.
+- **PostgreSQL:** `monitoring.cycles` stores catalog/metadata, not samples.
+  The catalog pairs full identities with exact nanosecond retrieval bounds.
 
-`time_s` and the channel columns are byte-for-byte identical between the CSV
-header and the MQTT payload; keep `_channel_field_names()` the one place that
-names channels. The two schemas differ only in the identity columns:
-`session_cycle` is **CSV-only** (the cloud derives it from `session_id` +
-`cycle_num` when it needs it, so it costs no Node-RED or dashboard change), and
-`timestamp_ns` / `machine_id` stay cloud-only.
+`refresh_run_snapshot()` uses `_saved_indices()` and `_channel_field_names()`
+to freeze channel order/units/configuration, then samples and exports use those
+frozen indices. Do not interpret old data using the current GUI configuration.
+Settings are copied at the actual trigger boundary in GraphThread; measurements
+start unknown for every part. New sessions have a readable timestamp plus UUID.
 
-`_saved_indices()` decides which channels are written; `_channel_field_names()`
-and `_saved_values()` are both built from it, so the header and every row stay the
-same length. If you add a code path that writes channel values, filter it through
-`_saved_values()`. (It drops `trigger`-category channels — a no-op now that the
-trigger is digital-only, but it keeps a hand-edited config from corrupting the
-CSV.)
+Only reusable Run setup preferences are saved automatically (`data/run_setup.json`).
+The compact settings row sits below the toolbar; its check mark applies edits.
+The toolbar history icon opens Cycle history. History stays in RAM across Next;
+the session Save or history window's Save writes metadata explicitly, and the
+history window's Load restores it. Existing failed-MQTT spooling
+and broker-ACK cleanup remain unchanged. There is no automatic capture journal
+and no client database-ACK protocol. Sampling settings/commands and the external
+DAQ driver are unchanged by the metadata feature.
 
 ### Two cycle numbers, one counter
 
@@ -127,7 +135,7 @@ span of one `session_id`, which both paths mint. `session_cycle` resets there
 and nowhere else:
 
 - **Stop** ends acquisition but *not* the session: its data is still in memory
-  and Save/Send act on it (`stopReading` enables both), so the readout keeps
+  and Save/Send act on it (the final worker-data signal enables Save/Send), so the readout keeps
   showing the final count.
 - **Save** is a read-only export and never a boundary — it is optional (a
   cloud-only session is never saved) and may run more than once.
