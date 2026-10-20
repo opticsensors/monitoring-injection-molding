@@ -46,29 +46,27 @@ class HistoryJob(QtCore.QThread):
     progress = QtCore.pyqtSignal(str)
     failed = QtCore.pyqtSignal(str)
 
-    def __init__(self, client, keys=None, parent=None):
+    def __init__(self, client, keys=None, parent=None, *, cursor=""):
         super().__init__(parent)
         self.client, self.keys = client, keys
+        self.cursor = cursor
+        self.cancelled = False
 
     def run(self):
         try:
             result = []
             if self.keys is None:
-                cursor = ""
-                seen = set()
-                while not self.isInterruptionRequested():
-                    page = self.client.get("/monitoring/history", {"cursor": cursor})
-                    rows = page["cycles"]
-                    if not isinstance(rows, list):
-                        raise ValueError("Invalid history page.")
-                    result.extend(rows)
-                    self.progress.emit(f"Loaded {len(result)} cycles…")
-                    cursor = page.get("next_cursor")
-                    if not cursor:
-                        break
-                    if cursor in seen:
-                        raise ValueError("The history server repeated a page.")
-                    seen.add(cursor)
+                self.progress.emit("Loading up to 10 cycle summaries…")
+                page = self.client.get("/monitoring/history", {"cursor": self.cursor})
+                rows, next_cursor = page["cycles"], page.get("next_cursor")
+                if not isinstance(rows, list) or len(rows) > 10:
+                    raise ValueError("Invalid history page.")
+                if next_cursor is not None and (not isinstance(next_cursor, str) or
+                        not next_cursor or len(next_cursor) > 2048 or not rows):
+                    raise ValueError("Invalid history cursor.")
+                if next_cursor is not None and next_cursor == self.cursor:
+                    raise ValueError("The history server repeated a page.")
+                result = {"cycles": rows, "next_cursor": next_cursor}
             else:
                 for index, key in enumerate(self.keys):
                     if self.isInterruptionRequested():
@@ -77,8 +75,10 @@ class HistoryJob(QtCore.QThread):
                     waveform = self.client.get("/monitoring/waveform",
                         dict(machine_id=key[0], session_id=key[1], cycle_id=key[2]))
                     result.append((key, waveform))
-            if not self.isInterruptionRequested():
+            self.cancelled = self.isInterruptionRequested()
+            if not self.cancelled:
                 self.ready.emit(result)
         except Exception as exc:
-            if not self.isInterruptionRequested():
+            self.cancelled = self.isInterruptionRequested()
+            if not self.cancelled:
                 self.failed.emit(str(exc) if isinstance(exc, ValueError) else "Invalid response from history server.")

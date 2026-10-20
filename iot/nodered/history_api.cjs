@@ -116,8 +116,8 @@ function createApi({config, query, influx = influxQuery}) {
                 const response = await query(`SELECT capture,measurements,waveform_status,first_time_ns::text AS stamp
                     FROM monitoring.history_records
                     ${cursor ? 'WHERE (first_time_ns,machine_id,session_id,cycle_id) < ($1::bigint,$2,$3,$4::bigint)' : ''}
-                    ORDER BY first_time_ns DESC,machine_id DESC,session_id DESC,cycle_id DESC LIMIT 51`, cursor || []);
-                const page = response.rows.slice(0, 50);
+                    ORDER BY first_time_ns DESC,machine_id DESC,session_id DESC,cycle_id DESC LIMIT 11`, cursor || []);
+                const page = response.rows.slice(0, 10);
                 const cycles = [];
                 for (const entry of page) {
                     const features = await summary(entry);
@@ -125,7 +125,7 @@ function createApi({config, query, influx = influxQuery}) {
                         waveform_status:entry.waveform_status,delivery:'Server: '+entry.waveform_status});
                 }
                 const last = page.at(-1);
-                const next = response.rows.length > 50 ? Buffer.from(JSON.stringify([
+                const next = response.rows.length > 10 ? Buffer.from(JSON.stringify([
                     last.stamp,last.capture.machine_id,last.capture.session_id,String(last.capture.cycle_id)
                 ])).toString('base64url') : null;
                 return {status:200,headers,body:{cycles,next_cursor:next}};

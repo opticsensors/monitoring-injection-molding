@@ -13,6 +13,7 @@ class HistoryController:
         self._waveforms = OrderedDict()
         self._waveform_bytes = 0
         self._history_jobs = set()
+        self._history_next_cursor = None
         self._history_token = os.environ.get("MONITORING_HISTORY_TOKEN", "")
         settings_path = os.environ.get("MONITORING_UI_SETTINGS_FILE")
         self.ui_settings = (QtCore.QSettings(settings_path, QtCore.QSettings.IniFormat)
@@ -44,6 +45,9 @@ class HistoryController:
             self._waveform_bytes -= old["bytes"]
 
     def server_connection(self):
+        if self._history_jobs:
+            self.historyPanel.set_status("Wait for the current server request before changing the connection.")
+            return False
         dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle("Server connection")
         form = QtWidgets.QFormLayout(dialog)
@@ -69,6 +73,8 @@ class HistoryController:
             return False
         self.ui_settings.setValue("history_url", url.text().strip())
         self._history_token = token.text().strip()
+        self._history_next_cursor = None
+        self.historyPanel.moreButton.setEnabled(False)
         return True
 
     def _client(self):
@@ -76,11 +82,11 @@ class HistoryController:
             return None
         return HistoryClient(self.ui_settings.value("history_url", "http://172.20.48.28:1880"), self._history_token)
 
-    def _start_history_job(self, client, callback, keys=None):
+    def _start_history_job(self, client, callback, keys=None, *, cursor=""):
         if self._history_jobs:
             self.historyPanel.set_status("A server request is already running.")
             return
-        job = HistoryJob(client, keys, self)
+        job = HistoryJob(client, keys, self, cursor=cursor)
         self._history_jobs.add(job)
         progress = QtWidgets.QProgressDialog("Connecting to server…", "Cancel", 0, 0, self)
         progress.setWindowTitle("Cycle history")
@@ -96,21 +102,41 @@ class HistoryController:
             progress.deleteLater()
             self._history_jobs.discard(job)
             self.historyPanel.loadButton.setEnabled(True)
-            if job.isInterruptionRequested():
+            self.historyPanel.moreButton.setEnabled(self._history_next_cursor is not None)
+            if job.cancelled:
                 self.historyPanel.set_status("Request cancelled; existing history retained.")
             job.deleteLater()
             if getattr(self, "_close_after_history", False) and not self._history_jobs:
                 QtCore.QTimer.singleShot(0, self.close)
         job.finished.connect(finish)
         self.historyPanel.loadButton.setEnabled(False)
+        self.historyPanel.moreButton.setEnabled(False)
         job.start()
 
     def load_server_history(self):
+        self._load_history_page("")
+
+    def load_more_server_history(self):
+        if self._history_next_cursor is not None:
+            self._load_history_page(self._history_next_cursor)
+
+    def _load_history_page(self, cursor):
+        if self._history_jobs:
+            self.historyPanel.set_status("A server request is already running.")
+            return
         if not self.partEditor.can_leave():
             return
         client = self._client()
         if client:
-            self._start_history_job(client, self.merge_server_history)
+            self._start_history_job(client, self._receive_history_page, cursor=cursor)
+
+    def _receive_history_page(self, page):
+        # Advance only after the entire page has been accepted. Errors/cancellation
+        # leave both the existing rows and the next-page position available to retry.
+        if self.merge_server_history(page["cycles"]):
+            self._history_next_cursor = page["next_cursor"]
+            if self._history_next_cursor is None:
+                self.historyPanel.set_status(self.historyPanel.status.text() + " · No older cycles")
 
     def merge_server_history(self, entries):
         staged, conflicts = {}, 0
@@ -144,10 +170,12 @@ class HistoryController:
                 staged[key] = deepcopy(entry)
             self.cycle_history.update(staged)
             self.refresh_measurements()
-            self.historyPanel.set_status(f"{len(entries)} server cycles loaded" +
+            self.historyPanel.set_status(f"{len(entries)} server summaries loaded" +
                 (f" · {conflicts} local edits retained" if conflicts else ""))
+            return True
         except (KeyError, TypeError, ValueError) as exc:
             self.historyPanel.set_status(str(exc))
+            return False
 
     def select_latest_part(self):
         keys = [key for key, entry in self.cycle_history.items() if entry["capture"]["mode"] == "cycle"]

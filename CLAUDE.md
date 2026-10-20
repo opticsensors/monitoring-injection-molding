@@ -154,14 +154,19 @@ icon toggles it; Live follows the latest completed part unless an edit is unfini
 Apply validates all inputs before saving; unchanged part values do not gain a revision.
 `Speed (mm/s)` is a manual injection
 setting, unrelated to measured CH6 flow (cm³/s); old pressure values are preserved.
-History is an embedded tab; Refresh loads server history, check rows and Plot to create independent
+History is an embedded tab; Load server loads the latest 10 summaries, check rows and Plot to create independent
 Mold/Machine comparison tabs. Live and review share `PlotViewMixin` construction/tools,
 with per-view interaction state and one stationary top toolbar routed to the active
 plot. Hidden Live updates cannot overwrite comparison controls/readouts. Comparison
 dropdowns select one recorded waveform/geometry for calculations; the eye hides other
 cycles. The sidebar uses 72 px fields with full values in tooltips. Raw converted values use recorded fields/units,
 never current calibration. A 128 MB RAM waveform cache survives Next, not restart.
-History loads all metadata via paged read-only HTTP on a QThread, waveforms on demand.
+History fetches one 10-row page per click via read-only HTTP on a QThread; Load more
+uses the next cursor and is disabled at the end or while busy. Reloading latest
+resets pagination but retains existing rows/edits. Failed/cancelled/rejected pages
+do not advance the cursor. Waveforms load on demand and reuse the RAM cache.
+`scripts/preview_gui.py --history-demo` uses a simulated 25-cycle server with the
+same desktop loading flow; no network or real data is involved.
 The server key stays in memory (or MONITORING_HISTORY_TOKEN); reader DB credentials
 remain on the server. Migration 003 and the new Node-RED runtime/routes need deployment.
 The normal Save remains; metadata import/export moved to File. Existing failed-MQTT spooling

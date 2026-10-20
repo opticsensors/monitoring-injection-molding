@@ -35,11 +35,14 @@ journal plans are superseded by the user's later decisions.
   Check rows to open independent comparison tabs using the Live plot components.
 - [x] Background server history loader, on-demand waveforms, and bounded RAM cache.
   Unsent measurement edits survive server refreshes; Apply reconciles edited values.
-- [x] Compact Refresh/Plot history actions; balanced Material column, no idle helper text.
+- [x] Load server fetches only the latest 10 summaries; Load more fetches one older
+  page per click. Retry/cancel retains the next-page position; local rows/edits survive reload.
+- [x] Compact Load server/Load more/Plot actions; balanced Material column, no idle helper text.
 - [x] One fixed top plot toolbar/readout for Live and comparison tabs, with independent
   state and selected-cycle calculations. Compact cycle selector and 72 px sidebar inputs;
   comparison explanation moved to the GUI log.
 - [x] Offline simulated preview: `py -3.11 scripts/preview_gui.py`.
+  Add `--history-demo` to exercise 10/20/25 summaries and selected-only curve loading.
 - [ ] Review the revised layout with the user.
 - [ ] Deploy migration 003 and authenticated read-only history routes; configure
   File → Server connection, then check the actual historical cycles in the desktop.

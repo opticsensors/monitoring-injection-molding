@@ -84,7 +84,7 @@ You normally use only `deploy.sh`; these files are managed by it.
 
 ## Desktop history
 
-The GUI preview works offline. To enable **History → Refresh** (load from server), rerun
+The GUI preview works offline. To enable **History → Load server**, rerun
 `scripts/deploy.ps1`; it installs migration 003 and the read-only Node-RED endpoints.
 Grafana stays the same.
 
@@ -99,9 +99,11 @@ paste that key. It is kept for this app run; `MONITORING_HISTORY_TOKEN` can supp
 it at startup. Database passwords stay on the server. Use HTTPS if accessing it
 outside the lab's trusted network.
 
-Metadata loads in pages in the background; waveforms load only for selected
-cycles. Legacy settings remain blank when unknown. T/P maxima come from the
-stored channels; Time is the recorded sample span.
+**Load server** fetches the latest 10 summaries; **Load more** fetches the next 10.
+Already loaded/local rows are kept. **Plot** downloads only selected curves, kept
+in RAM for reuse. No CSV files are created automatically. Legacy settings remain
+blank when unknown. T/P maxima come from the stored channels; Time is the recorded
+sample span.
 
 For unusual authentication, restore/rollback commands or the isolated integration
 test, see [the manual guide](maintenance/MANUAL_SETUP.md). The installer supports

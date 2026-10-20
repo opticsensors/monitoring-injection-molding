@@ -214,7 +214,7 @@ def check():
         while window._history_jobs and time.monotonic() < deadline:
             app.processEvents()
             time.sleep(.005)
-        assert ticks and finished == [[]] and not window._history_jobs
+        assert ticks and finished == [{"cycles": [], "next_cursor": None}] and not window._history_jobs
         window.hide()
         assert not errors, errors
     sys.excepthook = previous_hook

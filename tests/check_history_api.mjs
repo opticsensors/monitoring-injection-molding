@@ -30,7 +30,7 @@ try {
     assert.equal((await request('/monitoring/history',{cursor:'invalid'})).status,400);
     assert.equal((await request('/monitoring/waveform',{machine_id:'55t',session_id:'x',cycle_id:'1 OR 1=1'})).status,400);
     const entries=[];
-    for(let n=0;n<53;n++) {
+    for(let n=0;n<13;n++) {
         const first=1785838969691369501n + BigInt(n)*1000000000n;
         const c={machine_id:n%2?'160t':'55t',session_id:"history'\\test",cycle_id:n+1,session_cycle:n+1,
             mode:'cycle',status:'complete',reason:'test',base_time_ns:String(first),
@@ -48,8 +48,8 @@ try {
     await db.exec('SET ROLE monitoring_reader');
     const first=await request();
     assert.equal(first.status,200,JSON.stringify(first));
-    assert.equal(first.body.cycles.length,50);
-    assert.equal(first.body.cycles[0].capture.cycle_id,53);
+    assert.equal(first.body.cycles.length,10);
+    assert.equal(first.body.cycles[0].capture.cycle_id,13);
     assert.equal(influxQueries.length,0,'New summaries should not query waveform storage');
     assert.equal(first.body.cycles[0].measurements.updated_at_ns,'1792400000000000001');
     const second=await request('/monitoring/history',{cursor:first.body.next_cursor});

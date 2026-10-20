@@ -67,11 +67,11 @@ UPDATE demo and software (leave that as a reminder for me)
 
 
 - **Parameters:** sidebar icon shows/hides the compact panel. One Apply saves future settings and the selected part's Weight/Spiral.
-- **History:** toolbar button toggles History/Live. New cycles appear automatically; Refresh loads server history. Check rows and Plot to compare.
+- **History:** new cycles appear automatically. Load server fetches the latest 10 summaries; Load more fetches the next 10. Check rows and Plot to compare.
 - **Plots:** the top tools/readings follow the active tab. In comparisons, select one cycle for calculations.
 - **Save:** writes waveform `.csv`, cycle summary `.cycles.csv`, and `.metadata.json`. Keep them together; save again after edits.
 
-Try the layout with simulated cycles: `py -3.11 scripts/preview_gui.py`.
+Try simulated cycles: `py -3.11 scripts/preview_gui.py`. Add `--history-demo` to test loading 10 summaries at a time.
 Online history needs the [server history update](iot/SERVER_SETUP.md#desktop-history).
 
 # IoT
