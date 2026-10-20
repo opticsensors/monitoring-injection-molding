@@ -1,7 +1,10 @@
 # Implementation status and remaining deployment work
 
-Updated 2026-10-19 after the paired local CSV export change. Checked items are
-implemented/locally verified; server and hardware checks remain explicitly open.
+Updated 2026-10-20 after the requested Grafana simplification. Checked items are
+implemented/locally verified unless server evidence is stated below. The server
+installer completed; browser, hardware and backup-restore checks remain open.
+The simplified dashboard is ready locally; its JSON still needs importing into
+the existing Grafana dashboard. No database or Node-RED change is needed for it.
 The earlier full migration, acquisition-rate conversion and automatic local
 journal plans are superseded by the user's later decisions.
 
@@ -63,7 +66,8 @@ journal plans are superseded by the user's later decisions.
 
 - [x] Version-1 capture and measurements messages, with decimal-string exact
   nanoseconds. Per-cycle metadata is outside numeric waveform samples.
-- [x] Preserve legacy array replay and existing failed-publish spool semantics.
+- [x] Preserve desktop failed-publish spool semantics. Retain late legacy arrays
+  in the server quarantine for explicit reconciliation after the controlled cutover.
 - [x] PostgreSQL schema with scoped primary key, metadata constraints, typed
   searchable fields, frozen JSON snapshot, revisions and catalog indexes.
 - [x] Parameterized Node-RED SQL; deterministic replay hashes and immutable
@@ -74,27 +78,41 @@ journal plans are superseded by the user's later decisions.
   outcome; mark stored only after a successful Influx HTTP 204 response.
 - [x] Separate ingestion and read-only Grafana roles, with no credentials in
   the flow/schema files. Do not infer client delivery from server status.
-- [x] Exact nanosecond line-protocol writer for new captures; original Influx
-  writer remains for old queued arrays. No Influx field rename or cycle tag.
+- [x] Exact nanosecond line-protocol writer with sequential 5,000-point / 4 MB
+  chunks; mark stored only after all HTTP writes. No Influx field rename/cycle tag.
 - [x] Historical catalog builder from a fresh diagnostic cycles.csv, with
   anomaly checks, exact bounds and unknown old metadata. No waveform copies.
 - [x] Server metadata export for importing the latest measurement revisions
   into the desktop before editing earlier recordings.
 - [x] Reproducible flow generator keeps standalone JavaScript and JSON in sync.
+- [x] Persistent server queue with atomic files, fsync on Linux, leases, backoff,
+  quarantine/requeue and reviewed archive. Client ACK gap remains documented.
+- [x] Migration 002 records rejected measurements separately from waveform
+  acceptance, tracks schema versions, uses a non-login owner and explicit pg_temp.
+- [x] Repeatable catalog reconciliation rejects resets/mixed formats and checks
+  existing native counts/bounds rather than relabelling them legacy.
+- [x] Manual Send uses frozen session mode; wall/elapsed time zero is paired
+  after plot setup. Server exports can reconcile conflicting local measurements.
 
 ### Grafana and handoff
 
-- [x] PostgreSQL machine/session/material/outcome/numeric metadata filters and
-  latest-N actual cycle selection, independent of gaps in cycle numbering.
-- [x] Bounded Influx predicates keep each machine/session/cycle/time tuple
-  together; overlays partition on all three identifiers. Empty selection yields
-  no samples. SQL variables use quoting; numeric filters are cast at the database.
-- [x] Retain relative-time plots, channel labels and raw export table; add a
-  metadata table and explicit continuous/legacy/interrupted access.
+- [x] One visible control: Latest cycles (max 100), default 10, combining 55t and
+  160t with one total limit. Select latest recorded cycles by time, independent of number
+  gaps and date windows. Continuous captures are excluded from this viewer.
+- [x] Complete machine/session/cycle predicates share one outer Influx time
+  range. The hidden predicate variable skips URL sync; there is no machine variable.
+  Empty selection yields no samples; overlays partition on all three identifiers.
+- [x] Retain relative-time plots, channel labels and the collapsed raw Export row.
+  Remove metadata filters/table and capture-mode controls; use numeric cycle
+  legends. Stored metadata and acquisition modes remain available in the app/DB.
 - [x] Retain 5-second panel refresh and time-range query-variable refresh;
   deployed selector refresh behavior remains a server verification item.
-- [x] Add tracked iot/SERVER_SETUP.md with observed environment, ordered backup,
-  schema/roles, Node-RED, catalog, Grafana, verification and rollback steps.
+- [x] One-command Windows upload/server installer: preflight, backups, migration,
+  password reuse, catalog reconciliation, API deployment of Node-RED/Grafana,
+  connection/queue checks and scheduled backups. Preserve unrelated flow/cron
+  entries; stop on uncertain mappings or concurrent flow/dashboard edits.
+- [x] Short iot/SERVER_SETUP.md; detailed manual guide under maintenance/.
+  Group runtime JavaScript and SQL into nodered/ and postgres/ subfolders.
 - [x] Update README/CLAUDE and local engineering notes; remove no-loss claims.
 
 ## Local validation
@@ -108,31 +126,55 @@ journal plans are superseded by the user's later decisions.
   (PGlite 0.3.15 under ignored data/validation). Includes old/new messages,
   edit-before-capture, duplicate/conflicting replay, out-of-order revisions,
   null clearing, exact bounds, failed Influx response gating and reader rights.
-- [x] Generated Grafana SQL executed with representative variable interpolation,
-  including empty numeric filters and an SQL-like material value.
+- [x] Generated Grafana SQL exercised with actual latest-cycle selection,
+  105 captures with number gaps, the 100-cycle cap, invalid/huge textbox input,
+  continuous/pending/other-machine exclusions and empty history.
+- [x] Filesystem/flow recovery tests cover leases/restarts, duplicate replay,
+  partial writes, failed final DB receipts, byte limits and quarantine.
+- [x] Isolated Docker stack, real-service integration test and server backup/
+  health helpers prepared. Compose configuration validates; engine unavailable
+  locally. The user-run isolated integration test passed on the server on 2026-10-19.
 - [x] Supplied historical report builds 29 catalog rows / 45,447 samples / three
   sessions; validated in an isolated database, without contacting the server.
 
 Commands are in iot/SERVER_SETUP.md. Local SQL/function tests do not replace a
 live Node-RED/Influx/Grafana integration test or a physical DAQ run.
 
-## Server rollout and hardware verification (not executed)
+Deployment tests cover preserving shared configuration, collisions, API bodies,
+password recovery after interruption, backup failure gates, check-only mode and
+health-failure reporting. They do not certify deployment on the live server.
 
-- [ ] Back up PostgreSQL/Influx and deployed Node-RED/Grafana configuration;
-  verify restores in an isolated instance. Existing backup mounts alone are
-  not evidence of scheduled or recoverable backups.
-- [ ] Create injection_monitoring in the existing PostgreSQL 17.5 instance,
-  apply schema, set role passwords, verify cross-container authentication.
-- [ ] Check the custom Node-RED image's installed modules. Its empty /data npm
-  listing is not an inventory of globally/bundled modules. Install/configure
-  the PostgreSQL connector, import the complete flow, preserve existing creds.
-- [ ] Confirm new exact-ns HTTP writes and legacy replay against InfluxDB 1.8;
-  inspect backend failures separately from MQTT broker acknowledgement.
-- [ ] With uploads paused, collect a fresh diagnostic, review/apply catalog SQL,
-  compare counts/bounds/identities, and verify Influx history is unchanged.
-- [ ] Configure Grafana's PostgreSQL reader, set its UID in the generator and
-  import the new dashboard. Verify exact filters, last-N, gaps/reused IDs,
-  interrupted/continuous/legacy data, unknown values, later edits and exports.
+## Server rollout complete; browser and hardware verification pending
+
+User-provided output on 2026-10-19 for release.oqzIvlaQ confirms all eight stages
+completed and the installer printed "Deployment complete." The corrected isolated
+container tests passed, including repeated Grafana datasource updates, the real
+Node-RED PostgreSQL probe, multi-cycle queries and outage/replay recovery.
+Production Node-RED and Grafana were applied and verified, all 29 historical
+cycles matched, database access and queue health passed, and waveform counts were
+unchanged. Daily backups and five-minute health checks were scheduled. No direct
+production commands were run by the assistant; this status records the user's log.
+
+- [x] Back up PostgreSQL/Influx and deployed Node-RED/Grafana configuration.
+  Latest backup: `20261019T142821Z-bc4f36` under the installer's private backup directory.
+- [x] Schedule daily backups at 02:00 server time and health.log every five minutes.
+- [ ] Verify backup restores in an isolated instance and retain an off-server copy.
+- [x] Create injection_monitoring in the existing PostgreSQL 17.5 instance,
+  apply schema and set role passwords.
+- [x] Complete production cross-container authentication checks.
+- [x] PostgreSQL connector 0.16.2 installed and Node-RED flow deployed;
+  existing MQTT credentials and other tabs retained per installer output.
+- [x] User-run isolated container integration passed multi-cycle queries,
+  chunked writes, replay and outage/restart recovery.
+- [x] Fresh diagnostic/catalog reconciliation imported 29 historical cycles.
+- [x] Finish the final production check that Influx history counts are unchanged.
+- [x] Pass production queue/quarantine and metadata status checks during deployment.
+- [ ] Complete Grafana browser checks and confirm one real newly recorded cycle
+  reaches the database and appears in the charts.
+- [x] Grafana PostgreSQL reader and dashboard applied; both datasource health
+  checks passed during the completed deployment.
+- [ ] Import the 2026-10-20 dashboard and verify latest-N, numeric legends,
+  legacy/interrupted cycles and raw exports in the browser.
 - [ ] Verify BOTH selector queries and waveform panels update after a new cycle
   at the deployed refresh interval; otherwise explicitly refresh the dashboard
   pending a version-specific refresh adjustment.
@@ -143,7 +185,7 @@ live Node-RED/Influx/Grafana integration test or a physical DAQ run.
 ## Separate follow-ups, not silently bundled into this rollout
 
 - Sampling-rate label/Hz-to-divisor conversion: explicitly deferred by the user.
-- Automatic capture journaling, disk-retention policies, chunk receipts and
+- Automatic desktop capture journaling, disk-retention policies, client chunk receipts and
   client database-ACK delivery: explicitly deferred to preserve tested behavior.
 - External driver all-scan/batching contract, cancellable discovery and hardware
   alignment changes: require a separate driver/hardware validation pass. The

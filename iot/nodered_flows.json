@@ -14,7 +14,7 @@
     "name": "",
     "topic": "+/sensors",
     "qos": "1",
-    "datatype": "json",
+    "datatype": "utf8",
     "broker": "9e9726dcba940121",
     "nl": false,
     "rap": true,
@@ -24,8 +24,7 @@
     "y": 140,
     "wires": [
       [
-        "ec28e1581f142085",
-        "3c42711ed5d08dad"
+        "cycle-enqueue"
       ]
     ]
   },
@@ -63,23 +62,6 @@
     "wires": []
   },
   {
-    "id": "2303a0420a27e0fd",
-    "type": "influxdb batch",
-    "z": "9a5797004b410dd8",
-    "influxdb": "3be90c134058818c",
-    "precision": "n",
-    "retentionPolicy": "",
-    "name": "",
-    "database": "database",
-    "precisionV18FluxV20": "ms",
-    "retentionPolicyV18Flux": "",
-    "org": "organisation",
-    "bucket": "bucket",
-    "x": 870,
-    "y": 140,
-    "wires": []
-  },
-  {
     "id": "9e9726dcba940121",
     "type": "mqtt-broker",
     "name": "",
@@ -111,27 +93,70 @@
     "sessionExpiry": ""
   },
   {
-    "id": "3be90c134058818c",
-    "type": "influxdb",
-    "hostname": "influxdb",
-    "port": 8086,
-    "protocol": "http",
-    "database": "sensor_data",
-    "name": "",
-    "usetls": false,
-    "tls": "",
-    "influxdbVersion": "1.x",
-    "url": "http://localhost:8086",
-    "timeout": 10,
-    "rejectUnauthorized": true
+    "id": "cycle-enqueue",
+    "type": "function",
+    "z": "9a5797004b410dd8",
+    "name": "Persist original message",
+    "func": "try {\n    const store = global.get('captureQueue');\n    if (!store) throw new Error('Configure functionGlobalContext.captureQueue; see SERVER_SETUP.md');\n    store.queue().enqueue(msg.payload, msg.topic);\n    return {}; // Wake the worker only AFTER the original message is on disk.\n} catch (error) {\n    node.error('Capture queue write failed: ' + error.message, msg);\n    return null;\n}\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 300,
+    "y": 140,
+    "wires": [
+      [
+        "cycle-claim"
+      ]
+    ]
+  },
+  {
+    "id": "cycle-tick",
+    "type": "inject",
+    "z": "9a5797004b410dd8",
+    "name": "Recover pending work",
+    "props": [],
+    "repeat": "5",
+    "crontab": "",
+    "once": true,
+    "onceDelay": 1,
+    "x": 300,
+    "y": 320,
+    "wires": [
+      [
+        "cycle-claim"
+      ]
+    ]
+  },
+  {
+    "id": "cycle-claim",
+    "type": "function",
+    "z": "9a5797004b410dd8",
+    "name": "Claim one durable job",
+    "func": "try {\n    return global.get('captureQueue').queue().claim();\n} catch (error) {\n    node.error('Capture queue claim failed: ' + error.message, msg);\n    return null;\n}\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 520,
+    "y": 320,
+    "wires": [
+      [
+        "3c42711ed5d08dad"
+      ]
+    ]
   },
   {
     "id": "3c42711ed5d08dad",
     "type": "function",
     "z": "9a5797004b410dd8",
     "name": "Validate and route capture",
-    "func": "// Outputs: register capture (PostgreSQL), measurements (PostgreSQL), legacy Influx batch.\nconst data = msg.payload;\nconst assert = (condition, message) => { if (!condition) throw new Error(message); };\nconst finite = value => typeof value === \"number\" && Number.isFinite(value);\nconst optional = (value, minimum) => value === null || (finite(value) && value >= minimum);\nconst integer = value => Number.isSafeInteger(value) && value >= 0;\nfunction text(value, max) {\n    return typeof value === \"string\" && value.length > 0 && value.length <= max && !/[\\x00-\\x1f]/.test(value);\n}\nfunction ns(value) {\n    assert(typeof value === \"string\" && /^[0-9]+$/.test(value), \"Expected decimal nanosecond string\");\n    const n = BigInt(value);\n    assert(n > 0n && n <= 9223372036854775806n, \"Timestamp out of Influx range\");\n    return n;\n}\nfunction measurements(m) {\n    assert(m && integer(m.revision) && text(m.update_id, 100), \"Invalid measurement revision/ID\");\n    assert(optional(m.weight_g, 0) && optional(m.length_mm, 0), \"Invalid part measurements\");\n}\ntry {\n    if (Array.isArray(data)) {\n        // Old pending arrays retain the original Influx writer and numeric timestamp path.\n        assert(data.length > 0, \"Empty legacy batch\");\n        const meta = new Set([\"timestamp_ns\", \"time_s\", \"machine_id\", \"session_id\", \"cycle_id\"]);\n        const t0 = data[0].timestamp_ns;\n        msg.payload = data.map(r => {\n            const fields = {t_ms: typeof r.time_s === \"number\" ? r.time_s * 1000 : (r.timestamp_ns-t0)/1e6,\n                            cycle_num: Number(r.cycle_id)};\n            for (const key of Object.keys(r)) {\n                if (!meta.has(key) && Number.isFinite(Number(r[key]))) fields[key] = Number(r[key]);\n            }\n            return {measurement: \"sensor_data\", tags: {machine_id: String(r.machine_id),\n                session_id: String(r.session_id || \"\")}, fields, timestamp: r.timestamp_ns};\n        });\n        return [null, null, msg];\n    }\n    assert(data && data.schema_version === 1, \"Unsupported metadata schema\");\n    measurements(data.measurements);\n    if (data.kind === \"measurements\") {\n        assert(text(data.machine_id, 128) && text(data.session_id, 200) && integer(data.cycle_id), \"Invalid cycle identity\");\n        msg.query = \"SELECT monitoring.apply_measurements($1, $2, $3::bigint, $4::jsonb) AS applied\";\n        msg.params = [data.machine_id, data.session_id, data.cycle_id, JSON.stringify(data.measurements)];\n        return [null, msg, null];\n    }\n    assert(data.kind === \"capture\", \"Unknown message kind\");\n    const c = data.capture;\n    assert(c && text(c.machine_id, 128) && text(c.session_id, 200) && integer(c.cycle_id), \"Invalid capture identity\");\n    assert(integer(c.session_cycle) && (c.mode === \"cycle\" || c.mode === \"continuous\"), \"Invalid acquisition mode\");\n    assert((c.cycle_id === 0) === (c.mode === \"continuous\"), \"Cycle/mode mismatch\");\n    assert([\"complete\", \"interrupted\"].includes(c.status), \"Invalid acquisition status\");\n    assert(c.material === null || text(c.material, 200), \"Invalid material\");\n    assert(optional(c.mold_temperature_c, -273.15), \"Invalid mold setpoint\");\n    assert(c.pressure_settings_bar && typeof c.pressure_settings_bar === \"object\", \"Missing pressure settings\");\n    for (const [key, value] of Object.entries(c.pressure_settings_bar)) {\n        assert(/^[a-z][a-z0-9_]*$/.test(key) && optional(value, 0), \"Invalid pressure setting\");\n    }\n    const fields = c.config_snapshot && c.config_snapshot.field_names;\n    assert(Array.isArray(fields) && fields.length > 0 && new Set(fields).size === fields.length, \"Invalid channel list\");\n    assert(fields.every(f => /^CH[0-9]+_[A-Za-z0-9_]+$/.test(f)), \"Invalid channel field name\");\n    assert(Array.isArray(data.samples) && data.samples.length > 0 && c.sample_count === data.samples.length, \"Sample count mismatch\");\n    const first = ns(c.first_time_ns), last = ns(c.last_time_ns), base = ns(c.base_time_ns);\n    assert(first <= last, \"Invalid capture bounds\");\n    if (c.trigger_start_ns !== null) ns(c.trigger_start_ns);\n    if (c.trigger_end_ns !== null) ns(c.trigger_end_ns);\n    const tag = value => value.replace(/\\\\/g, \"\\\\\\\\\").replace(/([ ,=])/g, \"\\\\$1\");\n    const prefix = `sensor_data,machine_id=${tag(c.machine_id)},session_id=${tag(c.session_id)} `;\n    let previous = null;\n    const lines = data.samples.map((r, index) => {\n        const stamp = ns(r.timestamp_ns);\n        assert(previous === null || stamp > previous, \"Duplicate/backward sample timestamp\");\n        previous = stamp;\n        assert(stamp >= first && stamp <= last && stamp >= base, \"Sample outside capture bounds\");\n        assert(r.sample_index === index && finite(r.time_s) && r.time_s >= 0, \"Invalid sample index/time\");\n        assert(finite(r.time_s * 1000) && Math.abs(Number(stamp-base)/1e9-r.time_s) <= 0.0000011,\n               \"Relative time does not match the capture timestamp\");\n        assert(Object.keys(r).every(k => fields.includes(k) || [\"timestamp_ns\", \"time_s\", \"sample_index\"].includes(k)), \"Unexpected sample field\");\n        // Existing cycle_num and t_ms fields remain floats; only the new sample_index is integer.\n        const values = [`cycle_num=${c.cycle_id}`, `t_ms=${r.time_s * 1000}`, `sample_index=${index}i`];\n        for (const field of [...fields].sort()) {\n            assert(finite(r[field]), `Missing/non-finite channel ${field}`);\n            values.push(`${field}=${r[field]}`);\n        }\n        return prefix + values.join(\",\") + \" \" + r.timestamp_ns;\n    });\n    assert(data.samples[0].timestamp_ns === c.first_time_ns &&\n           data.samples[data.samples.length-1].timestamp_ns === c.last_time_ns, \"Manifest bounds mismatch\");\n    msg.capture = c;\n    msg.lineProtocol = lines.join(\"\\n\");\n    msg.query = \"SELECT monitoring.register_capture($1::jsonb, md5($2::text), $3::jsonb) AS fingerprint\";\n    msg.params = [JSON.stringify(c), msg.lineProtocol, JSON.stringify(data.measurements)];\n    delete msg.payload;\n    return [msg, null, null];\n} catch (error) {\n    node.error(error.message, msg);\n    return null;\n}\n",
-    "outputs": 3,
+    "func": "// Outputs: register capture (PostgreSQL), measurements (PostgreSQL).\nconst assert = (condition, message) => { if (!condition) throw new Error(message); };\nconst finite = value => typeof value === \"number\" && Number.isFinite(value);\nconst optional = (value, minimum) => value === null || (finite(value) && value >= minimum);\nconst integer = value => Number.isSafeInteger(value) && value >= 0;\nfunction text(value, max) {\n    return typeof value === \"string\" && value.length > 0 && value.length <= max && !/[\\x00-\\x1f]/.test(value);\n}\nfunction ns(value) {\n    assert(typeof value === \"string\" && /^[0-9]+$/.test(value), \"Expected decimal nanosecond string\");\n    const n = BigInt(value);\n    assert(n > 0n && n <= 9223372036854775806n, \"Timestamp out of Influx range\");\n    return n;\n}\nfunction measurements(m) {\n    assert(m && integer(m.revision) && text(m.update_id, 100), \"Invalid measurement revision/ID\");\n    assert(optional(m.weight_g, 0) && optional(m.length_mm, 0), \"Invalid part measurements\");\n}\ntry {\n    const data = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;\n    if (Array.isArray(data)) {\n        throw new Error('Legacy upload retained for reconciliation; drain old desktop spool before cutover');\n    }\n    assert(data && data.schema_version === 1, \"Unsupported metadata schema\");\n    measurements(data.measurements);\n    if (data.kind === \"measurements\") {\n        assert(text(data.machine_id, 128) && text(data.session_id, 200) && integer(data.cycle_id), \"Invalid cycle identity\");\n        msg.query = \"SELECT monitoring.receive_measurements($1, $2, $3::bigint, $4::jsonb) AS result\";\n        msg.params = [data.machine_id, data.session_id, data.cycle_id, JSON.stringify(data.measurements)];\n        return [null, msg];\n    }\n    assert(data.kind === \"capture\", \"Unknown message kind\");\n    const c = data.capture;\n    assert(c && text(c.machine_id, 128) && text(c.session_id, 200) && integer(c.cycle_id), \"Invalid capture identity\");\n    assert(integer(c.session_cycle) && (c.mode === \"cycle\" || c.mode === \"continuous\"), \"Invalid acquisition mode\");\n    assert((c.cycle_id === 0) === (c.mode === \"continuous\"), \"Cycle/mode mismatch\");\n    assert([\"complete\", \"interrupted\"].includes(c.status), \"Invalid acquisition status\");\n    assert(c.material === null || text(c.material, 200), \"Invalid material\");\n    assert(optional(c.mold_temperature_c, -273.15), \"Invalid mold setpoint\");\n    assert(c.pressure_settings_bar && typeof c.pressure_settings_bar === \"object\", \"Missing pressure settings\");\n    for (const [key, value] of Object.entries(c.pressure_settings_bar)) {\n        assert(/^[a-z][a-z0-9_]*$/.test(key) && optional(value, 0), \"Invalid pressure setting\");\n    }\n    const fields = c.config_snapshot && c.config_snapshot.field_names;\n    assert(Array.isArray(fields) && fields.length > 0 && new Set(fields).size === fields.length, \"Invalid channel list\");\n    assert(fields.every(f => /^CH[0-9]+_[A-Za-z0-9_]+$/.test(f)), \"Invalid channel field name\");\n    assert(Array.isArray(data.samples) && data.samples.length > 0 && c.sample_count === data.samples.length, \"Sample count mismatch\");\n    const first = ns(c.first_time_ns), last = ns(c.last_time_ns), base = ns(c.base_time_ns);\n    assert(first <= last, \"Invalid capture bounds\");\n    if (c.trigger_start_ns !== null) ns(c.trigger_start_ns);\n    if (c.trigger_end_ns !== null) ns(c.trigger_end_ns);\n    const tag = value => value.replace(/\\\\/g, \"\\\\\\\\\").replace(/([ ,=])/g, \"\\\\$1\");\n    const prefix = `sensor_data,machine_id=${tag(c.machine_id)},session_id=${tag(c.session_id)} `;\n    let previous = null;\n    const lines = data.samples.map((r, index) => {\n        const stamp = ns(r.timestamp_ns);\n        assert(previous === null || stamp > previous, \"Duplicate/backward sample timestamp\");\n        previous = stamp;\n        assert(stamp >= first && stamp <= last && stamp >= base, \"Sample outside capture bounds\");\n        assert(r.sample_index === index && finite(r.time_s) && r.time_s >= 0, \"Invalid sample index/time\");\n        assert(finite(r.time_s * 1000) && Math.abs(Number(stamp-base)/1e9-r.time_s) <= 0.0000011,\n               \"Relative time does not match the capture timestamp\");\n        assert(Object.keys(r).every(k => fields.includes(k) || [\"timestamp_ns\", \"time_s\", \"sample_index\"].includes(k)), \"Unexpected sample field\");\n        // Existing cycle_num and t_ms fields remain floats; only the new sample_index is integer.\n        const values = [`cycle_num=${c.cycle_id}`, `t_ms=${r.time_s * 1000}`, `sample_index=${index}i`];\n        for (const field of [...fields].sort()) {\n            assert(finite(r[field]), `Missing/non-finite channel ${field}`);\n            values.push(`${field}=${r[field]}`);\n        }\n        return prefix + values.join(\",\") + \" \" + r.timestamp_ns;\n    });\n    assert(data.samples[0].timestamp_ns === c.first_time_ns &&\n           data.samples[data.samples.length-1].timestamp_ns === c.last_time_ns, \"Manifest bounds mismatch\");\n    msg.capture = c;\n    msg.lineProtocol = lines.join(\"\\n\");\n    msg.query = \"SELECT monitoring.register_capture($1::jsonb, md5($2::text), $3::jsonb) AS fingerprint\";\n    msg.params = [JSON.stringify(c), msg.lineProtocol, JSON.stringify(data.measurements)];\n    delete msg.payload;\n    return [msg, null];\n} catch (error) {\n    msg.ingestPermanent = true;\n    node.error(error.message, msg);\n    return null;\n}\n",
+    "outputs": 2,
     "timeout": 0,
     "noerr": 0,
     "initialize": "",
@@ -145,9 +170,6 @@
       ],
       [
         "cycle-measurements"
-      ],
-      [
-        "2303a0420a27e0fd"
       ]
     ]
   },
@@ -181,14 +203,18 @@
     "outputs": 1,
     "x": 800,
     "y": 240,
-    "wires": []
+    "wires": [
+      [
+        "cycle-ack"
+      ]
+    ]
   },
   {
     "id": "cycle-prepare",
     "type": "function",
     "z": "9a5797004b410dd8",
     "name": "Prepare exact-ns write",
-    "func": "// Continue only after PostgreSQL accepted the immutable manifest and waveform hash.\nif (!msg.payload || !msg.payload[0] || !msg.payload[0].fingerprint) {\n    node.error(\"No PostgreSQL capture registration receipt\", msg);\n    return null;\n}\nmsg.fingerprint = msg.payload[0].fingerprint;\nmsg.payload = msg.lineProtocol;\ndelete msg.lineProtocol;\ndelete msg.query;\ndelete msg.params;\nmsg.headers = {\"Content-Type\": \"text/plain; charset=utf-8\"};\nreturn msg;\n",
+    "func": "// Continue only after PostgreSQL accepted the immutable manifest and waveform hash.\nif (!msg.payload || !msg.payload[0] || !msg.payload[0].fingerprint) {\n    node.error(\"No PostgreSQL capture registration receipt\", msg);\n    return null;\n}\nmsg.fingerprint = msg.payload[0].fingerprint;\nconst store = global.get('captureQueue');\nif (msg.queueId) store.queue().renew(msg);\nmsg.writeChunks = store.splitLines(msg.lineProtocol);\nmsg.chunkIndex = 0;\nmsg.payload = msg.writeChunks[0];\n// Preserve lineProtocol for diagnostics; disk queue holds the original envelope.\ndelete msg.query;\ndelete msg.params;\nmsg.headers = {\"Content-Type\": \"text/plain; charset=utf-8\"};\nmsg.requestTimeout = 30000;\nreturn msg;\n",
     "outputs": 1,
     "timeout": 0,
     "noerr": 0,
@@ -232,8 +258,8 @@
     "type": "function",
     "z": "9a5797004b410dd8",
     "name": "Check Influx response",
-    "func": "// No new client ACK protocol. The server catalog records successful Influx writes.\nif (Number(msg.statusCode) !== 204) {\n    node.error(`Influx write failed: HTTP ${msg.statusCode}; ${String(msg.payload).slice(0, 300)}`, msg);\n    return null;\n}\nmsg.query = \"SELECT monitoring.mark_stored($1, $2, $3::bigint, $4) AS stored\";\nmsg.params = [msg.capture.machine_id, msg.capture.session_id, msg.capture.cycle_id, msg.fingerprint];\ndelete msg.payload;\ndelete msg.headers;\nreturn msg;\n",
-    "outputs": 1,
+    "func": "// No new client ACK protocol. The server catalog records successful Influx writes.\nif (Number(msg.statusCode) !== 204) {\n    const status = Number(msg.statusCode);\n    msg.ingestPermanent = status >= 400 && status < 500 && status !== 408 && status !== 429;\n    node.error(`Influx write failed: HTTP ${msg.statusCode}; ${String(msg.payload).slice(0, 300)}`, msg);\n    return null;\n}\nconst store = global.get('captureQueue');\nif (msg.queueId) store.queue().renew(msg);\nmsg.chunkIndex += 1;\nif (msg.chunkIndex < msg.writeChunks.length) {\n    msg.payload = msg.writeChunks[msg.chunkIndex];\n    msg.headers = {\"Content-Type\": \"text/plain; charset=utf-8\"};\n    delete msg.statusCode;\n    return [msg, null];\n}\nmsg.query = \"SELECT monitoring.mark_stored($1, $2, $3::bigint, $4) AS stored\";\nmsg.params = [msg.capture.machine_id, msg.capture.session_id, msg.capture.cycle_id, msg.fingerprint];\ndelete msg.payload;\ndelete msg.headers;\ndelete msg.writeChunks;\nreturn [null, msg];\n",
+    "outputs": 2,
     "timeout": 0,
     "noerr": 0,
     "initialize": "",
@@ -242,6 +268,9 @@
     "x": 1480,
     "y": 60,
     "wires": [
+      [
+        "cycle-http"
+      ],
       [
         "cycle-stored"
       ]
@@ -259,7 +288,31 @@
     "outputs": 1,
     "x": 1720,
     "y": 60,
-    "wires": []
+    "wires": [
+      [
+        "cycle-ack"
+      ]
+    ]
+  },
+  {
+    "id": "cycle-ack",
+    "type": "function",
+    "z": "9a5797004b410dd8",
+    "name": "Finish durable job",
+    "func": "try {\n    const result = msg.payload && msg.payload[0];\n    if (!result || (result.stored !== true && !['applied', 'replay', 'stale', 'conflict'].includes(result.result))) {\n        throw new Error('Missing database completion receipt');\n    }\n    const q = global.get('captureQueue').queue();\n    if (['stale', 'conflict'].includes(result.result)) {\n        q.fail(msg, 'Measurement ' + result.result + '; review monitoring.measurement_conflicts', true);\n        node.warn('Measurement requires reconciliation: ' + msg.queueId);\n    } else q.complete(msg);\n    return {};\n} catch (error) {\n    node.error(error.message, msg);\n    return null;\n}\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1720,
+    "y": 240,
+    "wires": [
+      [
+        "cycle-claim"
+      ]
+    ]
   },
   {
     "id": "cycle-postgres-config",
@@ -289,9 +342,40 @@
     "type": "catch",
     "z": "9a5797004b410dd8",
     "name": "Ingestion errors",
-    "scope": null,
+    "scope": [
+      "cycle-enqueue",
+      "cycle-claim",
+      "3c42711ed5d08dad",
+      "cycle-register",
+      "cycle-measurements",
+      "cycle-prepare",
+      "cycle-http",
+      "cycle-complete",
+      "cycle-stored",
+      "cycle-ack"
+    ],
     "uncaught": false,
     "x": 500,
+    "y": 440,
+    "wires": [
+      [
+        "cycle-retain"
+      ]
+    ]
+  },
+  {
+    "id": "cycle-retain",
+    "type": "function",
+    "z": "9a5797004b410dd8",
+    "name": "Retain failure for retry/review",
+    "func": "const reason = msg.error && msg.error.message || 'Unknown ingestion failure';\ntry {\n    const permanent = msg.ingestPermanent === true ||\n        /Conflicting immutable|Overlapping capture|Invalid capture|Invalid measurement|violates .*constraint/.test(reason);\n    if (msg.queueId) global.get('captureQueue').queue().fail(msg, reason, permanent);\n} catch (error) {\n    // Log without another Catch loop. Existing disk work remains for recovery.\n    node.warn('Could not update queue failure state: ' + error.message);\n}\nnode.warn(reason + (msg.queueId ? '; retained queue ID ' + msg.queueId : '; check server disk/configuration'));\nreturn msg;\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 800,
     "y": 440,
     "wires": [
       [
@@ -303,7 +387,7 @@
     "id": "cycle-error-log",
     "type": "debug",
     "z": "9a5797004b410dd8",
-    "name": "Ingestion error (no DB delivery guarantee)",
+    "name": "Ingestion error; inspect durable queue",
     "active": true,
     "tosidebar": true,
     "console": true,

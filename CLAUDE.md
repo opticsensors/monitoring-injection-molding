@@ -58,7 +58,8 @@ mqtt_publisher.py
                                       so they must stay together on sys.path
 config/    daq_config_defaults.json ← hand-maintained channel layout (source of truth)
 scripts/   standalone tools (import the app only via sys.path shims)
-iot/       nodered_flows.json, nodered_function.js, grafana_dashboard.json
+iot/       deploy.sh, two generated JSON files, short SERVER_SETUP.md
+           nodered/ (runtime), postgres/ (SQL), validation/, maintenance/
 figures/   images / assets
 data/      (gitignored) logs/, pending/ (MQTT spool), results/, cycle_id.txt
 ```
@@ -82,6 +83,35 @@ The cycle-metadata implementation is in `cycle_metadata.py`,
 message/storage behavior are in [iot/SERVER_SETUP.md](iot/SERVER_SETUP.md).
 Repository implementation does not imply that the live server is updated.
 
+Deployment entry points: `scripts/deploy.ps1` packages/uploads curated files and
+runs `iot/deploy.sh`; the latter invokes the stdlib `scripts/deploy_server.py` on
+the Docker host. Each upload extracts into a fresh directory under
+`~/injection-monitoring-releases/`, delays restoring archive directory modes,
+then fixes owner permissions there (Windows/OneDrive directories may be 0555).
+The installer preserves unrelated flow tabs and the existing
+MQTT broker config/credential ID, uses Node-RED's revision-checked v2 Admin API
+and Grafana's datasource/dashboard APIs, backs up before modifying services,
+and retains private state under `~/.local/state/injection-monitoring/`.
+Before production mutations it runs the isolated Docker integration test, caching
+success by the tested release's content hash. Failed tests leave production alone.
+`--check` inspects without deployment. It never resets existing admin passwords,
+upgrades production images, or deletes waveform history. User-provided output on
+2026-10-19 confirms release.oqzIvlaQ completed all eight installer stages, including
+isolated Docker integration, backups, PostgreSQL setup, 29 matching historical
+cycles, Node-RED/Grafana deployment and production database/queue/count checks.
+Daily backups at 02:00 server time and five-minute health logs are scheduled.
+Latest backup: 20261019T142821Z-bc4f36. Browser checks, one real new cycle and backup
+restore verification remain pending; no further deployment rerun is required.
+Earlier installer fixes are retained: connector lookup uses package.json;
+Grafana PUT uses a freshly read datasource version; only test Grafana joins a
+second project bridge to publish localhost:13000. All 54 local unit tests pass;
+the corrected full container test passed on the user's server. Container logs
+survive test teardown, and cleanup errors do not replace the original failure.
+The user is not recording; avoid repeating the acquisition-pause reminder.
+Readiness and subsequent Node-RED GET requests now retry transient connections
+within a deadline; writes are not automatically repeated. Manual procedures are kept in
+`iot/maintenance/MANUAL_SETUP.md` rather than the quick-start guide.
+
 - **Manual Save:** waveform `.csv` with `session_id, cycle_id, session_cycle,
   timestamp_ns, time_s, CH<n>_<type>, ...`; companion `.cycles.csv` with one row
   per capture (machine ID, identity, settings, latest measurements, mode/outcome,
@@ -100,7 +130,15 @@ Repository implementation does not imply that the live server is updated.
   mapped to logical cycle_id, `t_ms`, channel floats; new captures add integer
   `sample_index`. Do not rename historical fields or add a per-cycle tag.
 - **PostgreSQL:** `monitoring.cycles` stores catalog/metadata, not samples.
-  The catalog pairs full identities with exact nanosecond retrieval bounds.
+  The catalog supplies full identity predicates and exact nanosecond bounds;
+  Grafana wraps the selected identities in one shared time range (InfluxQL 1.x
+  cannot OR separate time ranges). Grafana now shows only Latest cycles (max 100),
+  default 10, and numeric cycle legends. Selection combines 55t and 160t with one
+  total count limit and no machine variable. It spans dates, excludes continuous captures and has no
+  metadata filters/table. The collapsed raw Export row remains. The simplified
+  2026-10-20 dashboard is local and still needs importing into live Grafana;
+  no schema/Node-RED update is required. This does not remove stored metadata or
+  continuous acquisition support from the desktop/backend.
 
 `refresh_run_snapshot()` uses `_saved_indices()` and `_channel_field_names()`
 to freeze channel order/units/configuration, then samples and exports use those
@@ -117,9 +155,23 @@ and broker-ACK cleanup remain unchanged. There is no automatic capture journal
 and no client database-ACK protocol. Sampling settings/commands and the external
 DAQ driver are unchanged by the metadata feature.
 
+Server recovery lives in `iot/nodered/capture_queue.cjs`, loaded through Node-RED's
+`functionGlobalContext.captureQueue`. Originals are persisted before processing,
+with leases, bounded retry and quarantine/review. Native Influx writes are
+sequential chunks (5,000 points / 4 MB), retaining the whole-capture hash.
+The MQTT-to-disk acknowledgement gap remains; do not claim lossless delivery.
+Legacy arrays are now quarantined, so drain old PC spools before cutover.
+Apply `001_cycle_metadata.sql` on fresh schemas and `002_ingestion_recovery.sql`
+on both fresh/existing schemas; use `scripts/apply_server_migrations.sh`.
+Migration 002 records measurement conflicts without rejecting a valid capture,
+preserves client edit timestamps as provenance and uses a non-login object owner.
+Backfill must reconcile a fresh diagnostic against `server.metadata.json`.
+The desktop freezes the session mode for Send and pairs wall/elapsed clocks
+after plot setup. Server metadata imports prompt before replacing divergent edits.
+
 ### Two cycle numbers, one counter
 
-`cycle_id` is a monotonic per-machine counter persisted in `data/cycle_id.txt`
+`cycle_id` is a monotonic installation-wide counter persisted in `data/cycle_id.txt`
 across restarts — the database key, never reset. Discarded (too-short) cycles
 reuse the number, so there are no spurious gaps.
 

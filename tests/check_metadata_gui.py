@@ -2,11 +2,13 @@
 import os
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 import csv
+import json
 from pathlib import Path
 import queue
 import sys
 import tempfile
 from unittest.mock import patch
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -47,7 +49,16 @@ def check_export(path, entries):
 
 
 def check():
+    qt_errors = []
+    original_hook = sys.excepthook
+    def record_exception(kind, value, traceback):
+        qt_errors.append(value)
+        original_hook(kind, value, traceback)
+    sys.excepthook = record_exception
     app = QApplication([])
+    def unexpected_warning(_parent, title, message):
+        raise AssertionError(f'Unexpected GUI warning: {title}: {message}')
+    main.QtWidgets.QMessageBox.warning = unexpected_warning
     # Windows offscreen Qt needs an explicit font to render inspection artifacts.
     font_path = Path('C:/Windows/Fonts/segoeui.ttf')
     if font_path.exists():
@@ -115,6 +126,46 @@ def check():
             assert summaries[0]['metadata_revision'] == '2'
             assert path.read_bytes() == original_waveform
 
+        # Sending after changing the current trigger mode still uses the recorded
+        # session mode and machine, without contacting a broker.
+        sent = []
+        window.mqtt_publisher = SimpleNamespace(publish_records=sent.append)
+        window._ensure_mqtt_publisher = lambda **kwargs: None
+        window._session_streamed = False
+        window.cycle_mode = False
+        window.send_Session_to_cloud()
+        assert len(sent) == 3 and all(m['capture']['mode'] == 'cycle' for m in sent)
+        assert all(m['capture']['machine_id'] == 'test-machine' for m in sent)
+        # Wall/elapsed time zero is paired after setup, and the start slot retains it.
+        window.DaqThread = SimpleNamespace()
+        with patch('metadata_controller.time.perf_counter', side_effect=[100.0, 100.002]), \
+             patch('metadata_controller.time.time_ns', return_value=1792400000000000001):
+            window.start_acquisition_clock()
+        assert window.session_start_ns == 1792400000000000001
+        assert abs(window.DaqThread.start_time - 100.001) < 1e-9
+        main.DaqThread.startSignalRec(window.DaqThread)
+        assert window.DaqThread.startsigrec and not window.DaqThread.stopsigrec
+        assert abs(window.DaqThread.start_time - 100.001) < 1e-9
+        del window.DaqThread
+
+        # Server import makes same-revision conflicts recoverable, with an
+        # explicit Cancel path that preserves the user's unsent local edit.
+        server_entry = json.loads(json.dumps(entries[0]))
+        server_entry['measurements']['weight_g'] = 8
+        server_file = Path(directory) / 'server.metadata.json'
+        meta.export_metadata(server_file, [server_entry])
+        document = json.loads(server_file.read_text(encoding='utf-8'))
+        document['source'] = 'server'
+        server_file.write_text(json.dumps(document), encoding='utf-8')
+        with patch.object(main.QtWidgets.QFileDialog, 'getOpenFileName', return_value=(str(server_file), '')), \
+             patch.object(main.QtWidgets.QMessageBox, 'question', return_value=main.QtWidgets.QMessageBox.No):
+            window.import_measurements()
+        assert window.cycle_history[first_key]['measurements']['weight_g'] is None
+        with patch.object(main.QtWidgets.QFileDialog, 'getOpenFileName', return_value=(str(server_file), '')), \
+             patch.object(main.QtWidgets.QMessageBox, 'question', return_value=main.QtWidgets.QMessageBox.Yes):
+            window.import_measurements()
+        assert window.cycle_history[first_key]['measurements']['weight_g'] == 8
+
         # A failure while writing a companion must leave the existing file set
         # intact, and staging files must be removed after the failed Save.
         saved_files = (path, path.with_suffix('.cycles.csv'), path.with_suffix('.metadata.json'))
@@ -149,6 +200,11 @@ def check():
         assert summaries[0]['mode'] == 'continuous' and summaries[0]['sample_count'] == '3'
         assert all(summaries[0][field] == '' for field in
                    ('material', 'mold_temperature_c', 'pressure_limit_bar', 'weight_g', 'length_mm'))
+        sent.clear()
+        window._session_streamed = False
+        window.cycle_mode = True
+        window.send_Session_to_cloud()
+        assert len(sent) == 1 and sent[0]['capture']['mode'] == 'continuous'
         window.show()
         window.resize(1400, 850)
         app.processEvents()
@@ -163,7 +219,10 @@ def check():
         assert window.daq_srate == 6000 and window.daq_dec == 100
         window._measurements_dialog.hide()
         window.hide()
+        assert not qt_errors, qt_errors
+        sys.excepthook = original_hook
         print('PASS: four trigger modes, interrupted/continuous captures, paired CSV joins, frozen settings, '
+              'manual Send after reconfiguration, shared clock, server conflict reconciliation, '
               'measurement edits/clearing, exact timestamps and staged-write failure; no hardware/network.')
 
 

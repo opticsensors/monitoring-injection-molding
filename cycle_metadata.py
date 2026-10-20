@@ -171,7 +171,7 @@ def export_cycle_summary(path, entries):
             writer.writerow(row)
 
 
-def read_metadata(path):
+def read_metadata(path, *, with_source=False):
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(data, dict) or data.get("schema_version") != SCHEMA_VERSION or data.get("kind") != "cycle_metadata_export":
         raise ValueError("This is not a supported cycle metadata export.")
@@ -207,4 +207,4 @@ def read_metadata(path):
         for name in ("weight_g", "length_mm"):
             measurements[name] = optional_number(measurements.get(name), name)
         entry["delivery"] = "Imported; server state unconfirmed"
-    return entries
+    return (entries, data.get('source', 'local')) if with_source else entries

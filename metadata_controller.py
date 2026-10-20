@@ -94,10 +94,23 @@ class MetadataController:
         self.session_start_epoch = self.session_start_ns / 1e9
         self._session_machine_id = self.machine_id
         self._session_config = deepcopy(self._run_snapshot["config_snapshot"])
+        self._session_cycle_mode = self.cycle_mode
         self._capture_starts = {}
         if not self.cycle_mode:
             self.capture_started(0, deepcopy(self._run_snapshot), 0.0)
         self.runSetup.machine.setEnabled(False)
+
+    def start_acquisition_clock(self):
+        """Anchor wall time and DAQ elapsed time together, after UI/plot setup.
+
+        Both values are set before the start signal lets the DAQ consume scans.
+        Subsequent wall-clock adjustments cannot change this recording's times.
+        """
+        before = time.perf_counter()
+        self.session_start_ns = time.time_ns()
+        after = time.perf_counter()
+        self.session_start_epoch = self.session_start_ns / 1e9
+        self.DaqThread.start_time = (before + after) / 2
 
     def capture_started(self, cycle_id, snapshot, start_s):
         self._capture_starts[cycle_id] = (deepcopy(snapshot), float(start_s))
@@ -182,7 +195,8 @@ class MetadataController:
         if not path:
             return
         try:
-            entries = metadata.read_metadata(path)
+            entries, source = metadata.read_metadata(path, with_source=True)
+            divergent = []
             # Validate conflicts before changing any entry.
             for entry in entries:
                 old = self.cycle_history.get(metadata.identity(entry["capture"]))
@@ -191,11 +205,23 @@ class MetadataController:
                 if old and old["measurements"]["revision"] == entry["measurements"]["revision"]:
                     if any(old["measurements"].get(field) != entry["measurements"].get(field)
                            for field in ("weight_g", "length_mm")):
-                        raise ValueError("Conflicting measurement edits have the same revision.")
+                        if source != 'server':
+                            raise ValueError("Conflicting measurement edits have the same revision. Load a fresh server export to reconcile them.")
+                        divergent.append(metadata.identity(entry['capture']))
+                elif old and old['measurements']['revision'] > entry['measurements']['revision'] and source == 'server':
+                    divergent.append(metadata.identity(entry['capture']))
+            if divergent:
+                answer = QtWidgets.QMessageBox.question(self, "Reconcile server measurements",
+                    f"The server export differs from {len(divergent)} local edit(s).\n\n"
+                    "Replace these local edits with the exported server values? "
+                    "Use a fresh export. Cancel and Save your local metadata first if you need to retain the edits.",
+                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
+                if answer != QtWidgets.QMessageBox.Yes:
+                    return
             for entry in entries:
                 key = metadata.identity(entry["capture"])
                 old = self.cycle_history.get(key)
-                if not old or entry["measurements"]["revision"] > old["measurements"]["revision"]:
+                if not old or source == 'server' or entry["measurements"]["revision"] > old["measurements"]["revision"]:
                     self.cycle_history[key] = entry
             self.refresh_measurements()
         except (OSError, ValueError, KeyError, TypeError) as exc:

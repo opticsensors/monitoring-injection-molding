@@ -600,6 +600,7 @@ class MainWindow(MetadataController, QtWidgets.QMainWindow, MainWindow.Ui_MainWi
         #Monitoring message:
         self.messagesBox.appendHtml('<p>Monitoring with unit conversion...</p>')
         self.graphThread.start()
+        self.start_acquisition_clock()
         self.startSig.emit()
         self.is_monitoring = True  # Add this line
         # Continuous mode follows data all session; cycle mode starts still (waiting)
@@ -666,6 +667,7 @@ class MainWindow(MetadataController, QtWidgets.QMainWindow, MainWindow.Ui_MainWi
 
             self.stopButton.setEnabled(True)
             self.graphThread.start()
+            self.start_acquisition_clock()
             self.startSig.emit()
             self.is_monitoring = True  # Add this line
             # Continuous mode follows data all session; cycle mode starts still (waiting)
@@ -1373,7 +1375,7 @@ class MainWindow(MetadataController, QtWidgets.QMainWindow, MainWindow.Ui_MainWi
 
         base = self.session_start_epoch or datetime.now().timestamp()
         n_batches = 0
-        if self.cycle_mode:
+        if self._session_cycle_mode:
             for cycle_num, cycle_start_s, xdata, ydata in self.completed_cycles_data:
                 if not xdata or not ydata:
                     continue
@@ -1388,7 +1390,7 @@ class MainWindow(MetadataController, QtWidgets.QMainWindow, MainWindow.Ui_MainWi
             self.sendSessionButton.setEnabled(False)
             self.messagesBox.appendHtml(
                 '<p style="color:green;">Session queued for cloud upload '
-                '(%d %s).</p>' % (n_batches, 'cycles' if self.cycle_mode else 'batch'))
+                '(%d %s).</p>' % (n_batches, 'cycles' if self._session_cycle_mode else 'batch'))
         else:
             self.messagesBox.appendHtml(
                 '<p style="color:orange;">Nothing to send - no finished session data.</p>')
@@ -2168,7 +2170,8 @@ class DaqThread(QtCore.QThread):
 
     @QtCore.pyqtSlot()
     def startSignalRec(self):
-        self.start_time = perf_counter()
+        # MainWindow set the shared wall/elapsed baseline immediately before
+        # emitting startSig. Do not introduce a second, later time zero here.
         self.startsigrec = True
         self.stopsigrec = False
 

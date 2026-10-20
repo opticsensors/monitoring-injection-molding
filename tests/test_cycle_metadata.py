@@ -76,13 +76,19 @@ class MetadataTests(unittest.TestCase):
 
     def test_dashboard_selection_scopes_and_escapes(self):
         query = selection_sql()
-        self.assertIn('${weight_min:sqlstring}', query)
-        self.assertNotIn('${weight_min:raw}', query)
+        self.assertIn("machine_id IN ('55t', '160t')", query)
+        self.assertNotIn('${machine_id', query)
+        self.assertIn('${n_cycles:sqlstring}', query)
+        self.assertNotIn(':raw', query)
+        self.assertIn("mode = 'cycle'", query)
+        self.assertNotIn('$__timeFilter', query)
         self.assertIn('ORDER BY first_time_ns DESC', query)
         self.assertNotIn('max_cycle_num', query)
-        predicate = variables('55t')[-1]['query']
+        predicate = variables()[-1]['query']
         self.assertIn('influx_predicate', predicate)
-        self.assertIn('cycle_key', predicate)
+        self.assertIn('min(first_time_ns)', predicate)
+        self.assertEqual([v['name'] for v in variables() if v.get('hide') != 2], ['n_cycles'])
+        self.assertNotIn('machine_id', [v['name'] for v in variables()])
 
     def test_existing_spool_accepts_both_formats_and_deletes_only_on_broker_ack(self):
         import mqtt_publisher

@@ -1,7 +1,7 @@
-"""Regenerate the metadata-aware Grafana dashboard from channel defaults.
+"""Regenerate the simple latest-cycles Grafana dashboard from channel defaults.
 
 Preserves the dashboard identity and Influx datasource, builds PostgreSQL
-metadata selectors and bounded Influx waveform panels. Run from repo root:
+cycle selection behind one count control and bounded waveform panels. Run from repo root:
     py -3.11 scripts/generate_grafana_dashboard.py --postgres-uid ACTUAL_UID
 Then import iot/grafana_dashboard.json. This script never contacts the server.
 Run setup preferences do not alter the hand-maintained channel defaults file.
@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from sensor_types import sensor_category, sensor_label, sensor_unit
-from dashboard_metadata import POSTGRES, variables, metadata_panel
+from dashboard_metadata import POSTGRES, variables
 
 CONFIG_FILE = ROOT / 'config' / 'daq_config_defaults.json'
 DASHBOARD_FILE = ROOT / 'iot' / 'grafana_dashboard.json'
@@ -66,7 +66,7 @@ def chart_panel(datasource, pid, ch, ch_type, x, y):
                     'axisBorderShow': False,
                     'axisCenteredZero': False,
                     'axisColorMode': 'text',
-                    'axisLabel': '',
+                    'axisLabel': axis,
                     'axisPlacement': 'auto',
                     'fillOpacity': 0,
                     'hideFrom': {'legend': False, 'tooltip': False, 'viz': False},
@@ -83,16 +83,11 @@ def chart_panel(datasource, pid, ch, ch_type, x, y):
                     'steps': [{'color': 'green'}, {'color': 'red', 'value': 80}]
                 }
             },
-            # Axis labels are attached per field (byRegexp so the cycle labels
-            # added by the partition transform still match).
+            # Sensor units are the default; the unlabeled X field is milliseconds.
             'overrides': [
                 {
-                    'matcher': {'id': 'byRegexp', 'options': '/^t_ms.*/'},
+                    'matcher': {'id': 'byName', 'options': 'time_ms'},
                     'properties': [{'id': 'custom.axisLabel', 'value': 't [ms]'}]
-                },
-                {
-                    'matcher': {'id': 'byRegexp', 'options': f'/^{field}.*/'},
-                    'properties': [{'id': 'custom.axisLabel', 'value': axis}]
                 }
             ]
         },
@@ -105,11 +100,10 @@ def chart_panel(datasource, pid, ch, ch_type, x, y):
             'mapping': 'auto',
             'series': [
                 {
-                    'x': {'matcher': {'id': 'byName', 'options': 't_ms'}},
-                    'y': [{'matcher': {'id': 'byName', 'options': field}}]
+                    'x': {'matcher': {'id': 'byName', 'options': 'time_ms'}},
+                    'y': {'matcher': {'id': 'byType', 'options': 'number'}}
                 }
             ],
-            'seriesMapping': 'manual',
             'tooltip': {'hideZeros': False, 'mode': 'single', 'sort': 'none'}
         },
         'pluginVersion': '12.0.0',
@@ -130,7 +124,18 @@ def chart_panel(datasource, pid, ch, ch_type, x, y):
                 'id': 'partitionByValues',
                 'options': {'fields': ['machine_id', 'session_id', 'cycle_num'], 'keepFields': False,
                             'naming': {'asLabels': True}}
-            }
+            },
+            # Keep separate frames for reused cycle IDs. Grafana 12 XY reattaches
+            # labels to display-name overrides, so use the number as the actual
+            # Y field name. Copy X without labels before promoting the Y label.
+            {
+                'id': 'calculateField',
+                'options': {'mode': 'reduceRow', 'reduce': {'include': ['t_ms'], 'reducer': 'sum'},
+                            'alias': 'time_ms', 'timeSeries': False, 'replaceFields': False}
+            },
+            {'id': 'filterFieldsByName', 'options': {'include': {'names': [field, 'time_ms']}}},
+            {'id': 'labelsToFields', 'options': {'mode': 'columns', 'keepLabels': ['cycle_num'],
+                                                'valueLabel': 'cycle_num'}}
         ],
         'type': 'xychart'
     }
@@ -224,16 +229,13 @@ def main():
     fields_sql = ', '.join(f'"CH{ch}_{type_by_ch[ch]}"' for ch in export_chs)
     panels.append(export_row(datasource, len(panel_chs) + 1,
                              ((len(panel_chs) + 1) // 2) * 8, fields_sql))
-    panels.append(metadata_panel(len(panel_chs) + 3, ((len(panel_chs) + 1) // 2) * 8 + 2))
     dash['panels'] = panels
 
-    machine_id = str(cfg.get('machine_id', '55t'))
-    dash['templating'] = {'list': variables(machine_id)}
+    dash['templating'] = {'list': variables()}
     dash['refresh'] = '5s'
-    dash['timepicker'] = {'hidden': False}
-    dash['description'] = ('Select cycles in PostgreSQL, then read their exact identity/time ranges from InfluxDB. '
-                           'Time range applies to observed cycle start. Blank numeric filters include unknown values. '
-                           'Refresh cycle variables after changing metadata; verify automatic refresh on the deployed Grafana version.')
+    dash['timepicker'] = {'hidden': True}
+    dash['time'] = {'from': 'now-5y', 'to': 'now'}
+    dash['description'] = 'Latest recorded cycles from both machines, overlaid by cycle number. Choose how many to display (1-100 total).'
 
     DASHBOARD_FILE.write_text(json.dumps(dash, indent=2, ensure_ascii=False) + '\n',
                               encoding='utf-8')
@@ -242,7 +244,7 @@ def main():
     print('  panels : ' + ', '.join(
         f'{sensor_label(type_by_ch[ch])} (CH{ch})' for ch in panel_chs))
     print(f'  export : {len(export_chs)} channels')
-    print(f'  machine: {machine_id}')
+    print('  machines: 55t and 160t combined')
     print('Re-import the file in Grafana (Dashboards -> Import) to apply; the '
           'uid is unchanged so it updates the existing dashboard.')
 

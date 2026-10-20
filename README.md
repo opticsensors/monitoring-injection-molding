@@ -66,86 +66,43 @@ UPDATE demo and software (leave that as a reminder for me)
 <img src="./figures/integration.jpg" alt="Circuit schematic" width="100%"/>
 
 
+- **Run setup:** enter machine/material/settings and apply with the check mark.
+- **Cycle history:** edit weight and spiral length; load saved metadata to reopen earlier sessions.
+- **Save:** writes waveform `.csv`, cycle summary `.cycles.csv`, and `.metadata.json`. Keep them together; save again after edits.
+
 # IoT
 
-The compact settings row below the toolbar accepts a machine ID, material/grade,
-mold-temperature setpoint (°C), and limit-pressure setting (bar). Blank values
-mean unknown. Use the **check mark** to apply edits to subsequent cycles;
-each cycle keeps the values present at its
-start. Change the machine only while stopped. These reusable operator settings
-are remembered in ignored `data/run_setup.json`; DAQ sampling settings remain
-unchanged.
+Deploy/update the server from **PowerShell in this repository**:
 
-The **history icon** beside Save and Send opens **Cycle history**, listing
-recordings across sessions in this app run. Select
-the intended machine/session/cycle and enter one part's weight (g) and spiral
-length (mm). Corrections and clearing a value are supported. With MQTT enabled,
-measurement edits are queued separately from waveforms; **Send** in the history window
-is an explicit manual send when automatic MQTT is off. Load a saved metadata
-file with **Load…** to edit earlier sessions after restarting the application.
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy.ps1
+```
 
-**Save** writes three files together in the selected folder:
-
-- `recording.csv`: sensor readings, with columns `session_id, cycle_id,
-  session_cycle, timestamp_ns, time_s, CH<n>_<type>, ...` in that order.
-- `recording.cycles.csv`: one row per cycle with machine ID, session/cycle IDs,
-  material, mold setpoint, pressure settings, latest weight/spiral length,
-  acquisition mode/status/reason, sample count, exact time bounds and measurement
-  revision. Unknown values are blank; real zero measurements remain zero.
-- `recording.metadata.json`: full captured configuration, calibration, channel
-  units and measurements, retained for the history window's **Load…** action.
-
-Keep the files together. Join the CSVs on `session_id` and `cycle_id`; the cycle
-summary supplies `machine_id` for the server's full identity. Machine ID and
-sample index are not repeated in the waveform CSV. Use the waveform CSV with
-`scripts/plot_csv_raw.py`. Save again after editing measurements to update the
-exported companions; earlier exports do not update automatically.
-
-Recordings and unsaved measurements remain in memory; no automatic recording
-archive or recovery journal has been added. Interrupted cycles retain their
-identity and are labeled separately from completed cycles. Save/Next wait for
-final worker data; the monitoring-duration limit uses total session elapsed time.
-
-The cloud path is **MQTT ? Node-RED ? InfluxDB waveforms + PostgreSQL metadata ?
-Grafana**. One version-1 capture envelope carries cycle identity/settings once
-and the waveform samples separately. Influx retains `machine_id`/`session_id`
-tags and the numeric `cycle_num` field. PostgreSQL stores one metadata row per
-`(machine_id, session_id, cycle_id)`. Weight/length edits use independent,
-revisioned messages. Old queued record arrays remain supported by the new flow.
-
-Failed MQTT publishes continue to use `data/pending/` and retry on reconnection.
-Broker acknowledgement is not database confirmation; the GUI labels queued
-messages as unconfirmed. There is no new end-to-end delivery guarantee.
-
-**Deploy the server changes before using cloud upload from this version.** Follow
-[iot/SERVER_SETUP.md](iot/SERVER_SETUP.md) for backups, schema, complete Node-RED
-flow import, historical catalog backfill, Grafana configuration and rollback.
-No waveform migration or Influx field rename is required.
+Includes Node-RED and Grafana setup. [Server guide and troubleshooting](iot/SERVER_SETUP.md).
 
 Connect to the server:
 
 ```shell
-ssh 'eduard.almar@local.eurecat.org'@172.20.48.28
+ssh -l 'eduard.almar@local.eurecat.org' 172.20.48.28
 ```
 
-Query the database (from the local machine, over ssh):
+| Service | URL |
+|---------|-----|
+| Grafana | http://172.20.48.28:3000/ |
+| Node-RED | http://172.20.48.28:1880/ |
+
+Grafana shows the latest cycles from **55t and 160t combined** (max 100).
+For dashboard-only updates, import [iot/grafana_dashboard.json](iot/grafana_dashboard.json) into the existing dashboard.
+
+Query/export InfluxDB waveforms from a local **WSL/Linux terminal**:
 
 ```shell
-# print only the last 5 rows
-ssh 'eduard.almar@local.eurecat.org'@172.20.48.28 \
-"docker exec influxdb influx -database sensor_data -execute 'SELECT * FROM sensor_data ORDER BY time DESC LIMIT 5'"
+# Last 5 rows
+ssh -l 'eduard.almar@local.eurecat.org' 172.20.48.28 "docker exec influxdb influx -database sensor_data -execute 'SELECT * FROM sensor_data ORDER BY time DESC LIMIT 5'"
 
-# delete
-ssh 'eduard.almar@local.eurecat.org'@172.20.48.28 "docker exec influxdb influx -database sensor_data -execute 'DELETE FROM sensor_data'"
-
-# download
-ssh 'eduard.almar@local.eurecat.org'@172.20.48.28 "docker exec influxdb influx -database sensor_data -execute 'SELECT * FROM sensor_data' -format csv" > /mnt/c/Users/eduard.almar/Downloads/sensor_data_dump.csv
+# Download CSV
+ssh -l 'eduard.almar@local.eurecat.org' 172.20.48.28 "docker exec influxdb influx -database sensor_data -execute 'SELECT * FROM sensor_data' -format csv" > /mnt/c/Users/eduard.almar/Downloads/sensor_data_dump.csv
 ```
-
-| Service | URL | How to load the code in `/iot` |
-|---------|-----|--------------------------------|
-| Grafana | http://172.20.48.28:3000/ | Edit > Settings > JSON model, and paste `grafana_dashboard.json` |
-| Node-RED | http://172.20.48.28:1880/ | Import the complete `nodered_flows.json`; configure PostgreSQL and HTTP writer credentials as described in `SERVER_SETUP.md` |
 
 
 # Installation Manual

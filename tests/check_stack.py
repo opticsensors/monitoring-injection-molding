@@ -1,0 +1,151 @@
+"""Exercise ONLY the isolated Compose project, never the production containers.
+
+Requires a running iot/validation/compose.yaml stack, stdlib only. Creates test
+captures and stops/restarts that project's PostgreSQL, InfluxDB and Node-RED.
+Keeps test data for inspection. Grafana browser checks remain in SERVER_SETUP.md.
+"""
+import argparse
+import base64
+import json
+from pathlib import Path
+import subprocess
+import sys
+import time
+from uuid import uuid4
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from scripts.diagnose_influxdb import response_rows
+from scripts.deploy_server import API, POSTGRES_CONNECTION_CHECK, configure_postgres_datasource
+
+COMPOSE = ['docker', 'compose', '-p', 'monitoring-metadata-test', '-f',
+           str(ROOT / 'iot/validation/compose.yaml')]
+
+
+def command(*args, data=None):
+    return subprocess.run([*COMPOSE, *args], input=data, text=True,
+                          capture_output=True, check=True).stdout.strip()
+
+
+def sql(query):
+    return command('exec', '-T', 'postgres', 'psql', '-X', '-A', '-t', '-v',
+                   'ON_ERROR_STOP=1', '-U', 'postuser', '-d', 'injection_monitoring', '-c', query)
+
+
+def influx(query):
+    document = json.loads(command('exec', '-T', 'influxdb', 'influx', '-database',
+                                  'sensor_data', '-format', 'json', '-execute', query))
+    return list(response_rows(document))
+
+
+def wait_for(check, label, timeout=180):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            if check():
+                print('PASS:', label, flush=True)
+                return
+        except (subprocess.CalledProcessError, ValueError, KeyError):
+            pass
+        time.sleep(2)
+    raise AssertionError('Timed out: ' + label)
+
+
+def publish(message):
+    command('exec', '-T', 'mosquitto', 'mosquitto_pub', '-h', 'localhost', '-q', '1',
+            '-t', 'validation/sensors', '-s', data=json.dumps(message))
+
+
+def queue_empty():
+    return command('exec', '-T', 'nodered', 'node', '/opt/capture_queue.cjs', 'status') == '[]'
+
+
+def capture(session, cycle, base, count, machine='55t'):
+    samples = [dict(timestamp_ns=str(base+i*1000000), time_s=i/1000,
+                    sample_index=i, CH0_T_futaba=35+i/7) for i in range(count)]
+    return dict(schema_version=1, kind='capture',
+        capture=dict(machine_id=machine, session_id=session, cycle_id=cycle, session_cycle=cycle,
+            mode='cycle', status='complete', reason='test', sample_count=count,
+            base_time_ns=str(base), first_time_ns=samples[0]['timestamp_ns'],
+            last_time_ns=samples[-1]['timestamp_ns'], trigger_start_ns=str(base),
+            trigger_end_ns=str(base+count*1000000), material='test', mold_temperature_c=None,
+            pressure_settings_bar={'limit': None}, config_snapshot={'field_names': ['CH0_T_futaba']}),
+        measurements=dict(revision=0, update_id=uuid4().hex, weight_g=None, length_mm=None), samples=samples)
+
+
+def check_grafana_updates():
+    # The Compose project exposes only its test Grafana on this loopback port.
+    # Use a separate, unprovisioned datasource so the real update API is tested.
+    api = API('http://127.0.0.1:13000')
+    api.headers['Authorization'] = 'Basic ' + base64.b64encode(b'validation:test-only-grafana').decode()
+    api.read('/api/health', timeout=90)
+    uid = 'validation-installer-postgres'
+    path = '/api/datasources/uid/' + uid
+    versions = []
+    for _ in range(3):
+        configure_postgres_datasource(api, 'test-only-reader', uid, 'Validation installer PostgreSQL')
+        versions.append(api.read(path)['version'])
+    assert versions[1:] == [versions[0] + 1, versions[0] + 2], versions
+    assert api.read(path + '/health')['status'] == 'OK'
+    print('PASS: repeated installer datasource updates use real Grafana versions', flush=True)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--samples', type=int, default=12001)
+    args = parser.parse_args()
+    if not 10001 <= args.samples <= 200000:
+        parser.error('--samples must be 10001..200000 to exercise chunking')
+    session = 'validation_' + uuid4().hex
+    base = time.time_ns() - 600_000_000_000
+    # Both machine IDs, ONLY inside the isolated Compose project.
+    messages = [capture(session, n, base+(n-1)*250_000_000_000, args.samples, machine)
+                for n, machine in enumerate(('55t', '160t'), 1)]
+    where = f"machine_id IN ('55t', '160t') AND session_id='{session}'"
+    stored = lambda n: sql(f"SELECT count(*) FROM monitoring.cycles WHERE {where} AND waveform_status='stored'") == str(n)
+    wait_for(lambda: sql('SELECT max(version) FROM monitoring.schema_migrations') == '2', 'schema ready')
+    # Retained test volumes may predate this release. Reapply the additive migration
+    # to the isolated database so this test always exercises the shipped functions.
+    command('exec', '-T', 'postgres', 'psql', '-X', '-v', 'ON_ERROR_STOP=1', '-U', 'postuser',
+            '-d', 'injection_monitoring', data=(ROOT / 'iot/postgres/002_ingestion_recovery.sql').read_text(encoding='utf-8'))
+    # MQTT subscription must exist before the first test publication.
+    wait_for(lambda: 'Connected to broker' in command('logs', '--tail', '200', 'nodered'), 'MQTT subscriber connected')
+    command('exec', '-T', 'nodered', 'node', '-e', POSTGRES_CONNECTION_CHECK,
+            '/data', '/usr/src/node-red', data=json.dumps('test-only-ingest'))
+    print('PASS: installer PostgreSQL probe using the real Node-RED connector', flush=True)
+    check_grafana_updates()
+    for message in messages:
+        publish(message)
+    wait_for(lambda: stored(2), 'two multi-chunk captures stored')
+    wait_for(queue_empty, 'initial captures drained')
+    predicate = sql("SELECT '(time >= '||min(first_time_ns)::text||' AND time <= '||max(last_time_ns)::text||"
+        "' AND ('||string_agg(influx_predicate,' OR ')||'))' FROM monitoring.cycle_catalog WHERE " + where)
+    result = influx('SELECT count("t_ms") FROM "autogen"."sensor_data" WHERE ' + predicate)
+    assert len(result) == 1 and result[0]['count'] == args.samples*2, result
+    print('PASS: real Influx multi-cycle query returns every sample from both machines', flush=True)
+    receipt = sql(f"SELECT waveform_stored_at::text FROM monitoring.cycles WHERE {where} AND cycle_id=1")
+    publish(messages[0])
+    wait_for(lambda: sql(f"SELECT waveform_stored_at::text FROM monitoring.cycles WHERE {where} AND cycle_id=1") != receipt,
+             'duplicate replay acknowledged by database')
+    wait_for(queue_empty, 'duplicate replay drained')
+    assert influx('SELECT count("t_ms") FROM "autogen"."sensor_data" WHERE ' + predicate)[0]['count'] == args.samples*2
+    for service in ('postgres', 'influxdb'):
+        print('Testing isolated outage:', service, flush=True)
+        message = capture(session+'_'+service, 1, base, 10001)
+        command('stop', service)
+        try:
+            publish(message)
+            wait_for(lambda: any(s.get('lastError') for s in json.loads(command('exec','-T','nodered','node',
+                     '/opt/capture_queue.cjs','status'))), 'failed work remains on disk')
+            command('restart', 'nodered')
+        finally:
+            command('start', service)
+        wait_for(lambda: sql("SELECT waveform_status FROM monitoring.cycles WHERE session_id='"+
+                 message['capture']['session_id']+"'") == 'stored', service+' outage and Node-RED restart recovered')
+        wait_for(queue_empty, service+' recovery drained')
+    print('PASS: isolated real Node-RED/PostgreSQL/Influx/MQTT integration. Test session:',session)
+    print('Now check Grafana at localhost:13000: latest cycle count, numeric legends and automatic refresh.')
+
+
+if __name__ == '__main__':
+    main()

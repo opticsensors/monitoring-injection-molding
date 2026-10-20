@@ -4,9 +4,14 @@ if (!msg.payload || !msg.payload[0] || !msg.payload[0].fingerprint) {
     return null;
 }
 msg.fingerprint = msg.payload[0].fingerprint;
-msg.payload = msg.lineProtocol;
-delete msg.lineProtocol;
+const store = global.get('captureQueue');
+if (msg.queueId) store.queue().renew(msg);
+msg.writeChunks = store.splitLines(msg.lineProtocol);
+msg.chunkIndex = 0;
+msg.payload = msg.writeChunks[0];
+// Preserve lineProtocol for diagnostics; disk queue holds the original envelope.
 delete msg.query;
 delete msg.params;
 msg.headers = {"Content-Type": "text/plain; charset=utf-8"};
+msg.requestTimeout = 30000;
 return msg;

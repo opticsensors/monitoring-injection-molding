@@ -1,5 +1,4 @@
-// Outputs: register capture (PostgreSQL), measurements (PostgreSQL), legacy Influx batch.
-const data = msg.payload;
+// Outputs: register capture (PostgreSQL), measurements (PostgreSQL).
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const finite = value => typeof value === "number" && Number.isFinite(value);
 const optional = (value, minimum) => value === null || (finite(value) && value >= minimum);
@@ -18,29 +17,17 @@ function measurements(m) {
     assert(optional(m.weight_g, 0) && optional(m.length_mm, 0), "Invalid part measurements");
 }
 try {
+    const data = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;
     if (Array.isArray(data)) {
-        // Old pending arrays retain the original Influx writer and numeric timestamp path.
-        assert(data.length > 0, "Empty legacy batch");
-        const meta = new Set(["timestamp_ns", "time_s", "machine_id", "session_id", "cycle_id"]);
-        const t0 = data[0].timestamp_ns;
-        msg.payload = data.map(r => {
-            const fields = {t_ms: typeof r.time_s === "number" ? r.time_s * 1000 : (r.timestamp_ns-t0)/1e6,
-                            cycle_num: Number(r.cycle_id)};
-            for (const key of Object.keys(r)) {
-                if (!meta.has(key) && Number.isFinite(Number(r[key]))) fields[key] = Number(r[key]);
-            }
-            return {measurement: "sensor_data", tags: {machine_id: String(r.machine_id),
-                session_id: String(r.session_id || "")}, fields, timestamp: r.timestamp_ns};
-        });
-        return [null, null, msg];
+        throw new Error('Legacy upload retained for reconciliation; drain old desktop spool before cutover');
     }
     assert(data && data.schema_version === 1, "Unsupported metadata schema");
     measurements(data.measurements);
     if (data.kind === "measurements") {
         assert(text(data.machine_id, 128) && text(data.session_id, 200) && integer(data.cycle_id), "Invalid cycle identity");
-        msg.query = "SELECT monitoring.apply_measurements($1, $2, $3::bigint, $4::jsonb) AS applied";
+        msg.query = "SELECT monitoring.receive_measurements($1, $2, $3::bigint, $4::jsonb) AS result";
         msg.params = [data.machine_id, data.session_id, data.cycle_id, JSON.stringify(data.measurements)];
-        return [null, msg, null];
+        return [null, msg];
     }
     assert(data.kind === "capture", "Unknown message kind");
     const c = data.capture;
@@ -89,8 +76,9 @@ try {
     msg.query = "SELECT monitoring.register_capture($1::jsonb, md5($2::text), $3::jsonb) AS fingerprint";
     msg.params = [JSON.stringify(c), msg.lineProtocol, JSON.stringify(data.measurements)];
     delete msg.payload;
-    return [msg, null, null];
+    return [msg, null];
 } catch (error) {
+    msg.ingestPermanent = true;
     node.error(error.message, msg);
     return null;
 }

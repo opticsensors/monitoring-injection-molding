@@ -164,19 +164,35 @@ class ColumnStats:
 
 def response_rows(document):
     """Fail on errors even if a CLI returns exit code zero; accept chunk markers."""
-    if not isinstance(document, dict) or 'results' not in document:
+    if not isinstance(document, dict):
         raise RuntimeError('Unexpected Influx JSON response (expected results array).')
     if document.get('error'):
         raise RuntimeError(str(document['error']))
+    if not isinstance(document.get('results'), list):
+        raise RuntimeError('Unexpected Influx JSON response (expected results array).')
     for result in document['results']:
+        if not isinstance(result, dict):
+            raise RuntimeError('Malformed Influx statement result (expected an object).')
         if result.get('error'):
             raise RuntimeError(str(result['error']))
-        for series in result.get('series', []):
+        series_list = result.get('series', [])
+        if not isinstance(series_list, list):
+            raise RuntimeError('Malformed Influx series (expected an array).')
+        for series in series_list:
+            if not isinstance(series, dict):
+                raise RuntimeError('Malformed Influx series (expected an object).')
             columns = series.get('columns', [])
+            if not isinstance(columns, list) or any(not isinstance(c, str) for c in columns):
+                raise RuntimeError('Malformed Influx columns (expected an array of names).')
             if len(set(columns)) != len(columns):
                 raise RuntimeError('Duplicate result column names; cannot analyze without ambiguity.')
-            for values in series.get('values') or []:
-                if len(columns) != len(values):
+            rows = series.get('values', [])
+            if rows is None:
+                rows = []
+            if not isinstance(rows, list) or not isinstance(series.get('tags', {}), dict):
+                raise RuntimeError('Malformed Influx rows or tags.')
+            for values in rows:
+                if not isinstance(values, list) or len(columns) != len(values):
                     raise RuntimeError('Malformed result row: column/value counts differ.')
                 row = dict(series.get('tags', {}))
                 row.update(zip(columns, values))

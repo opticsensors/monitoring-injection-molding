@@ -35,7 +35,7 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "T_futaba [°C]",
             "axisPlacement": "auto",
             "fillOpacity": 0,
             "hideFrom": {
@@ -71,25 +71,13 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "/^t_ms.*/"
+              "id": "byName",
+              "options": "time_ms"
             },
             "properties": [
               {
                 "id": "custom.axisLabel",
                 "value": "t [ms]"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/^CH0_T_futaba.*/"
-            },
-            "properties": [
-              {
-                "id": "custom.axisLabel",
-                "value": "T_futaba [°C]"
               }
             ]
           }
@@ -116,20 +104,17 @@
             "x": {
               "matcher": {
                 "id": "byName",
-                "options": "t_ms"
+                "options": "time_ms"
               }
             },
-            "y": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "CH0_T_futaba"
-                }
+            "y": {
+              "matcher": {
+                "id": "byType",
+                "options": "number"
               }
-            ]
+            }
           }
         ],
-        "seriesMapping": "manual",
         "tooltip": {
           "hideZeros": false,
           "mode": "single",
@@ -165,6 +150,42 @@
               "asLabels": true
             }
           }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "include": [
+                "t_ms"
+              ],
+              "reducer": "sum"
+            },
+            "alias": "time_ms",
+            "timeSeries": false,
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "CH0_T_futaba",
+                "time_ms"
+              ]
+            }
+          }
+        },
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns",
+            "keepLabels": [
+              "cycle_num"
+            ],
+            "valueLabel": "cycle_num"
+          }
         }
       ],
       "type": "xychart"
@@ -183,7 +204,7 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "T_futaba [°C]",
             "axisPlacement": "auto",
             "fillOpacity": 0,
             "hideFrom": {
@@ -219,25 +240,13 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "/^t_ms.*/"
+              "id": "byName",
+              "options": "time_ms"
             },
             "properties": [
               {
                 "id": "custom.axisLabel",
                 "value": "t [ms]"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/^CH1_T_futaba.*/"
-            },
-            "properties": [
-              {
-                "id": "custom.axisLabel",
-                "value": "T_futaba [°C]"
               }
             ]
           }
@@ -264,20 +273,17 @@
             "x": {
               "matcher": {
                 "id": "byName",
-                "options": "t_ms"
+                "options": "time_ms"
               }
             },
-            "y": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "CH1_T_futaba"
-                }
+            "y": {
+              "matcher": {
+                "id": "byType",
+                "options": "number"
               }
-            ]
+            }
           }
         ],
-        "seriesMapping": "manual",
         "tooltip": {
           "hideZeros": false,
           "mode": "single",
@@ -313,6 +319,42 @@
               "asLabels": true
             }
           }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "include": [
+                "t_ms"
+              ],
+              "reducer": "sum"
+            },
+            "alias": "time_ms",
+            "timeSeries": false,
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "CH1_T_futaba",
+                "time_ms"
+              ]
+            }
+          }
+        },
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns",
+            "keepLabels": [
+              "cycle_num"
+            ],
+            "valueLabel": "cycle_num"
+          }
         }
       ],
       "type": "xychart"
@@ -331,7 +373,7 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "P_kistler [bar]",
             "axisPlacement": "auto",
             "fillOpacity": 0,
             "hideFrom": {
@@ -367,25 +409,13 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "/^t_ms.*/"
+              "id": "byName",
+              "options": "time_ms"
             },
             "properties": [
               {
                 "id": "custom.axisLabel",
                 "value": "t [ms]"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/^CH2_P_kistler.*/"
-            },
-            "properties": [
-              {
-                "id": "custom.axisLabel",
-                "value": "P_kistler [bar]"
               }
             ]
           }
@@ -412,20 +442,17 @@
             "x": {
               "matcher": {
                 "id": "byName",
-                "options": "t_ms"
+                "options": "time_ms"
               }
             },
-            "y": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "CH2_P_kistler"
-                }
+            "y": {
+              "matcher": {
+                "id": "byType",
+                "options": "number"
               }
-            ]
+            }
           }
         ],
-        "seriesMapping": "manual",
         "tooltip": {
           "hideZeros": false,
           "mode": "single",
@@ -461,6 +488,42 @@
               "asLabels": true
             }
           }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "include": [
+                "t_ms"
+              ],
+              "reducer": "sum"
+            },
+            "alias": "time_ms",
+            "timeSeries": false,
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "CH2_P_kistler",
+                "time_ms"
+              ]
+            }
+          }
+        },
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns",
+            "keepLabels": [
+              "cycle_num"
+            ],
+            "valueLabel": "cycle_num"
+          }
         }
       ],
       "type": "xychart"
@@ -479,7 +542,7 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "P_kistler [bar]",
             "axisPlacement": "auto",
             "fillOpacity": 0,
             "hideFrom": {
@@ -515,25 +578,13 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "/^t_ms.*/"
+              "id": "byName",
+              "options": "time_ms"
             },
             "properties": [
               {
                 "id": "custom.axisLabel",
                 "value": "t [ms]"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/^CH3_P_kistler.*/"
-            },
-            "properties": [
-              {
-                "id": "custom.axisLabel",
-                "value": "P_kistler [bar]"
               }
             ]
           }
@@ -560,20 +611,17 @@
             "x": {
               "matcher": {
                 "id": "byName",
-                "options": "t_ms"
+                "options": "time_ms"
               }
             },
-            "y": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "CH3_P_kistler"
-                }
+            "y": {
+              "matcher": {
+                "id": "byType",
+                "options": "number"
               }
-            ]
+            }
           }
         ],
-        "seriesMapping": "manual",
         "tooltip": {
           "hideZeros": false,
           "mode": "single",
@@ -609,6 +657,42 @@
               "asLabels": true
             }
           }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "include": [
+                "t_ms"
+              ],
+              "reducer": "sum"
+            },
+            "alias": "time_ms",
+            "timeSeries": false,
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "CH3_P_kistler",
+                "time_ms"
+              ]
+            }
+          }
+        },
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns",
+            "keepLabels": [
+              "cycle_num"
+            ],
+            "valueLabel": "cycle_num"
+          }
         }
       ],
       "type": "xychart"
@@ -627,7 +711,7 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "P_machine [bar]",
             "axisPlacement": "auto",
             "fillOpacity": 0,
             "hideFrom": {
@@ -663,25 +747,13 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "/^t_ms.*/"
+              "id": "byName",
+              "options": "time_ms"
             },
             "properties": [
               {
                 "id": "custom.axisLabel",
                 "value": "t [ms]"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/^CH5_P_machine.*/"
-            },
-            "properties": [
-              {
-                "id": "custom.axisLabel",
-                "value": "P_machine [bar]"
               }
             ]
           }
@@ -708,20 +780,17 @@
             "x": {
               "matcher": {
                 "id": "byName",
-                "options": "t_ms"
+                "options": "time_ms"
               }
             },
-            "y": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "CH5_P_machine"
-                }
+            "y": {
+              "matcher": {
+                "id": "byType",
+                "options": "number"
               }
-            ]
+            }
           }
         ],
-        "seriesMapping": "manual",
         "tooltip": {
           "hideZeros": false,
           "mode": "single",
@@ -757,6 +826,42 @@
               "asLabels": true
             }
           }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "include": [
+                "t_ms"
+              ],
+              "reducer": "sum"
+            },
+            "alias": "time_ms",
+            "timeSeries": false,
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "CH5_P_machine",
+                "time_ms"
+              ]
+            }
+          }
+        },
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns",
+            "keepLabels": [
+              "cycle_num"
+            ],
+            "valueLabel": "cycle_num"
+          }
         }
       ],
       "type": "xychart"
@@ -775,7 +880,7 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "vel_screw [cm³/s]",
             "axisPlacement": "auto",
             "fillOpacity": 0,
             "hideFrom": {
@@ -811,25 +916,13 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "/^t_ms.*/"
+              "id": "byName",
+              "options": "time_ms"
             },
             "properties": [
               {
                 "id": "custom.axisLabel",
                 "value": "t [ms]"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/^CH6_vel_screw.*/"
-            },
-            "properties": [
-              {
-                "id": "custom.axisLabel",
-                "value": "vel_screw [cm³/s]"
               }
             ]
           }
@@ -856,20 +949,17 @@
             "x": {
               "matcher": {
                 "id": "byName",
-                "options": "t_ms"
+                "options": "time_ms"
               }
             },
-            "y": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "CH6_vel_screw"
-                }
+            "y": {
+              "matcher": {
+                "id": "byType",
+                "options": "number"
               }
-            ]
+            }
           }
         ],
-        "seriesMapping": "manual",
         "tooltip": {
           "hideZeros": false,
           "mode": "single",
@@ -905,6 +995,42 @@
               "asLabels": true
             }
           }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "include": [
+                "t_ms"
+              ],
+              "reducer": "sum"
+            },
+            "alias": "time_ms",
+            "timeSeries": false,
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "CH6_vel_screw",
+                "time_ms"
+              ]
+            }
+          }
+        },
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns",
+            "keepLabels": [
+              "cycle_num"
+            ],
+            "valueLabel": "cycle_num"
+          }
         }
       ],
       "type": "xychart"
@@ -923,7 +1049,7 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "pos_screw [mm]",
             "axisPlacement": "auto",
             "fillOpacity": 0,
             "hideFrom": {
@@ -959,25 +1085,13 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "/^t_ms.*/"
+              "id": "byName",
+              "options": "time_ms"
             },
             "properties": [
               {
                 "id": "custom.axisLabel",
                 "value": "t [ms]"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/^CH7_pos_screw.*/"
-            },
-            "properties": [
-              {
-                "id": "custom.axisLabel",
-                "value": "pos_screw [mm]"
               }
             ]
           }
@@ -1004,20 +1118,17 @@
             "x": {
               "matcher": {
                 "id": "byName",
-                "options": "t_ms"
+                "options": "time_ms"
               }
             },
-            "y": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "CH7_pos_screw"
-                }
+            "y": {
+              "matcher": {
+                "id": "byType",
+                "options": "number"
               }
-            ]
+            }
           }
         ],
-        "seriesMapping": "manual",
         "tooltip": {
           "hideZeros": false,
           "mode": "single",
@@ -1052,6 +1163,42 @@
             "naming": {
               "asLabels": true
             }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "include": [
+                "t_ms"
+              ],
+              "reducer": "sum"
+            },
+            "alias": "time_ms",
+            "timeSeries": false,
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "CH7_pos_screw",
+                "time_ms"
+              ]
+            }
+          }
+        },
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns",
+            "keepLabels": [
+              "cycle_num"
+            ],
+            "valueLabel": "cycle_num"
           }
         }
       ],
@@ -1136,45 +1283,6 @@
       ],
       "title": "Export",
       "type": "row"
-    },
-    {
-      "id": 10,
-      "type": "table",
-      "title": "Selected cycles and part measurements",
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cycle-metadata"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 34
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "filterable": true
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "showHeader": true
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cycle-metadata"
-          },
-          "format": "table",
-          "editorMode": "code",
-          "rawQuery": true,
-          "rawSql": "SELECT observed_start, machine_id, session_id, cycle_id, session_cycle, material, mold_temperature_c, pressure_limit_bar, weight_g, length_mm, acquisition_status, sample_count FROM (SELECT * FROM monitoring.cycle_catalog WHERE waveform_status IN ('stored', 'legacy') AND $__timeFilter(observed_start) AND ('__all' = ANY(ARRAY[${machine_id:sqlstring}]::text[]) OR machine_id = ANY(ARRAY[${machine_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${session_id:sqlstring}]::text[]) OR session_id = ANY(ARRAY[${session_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${material:sqlstring}]::text[]) OR COALESCE(md5(material), '__unknown') = ANY(ARRAY[${material:sqlstring}]::text[])) AND mode = ${capture_mode:sqlstring} AND acquisition_status = ANY(ARRAY[${outcome:sqlstring}]::text[]) AND (NULLIF(${weight_min:sqlstring}, '')::double precision IS NULL OR weight_g >= NULLIF(${weight_min:sqlstring}, '')::double precision) AND (NULLIF(${weight_max:sqlstring}, '')::double precision IS NULL OR weight_g <= NULLIF(${weight_max:sqlstring}, '')::double precision) AND (NULLIF(${mold_min:sqlstring}, '')::double precision IS NULL OR mold_temperature_c >= NULLIF(${mold_min:sqlstring}, '')::double precision) AND (NULLIF(${mold_max:sqlstring}, '')::double precision IS NULL OR mold_temperature_c <= NULLIF(${mold_max:sqlstring}, '')::double precision) AND (NULLIF(${pressure_min:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar >= NULLIF(${pressure_min:sqlstring}, '')::double precision) AND (NULLIF(${pressure_max:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar <= NULLIF(${pressure_max:sqlstring}, '')::double precision) AND (NULLIF(${length_min:sqlstring}, '')::double precision IS NULL OR length_mm >= NULLIF(${length_min:sqlstring}, '')::double precision) AND (NULLIF(${length_max:sqlstring}, '')::double precision IS NULL OR length_mm <= NULLIF(${length_max:sqlstring}, '')::double precision) ORDER BY first_time_ns DESC, machine_id, session_id, cycle_id LIMIT LEAST(100, GREATEST(1, ${n_cycles:sqlstring}::integer))) AS recent WHERE ('__all' = ANY(ARRAY[${cycle:sqlstring}]::text[]) OR cycle_key = ANY(ARRAY[${cycle:sqlstring}]::text[]))"
-        }
-      ]
     }
   ],
   "preload": false,
@@ -1183,128 +1291,6 @@
   "tags": [],
   "templating": {
     "list": [
-      {
-        "name": "machine_id",
-        "label": "Machine",
-        "type": "query",
-        "datasource": {
-          "type": "grafana-postgresql-datasource",
-          "uid": "cycle-metadata"
-        },
-        "query": "SELECT DISTINCT machine_id AS __text, machine_id AS __value FROM monitoring.cycle_catalog ORDER BY 1",
-        "definition": "SELECT DISTINCT machine_id AS __text, machine_id AS __value FROM monitoring.cycle_catalog ORDER BY 1",
-        "refresh": 2,
-        "sort": 0,
-        "hide": 0,
-        "multi": true,
-        "includeAll": true,
-        "allValue": "__all",
-        "current": {
-          "text": "55t",
-          "value": "55t"
-        },
-        "options": []
-      },
-      {
-        "name": "session_id",
-        "label": "Session",
-        "type": "query",
-        "datasource": {
-          "type": "grafana-postgresql-datasource",
-          "uid": "cycle-metadata"
-        },
-        "query": "SELECT DISTINCT session_id AS __text, session_id AS __value FROM monitoring.cycle_catalog WHERE ('__all' = ANY(ARRAY[${machine_id:sqlstring}]::text[]) OR machine_id = ANY(ARRAY[${machine_id:sqlstring}]::text[])) ORDER BY 1 DESC",
-        "definition": "SELECT DISTINCT session_id AS __text, session_id AS __value FROM monitoring.cycle_catalog WHERE ('__all' = ANY(ARRAY[${machine_id:sqlstring}]::text[]) OR machine_id = ANY(ARRAY[${machine_id:sqlstring}]::text[])) ORDER BY 1 DESC",
-        "refresh": 2,
-        "sort": 0,
-        "hide": 0,
-        "multi": true,
-        "includeAll": true,
-        "allValue": "__all",
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "options": []
-      },
-      {
-        "name": "material",
-        "label": "Material",
-        "type": "query",
-        "datasource": {
-          "type": "grafana-postgresql-datasource",
-          "uid": "cycle-metadata"
-        },
-        "query": "SELECT DISTINCT COALESCE(material, '(unknown)') AS __text, COALESCE(md5(material), '__unknown') AS __value FROM monitoring.cycle_catalog ORDER BY 1",
-        "definition": "SELECT DISTINCT COALESCE(material, '(unknown)') AS __text, COALESCE(md5(material), '__unknown') AS __value FROM monitoring.cycle_catalog ORDER BY 1",
-        "refresh": 2,
-        "sort": 0,
-        "hide": 0,
-        "multi": true,
-        "includeAll": true,
-        "allValue": "__all",
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "options": []
-      },
-      {
-        "name": "capture_mode",
-        "label": "Capture mode",
-        "type": "custom",
-        "query": "cycle,continuous",
-        "current": {
-          "text": "cycle",
-          "value": "cycle"
-        },
-        "options": [
-          {
-            "text": "cycle",
-            "value": "cycle",
-            "selected": true
-          },
-          {
-            "text": "continuous",
-            "value": "continuous",
-            "selected": false
-          }
-        ]
-      },
-      {
-        "name": "outcome",
-        "label": "Outcome",
-        "type": "custom",
-        "query": "complete,interrupted,legacy",
-        "multi": true,
-        "current": {
-          "text": [
-            "complete",
-            "legacy"
-          ],
-          "value": [
-            "complete",
-            "legacy"
-          ]
-        },
-        "options": [
-          {
-            "text": "complete",
-            "value": "complete",
-            "selected": true
-          },
-          {
-            "text": "interrupted",
-            "value": "interrupted",
-            "selected": false
-          },
-          {
-            "text": "legacy",
-            "value": "legacy",
-            "selected": true
-          }
-        ]
-      },
       {
         "name": "n_cycles",
         "label": "Latest cycles (max 100)",
@@ -1317,131 +1303,20 @@
         "options": []
       },
       {
-        "name": "weight_min",
-        "label": "Weight g min",
-        "type": "textbox",
-        "query": "",
-        "current": {
-          "text": "",
-          "value": ""
-        },
-        "options": []
-      },
-      {
-        "name": "weight_max",
-        "label": "Weight g max",
-        "type": "textbox",
-        "query": "",
-        "current": {
-          "text": "",
-          "value": ""
-        },
-        "options": []
-      },
-      {
-        "name": "mold_min",
-        "label": "Mold °C min",
-        "type": "textbox",
-        "query": "",
-        "current": {
-          "text": "",
-          "value": ""
-        },
-        "options": []
-      },
-      {
-        "name": "mold_max",
-        "label": "Mold °C max",
-        "type": "textbox",
-        "query": "",
-        "current": {
-          "text": "",
-          "value": ""
-        },
-        "options": []
-      },
-      {
-        "name": "pressure_min",
-        "label": "Limit bar min",
-        "type": "textbox",
-        "query": "",
-        "current": {
-          "text": "",
-          "value": ""
-        },
-        "options": []
-      },
-      {
-        "name": "pressure_max",
-        "label": "Limit bar max",
-        "type": "textbox",
-        "query": "",
-        "current": {
-          "text": "",
-          "value": ""
-        },
-        "options": []
-      },
-      {
-        "name": "length_min",
-        "label": "Spiral mm min",
-        "type": "textbox",
-        "query": "",
-        "current": {
-          "text": "",
-          "value": ""
-        },
-        "options": []
-      },
-      {
-        "name": "length_max",
-        "label": "Spiral mm max",
-        "type": "textbox",
-        "query": "",
-        "current": {
-          "text": "",
-          "value": ""
-        },
-        "options": []
-      },
-      {
-        "name": "cycle",
-        "label": "Cycles",
-        "type": "query",
-        "datasource": {
-          "type": "grafana-postgresql-datasource",
-          "uid": "cycle-metadata"
-        },
-        "query": "SELECT cycle_label AS __text, cycle_key AS __value FROM (SELECT * FROM monitoring.cycle_catalog WHERE waveform_status IN ('stored', 'legacy') AND $__timeFilter(observed_start) AND ('__all' = ANY(ARRAY[${machine_id:sqlstring}]::text[]) OR machine_id = ANY(ARRAY[${machine_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${session_id:sqlstring}]::text[]) OR session_id = ANY(ARRAY[${session_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${material:sqlstring}]::text[]) OR COALESCE(md5(material), '__unknown') = ANY(ARRAY[${material:sqlstring}]::text[])) AND mode = ${capture_mode:sqlstring} AND acquisition_status = ANY(ARRAY[${outcome:sqlstring}]::text[]) AND (NULLIF(${weight_min:sqlstring}, '')::double precision IS NULL OR weight_g >= NULLIF(${weight_min:sqlstring}, '')::double precision) AND (NULLIF(${weight_max:sqlstring}, '')::double precision IS NULL OR weight_g <= NULLIF(${weight_max:sqlstring}, '')::double precision) AND (NULLIF(${mold_min:sqlstring}, '')::double precision IS NULL OR mold_temperature_c >= NULLIF(${mold_min:sqlstring}, '')::double precision) AND (NULLIF(${mold_max:sqlstring}, '')::double precision IS NULL OR mold_temperature_c <= NULLIF(${mold_max:sqlstring}, '')::double precision) AND (NULLIF(${pressure_min:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar >= NULLIF(${pressure_min:sqlstring}, '')::double precision) AND (NULLIF(${pressure_max:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar <= NULLIF(${pressure_max:sqlstring}, '')::double precision) AND (NULLIF(${length_min:sqlstring}, '')::double precision IS NULL OR length_mm >= NULLIF(${length_min:sqlstring}, '')::double precision) AND (NULLIF(${length_max:sqlstring}, '')::double precision IS NULL OR length_mm <= NULLIF(${length_max:sqlstring}, '')::double precision) ORDER BY first_time_ns DESC, machine_id, session_id, cycle_id LIMIT LEAST(100, GREATEST(1, ${n_cycles:sqlstring}::integer))) AS recent",
-        "definition": "SELECT cycle_label AS __text, cycle_key AS __value FROM (SELECT * FROM monitoring.cycle_catalog WHERE waveform_status IN ('stored', 'legacy') AND $__timeFilter(observed_start) AND ('__all' = ANY(ARRAY[${machine_id:sqlstring}]::text[]) OR machine_id = ANY(ARRAY[${machine_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${session_id:sqlstring}]::text[]) OR session_id = ANY(ARRAY[${session_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${material:sqlstring}]::text[]) OR COALESCE(md5(material), '__unknown') = ANY(ARRAY[${material:sqlstring}]::text[])) AND mode = ${capture_mode:sqlstring} AND acquisition_status = ANY(ARRAY[${outcome:sqlstring}]::text[]) AND (NULLIF(${weight_min:sqlstring}, '')::double precision IS NULL OR weight_g >= NULLIF(${weight_min:sqlstring}, '')::double precision) AND (NULLIF(${weight_max:sqlstring}, '')::double precision IS NULL OR weight_g <= NULLIF(${weight_max:sqlstring}, '')::double precision) AND (NULLIF(${mold_min:sqlstring}, '')::double precision IS NULL OR mold_temperature_c >= NULLIF(${mold_min:sqlstring}, '')::double precision) AND (NULLIF(${mold_max:sqlstring}, '')::double precision IS NULL OR mold_temperature_c <= NULLIF(${mold_max:sqlstring}, '')::double precision) AND (NULLIF(${pressure_min:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar >= NULLIF(${pressure_min:sqlstring}, '')::double precision) AND (NULLIF(${pressure_max:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar <= NULLIF(${pressure_max:sqlstring}, '')::double precision) AND (NULLIF(${length_min:sqlstring}, '')::double precision IS NULL OR length_mm >= NULLIF(${length_min:sqlstring}, '')::double precision) AND (NULLIF(${length_max:sqlstring}, '')::double precision IS NULL OR length_mm <= NULLIF(${length_max:sqlstring}, '')::double precision) ORDER BY first_time_ns DESC, machine_id, session_id, cycle_id LIMIT LEAST(100, GREATEST(1, ${n_cycles:sqlstring}::integer))) AS recent",
-        "refresh": 2,
-        "sort": 0,
-        "hide": 0,
-        "multi": true,
-        "includeAll": true,
-        "allValue": "__all",
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "options": []
-      },
-      {
         "name": "cycle_predicate",
-        "label": "Waveform bounds",
         "type": "query",
         "datasource": {
           "type": "grafana-postgresql-datasource",
           "uid": "cycle-metadata"
         },
-        "query": "SELECT COALESCE(string_agg(influx_predicate, ' OR ' ORDER BY first_time_ns), '(time < 0 AND time > 0)') AS __text FROM (SELECT * FROM monitoring.cycle_catalog WHERE waveform_status IN ('stored', 'legacy') AND $__timeFilter(observed_start) AND ('__all' = ANY(ARRAY[${machine_id:sqlstring}]::text[]) OR machine_id = ANY(ARRAY[${machine_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${session_id:sqlstring}]::text[]) OR session_id = ANY(ARRAY[${session_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${material:sqlstring}]::text[]) OR COALESCE(md5(material), '__unknown') = ANY(ARRAY[${material:sqlstring}]::text[])) AND mode = ${capture_mode:sqlstring} AND acquisition_status = ANY(ARRAY[${outcome:sqlstring}]::text[]) AND (NULLIF(${weight_min:sqlstring}, '')::double precision IS NULL OR weight_g >= NULLIF(${weight_min:sqlstring}, '')::double precision) AND (NULLIF(${weight_max:sqlstring}, '')::double precision IS NULL OR weight_g <= NULLIF(${weight_max:sqlstring}, '')::double precision) AND (NULLIF(${mold_min:sqlstring}, '')::double precision IS NULL OR mold_temperature_c >= NULLIF(${mold_min:sqlstring}, '')::double precision) AND (NULLIF(${mold_max:sqlstring}, '')::double precision IS NULL OR mold_temperature_c <= NULLIF(${mold_max:sqlstring}, '')::double precision) AND (NULLIF(${pressure_min:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar >= NULLIF(${pressure_min:sqlstring}, '')::double precision) AND (NULLIF(${pressure_max:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar <= NULLIF(${pressure_max:sqlstring}, '')::double precision) AND (NULLIF(${length_min:sqlstring}, '')::double precision IS NULL OR length_mm >= NULLIF(${length_min:sqlstring}, '')::double precision) AND (NULLIF(${length_max:sqlstring}, '')::double precision IS NULL OR length_mm <= NULLIF(${length_max:sqlstring}, '')::double precision) ORDER BY first_time_ns DESC, machine_id, session_id, cycle_id LIMIT LEAST(100, GREATEST(1, ${n_cycles:sqlstring}::integer))) AS recent WHERE ('__all' = ANY(ARRAY[${cycle:sqlstring}]::text[]) OR cycle_key = ANY(ARRAY[${cycle:sqlstring}]::text[]))",
-        "definition": "SELECT COALESCE(string_agg(influx_predicate, ' OR ' ORDER BY first_time_ns), '(time < 0 AND time > 0)') AS __text FROM (SELECT * FROM monitoring.cycle_catalog WHERE waveform_status IN ('stored', 'legacy') AND $__timeFilter(observed_start) AND ('__all' = ANY(ARRAY[${machine_id:sqlstring}]::text[]) OR machine_id = ANY(ARRAY[${machine_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${session_id:sqlstring}]::text[]) OR session_id = ANY(ARRAY[${session_id:sqlstring}]::text[])) AND ('__all' = ANY(ARRAY[${material:sqlstring}]::text[]) OR COALESCE(md5(material), '__unknown') = ANY(ARRAY[${material:sqlstring}]::text[])) AND mode = ${capture_mode:sqlstring} AND acquisition_status = ANY(ARRAY[${outcome:sqlstring}]::text[]) AND (NULLIF(${weight_min:sqlstring}, '')::double precision IS NULL OR weight_g >= NULLIF(${weight_min:sqlstring}, '')::double precision) AND (NULLIF(${weight_max:sqlstring}, '')::double precision IS NULL OR weight_g <= NULLIF(${weight_max:sqlstring}, '')::double precision) AND (NULLIF(${mold_min:sqlstring}, '')::double precision IS NULL OR mold_temperature_c >= NULLIF(${mold_min:sqlstring}, '')::double precision) AND (NULLIF(${mold_max:sqlstring}, '')::double precision IS NULL OR mold_temperature_c <= NULLIF(${mold_max:sqlstring}, '')::double precision) AND (NULLIF(${pressure_min:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar >= NULLIF(${pressure_min:sqlstring}, '')::double precision) AND (NULLIF(${pressure_max:sqlstring}, '')::double precision IS NULL OR pressure_limit_bar <= NULLIF(${pressure_max:sqlstring}, '')::double precision) AND (NULLIF(${length_min:sqlstring}, '')::double precision IS NULL OR length_mm >= NULLIF(${length_min:sqlstring}, '')::double precision) AND (NULLIF(${length_max:sqlstring}, '')::double precision IS NULL OR length_mm <= NULLIF(${length_max:sqlstring}, '')::double precision) ORDER BY first_time_ns DESC, machine_id, session_id, cycle_id LIMIT LEAST(100, GREATEST(1, ${n_cycles:sqlstring}::integer))) AS recent WHERE ('__all' = ANY(ARRAY[${cycle:sqlstring}]::text[]) OR cycle_key = ANY(ARRAY[${cycle:sqlstring}]::text[]))",
+        "query": "SELECT COALESCE('(time >= ' || min(first_time_ns)::text || ' AND time <= ' || max(last_time_ns)::text || ' AND (' || string_agg(influx_predicate, ' OR ' ORDER BY first_time_ns) || '))', '(time < 0 AND time > 0)') AS __text FROM (SELECT * FROM monitoring.cycle_catalog WHERE waveform_status IN ('stored', 'legacy') AND mode = 'cycle' AND machine_id IN ('55t', '160t') ORDER BY first_time_ns DESC, machine_id, session_id, cycle_id LIMIT CASE WHEN btrim(${n_cycles:sqlstring}) ~ '^[0-9]+$' THEN CASE WHEN length(btrim(${n_cycles:sqlstring})) > 9 THEN 100 ELSE LEAST(100, GREATEST(1, btrim(${n_cycles:sqlstring})::integer)) END ELSE 10 END) AS recent",
+        "definition": "SELECT COALESCE('(time >= ' || min(first_time_ns)::text || ' AND time <= ' || max(last_time_ns)::text || ' AND (' || string_agg(influx_predicate, ' OR ' ORDER BY first_time_ns) || '))', '(time < 0 AND time > 0)') AS __text FROM (SELECT * FROM monitoring.cycle_catalog WHERE waveform_status IN ('stored', 'legacy') AND mode = 'cycle' AND machine_id IN ('55t', '160t') ORDER BY first_time_ns DESC, machine_id, session_id, cycle_id LIMIT CASE WHEN btrim(${n_cycles:sqlstring}) ~ '^[0-9]+$' THEN CASE WHEN length(btrim(${n_cycles:sqlstring})) > 9 THEN 100 ELSE LEAST(100, GREATEST(1, btrim(${n_cycles:sqlstring})::integer)) END ELSE 10 END) AS recent",
         "refresh": 2,
         "sort": 0,
         "hide": 2,
         "multi": false,
         "includeAll": false,
-        "allValue": null,
+        "skipUrlSync": true,
         "current": {
           "text": "(time < 0 AND time > 0)",
           "value": "(time < 0 AND time > 0)"
@@ -1455,11 +1330,11 @@
     "to": "now"
   },
   "timepicker": {
-    "hidden": false
+    "hidden": true
   },
   "timezone": "browser",
   "title": "Cycles overlaid (per channel)",
   "uid": "447204b8-d977-43d4-95a7-9d60c8458d78",
   "version": 31,
-  "description": "Select cycles in PostgreSQL, then read their exact identity/time ranges from InfluxDB. Time range applies to observed cycle start. Blank numeric filters include unknown values. Refresh cycle variables after changing metadata; verify automatic refresh on the deployed Grafana version."
+  "description": "Latest recorded cycles from both machines, overlaid by cycle number. Choose how many to display (1-100 total)."
 }

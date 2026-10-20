@@ -1,0 +1,72 @@
+# ISOLATED validation stack. Always use project name monitoring-metadata-test.
+# Test-only passwords, no production mounts or production network attachments.
+services:
+  postgres:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: postuser
+      POSTGRES_PASSWORD: test-only-postgres
+      POSTGRES_DB: injection_monitoring
+    volumes:
+      - pg-test:/var/lib/postgresql/data
+      - ../postgres/001_cycle_metadata.sql:/docker-entrypoint-initdb.d/001.sql:ro
+      - ../postgres/002_ingestion_recovery.sql:/docker-entrypoint-initdb.d/002.sql:ro
+      - ./test-roles.sql:/docker-entrypoint-initdb.d/003.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postuser -d injection_monitoring"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  influxdb:
+    image: influxdb:1.8.10
+    environment:
+      INFLUXDB_DB: sensor_data
+    volumes:
+      - influx-test:/var/lib/influxdb
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt-test:/mosquitto/data
+  nodered:
+    build: .
+    environment:
+      TEST_PG_USER: monitoring_ingest
+      TEST_PG_PASSWORD: test-only-ingest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      influxdb:
+        condition: service_started
+      mosquitto:
+        condition: service_started
+    volumes:
+      - nodered-test:/data
+      - ./settings.js:/data/settings.js:ro
+      - ../../data/validation/stack/flows.json:/data/flows.json:ro
+      - ../nodered/capture_queue.cjs:/opt/capture_queue.cjs:ro
+  grafana:
+    image: grafana/grafana:12.0.0
+    # An internal-only network does not reliably publish host ports. Only the
+    # test web UI joins this second, project-owned bridge; databases stay internal.
+    networks: [default, grafana-access]
+    ports:
+      - "127.0.0.1:13000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: validation
+      GF_SECURITY_ADMIN_PASSWORD: test-only-grafana
+    volumes:
+      - grafana-test:/var/lib/grafana
+      - ../../data/validation/stack/datasources.yaml:/etc/grafana/provisioning/datasources/metadata.yaml:ro
+      - ./dashboards.yaml:/etc/grafana/provisioning/dashboards/metadata.yaml:ro
+      - ../grafana_dashboard.json:/var/lib/grafana/dashboards/metadata.json:ro
+volumes:
+  pg-test:
+  influx-test:
+  mqtt-test:
+  nodered-test:
+  grafana-test:
+networks:
+  default:
+    internal: true
+  grafana-access: {}
