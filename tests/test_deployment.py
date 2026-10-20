@@ -25,6 +25,52 @@ class DeploymentTests(unittest.TestCase):
         self.installer = deploy.Installer(self.args)
         self.template = self.installer.template
         self.current = deepcopy(self.template)
+        # Existing restart/API tests isolate their runtime files; real history
+        # planning and secret handling are exercised separately below.
+        p = patch.object(self.installer, 'history_runtime_plan', side_effect=lambda settings: (settings, {}))
+        self.history_plan = p.start()
+        self.addCleanup(p.stop)
+        p = patch.object(self.installer, 'verify_history')
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_history_verification_uses_separate_read_key(self):
+        deploy.save_private(self.installer.state / 'history-api-access.json', {'token': 'private-history-key'})
+        with patch.object(self.installer.nr, 'read', return_value={'cycles': [], 'next_cursor': None}) as read:
+            deploy.Installer.verify_history(self.installer)
+        read.assert_called_once_with('/monitoring/history',
+            headers={'Authorization': 'Bearer private-history-key'}, timeout=60)
+        with patch.object(self.installer.nr, 'read', return_value={'error': 'missing route'}):
+            with self.assertRaisesRegex(deploy.DeployError, 'invalid response'):
+                deploy.Installer.verify_history(self.installer)
+
+    def test_history_runtime_keeps_key_and_uses_reader_credentials(self):
+        self.installer.creds = {'monitoring_reader': 'private-reader-password'}
+        settings = 'module.exports={};' + deploy.SETTINGS_ADDON
+        with patch('scripts.deploy_server.run', return_value='{}') as run:
+            configured, files = deploy.Installer.history_runtime_plan(self.installer, settings)
+        self.assertIn(deploy.HISTORY_ADDON, configured)
+        self.assertIn(deploy.SETTINGS_ADDON, configured)
+        private = json.loads(files['/data/history-access.json'])
+        self.assertEqual(private['database']['user'], 'monitoring_reader')
+        self.assertEqual(private['database']['password'], 'private-reader-password')
+        self.assertGreaterEqual(len(private['token']), 32)
+        self.assertNotIn('private-reader-password', str(run.call_args))
+        digests = {p: deploy.hashlib.sha256(v.encode()).hexdigest() for p, v in files.items()}
+        with patch('scripts.deploy_server.run', return_value=json.dumps(digests)):
+            repeat, changes = deploy.Installer.history_runtime_plan(self.installer, configured)
+        self.assertEqual(repeat, configured)
+        self.assertEqual(changes, {})
+        self.assertEqual(deploy.load_json(self.installer.state / 'history-api-access.json')['token'], private['token'])
+        with self.assertRaisesRegex(deploy.DeployError, 'modified'):
+            deploy.Installer.history_runtime_plan(self.installer, deploy.HISTORY_MARKER + '\ncustom code')
+
+    def test_history_credentials_are_written_privately_via_stdin(self):
+        with patch('scripts.deploy_server.run') as run:
+            self.installer.write_container('/data/history-access.json', '{"token":"private-test-key"}', private=True)
+        self.assertEqual(run.call_args.args[0][-1], 'private')
+        self.assertNotIn('private-test-key', str(run.call_args.args[0]))
+        self.assertIn(b'private-test-key', run.call_args.args[1])
 
     def test_flow_update_preserves_other_tabs_broker_identity_and_auth(self):
         broker = next(n for n in self.current if n['type'] == 'mqtt-broker')

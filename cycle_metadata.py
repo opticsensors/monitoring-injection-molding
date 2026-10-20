@@ -33,7 +33,7 @@ def optional_number(value, label, minimum=0):
 
 
 def operator_settings(machine_id, material=None, mold_temperature_c=None,
-                      pressure_settings_bar=None):
+                      pressure_settings_bar=None, injection_speed_mm_s=None):
     machine = str(machine_id).strip()
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", machine):
         raise ValueError("Machine ID: use 1-64 letters, numbers, dots, underscores or hyphens.")
@@ -43,6 +43,7 @@ def operator_settings(machine_id, material=None, mold_temperature_c=None,
     pressures = pressure_settings_bar or {}
     return {"machine_id": machine, "material": material,
             "mold_temperature_c": optional_number(mold_temperature_c, "Mold setpoint", -273.15),
+            "injection_speed_mm_s": optional_number(injection_speed_mm_s, "Speed (mm/s)"),
             "pressure_settings_bar": {key: optional_number(pressures.get(key), label)
                                       for key, label in PRESSURE_SETTINGS}}
 
@@ -122,6 +123,10 @@ def finish_capture(snapshot, session_id, session_cycle, cycle_id, session_ns,
     samples = samples_for(capture, xdata, rows)
     capture.update(first_time_ns=samples[0]["timestamp_ns"],
                    last_time_ns=samples[-1]["timestamp_ns"], sample_count=len(samples))
+    capture["signal_peaks"] = {name: max(s[name] for s in samples)
+                               for name in capture["config_snapshot"]["field_names"]}
+    capture["recorded_duration_s"] = (int(capture["last_time_ns"]) -
+                                     int(capture["first_time_ns"])) / 1e9
     entry = {"capture": capture, "measurements": new_measurements(), "delivery": "Not sent"}
     return entry, capture_message(entry, samples)
 
@@ -152,7 +157,8 @@ def export_cycle_summary(path, entries):
     """
     pressure_keys = [key for key, _ in PRESSURE_SETTINGS]
     fields = ["machine_id", "session_id", "cycle_id", "session_cycle", "material",
-              "mold_temperature_c", *[f"pressure_{key}_bar" for key in pressure_keys],
+              "mold_temperature_c", "injection_speed_mm_s", "recorded_duration_s",
+              *[f"pressure_{key}_bar" for key in pressure_keys],
               "weight_g", "length_mm", "mode", "acquisition_status", "acquisition_reason",
               "sample_count", "first_time_ns", "last_time_ns", "metadata_revision"]
     with Path(path).open("w", newline="", encoding="utf-8") as stream:

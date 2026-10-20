@@ -75,6 +75,13 @@ module.exports.functionGlobalContext = Object.assign({}, module.exports.function
     captureQueue: require('/data/lib/capture_queue.cjs')
 });
 '''
+HISTORY_MARKER = '// injection-monitoring managed history v1'
+HISTORY_ADDON = '''
+// injection-monitoring managed history v1
+module.exports.functionGlobalContext = Object.assign({}, module.exports.functionGlobalContext, {
+    historyApi: require('/data/lib/history_api.cjs')
+});
+'''
 
 
 class DeployError(RuntimeError):
@@ -589,14 +596,44 @@ class Installer:
         sql(generated)
         print(f'Cataloged {len(entries)} historical cycles; {len(report)} already matched.')
 
-    def write_container(self, path, content):
+    def write_container(self, path, content, private=False):
         # Preserve original owner/mode; new library files use settings.js ownership.
         program = """const fs=require('fs'),p=require('path'),file=process.argv[1];
 const stat=fs.statSync(fs.existsSync(file)?file:'/data/settings.js');
 fs.mkdirSync(p.dirname(file),{recursive:true});
-const tmp=file+'.monitoring-tmp';fs.writeFileSync(tmp,fs.readFileSync(0),{mode:stat.mode&0o777});
+const mode=process.argv[2]==='private'?0o600:stat.mode&0o777;
+const tmp=file+'.monitoring-tmp';fs.writeFileSync(tmp,fs.readFileSync(0),{mode});
+fs.chmodSync(tmp,mode);
 fs.chownSync(tmp,stat.uid,stat.gid);fs.renameSync(tmp,file);"""
-        run(['docker', 'exec', '-i', '-u', '0', 'nodered', 'node', '-e', program, path], content.encode('utf-8'))
+        run(['docker', 'exec', '-i', '-u', '0', 'nodered', 'node', '-e', program, path,
+             'private' if private else 'normal'], content.encode('utf-8'))
+
+    def history_runtime_plan(self, settings):
+        if HISTORY_MARKER in settings and HISTORY_ADDON.strip() not in settings:
+            raise DeployError('The managed history settings block was modified; review it before replacing it.')
+        access_file = self.state / 'history-api-access.json'
+        if not access_file.exists():
+            save_private(access_file, {'token': secrets.token_urlsafe(32)})
+        access = load_json(access_file)
+        if not isinstance(access.get('token'), str) or len(access['token']) < 32:
+            raise DeployError('Invalid saved history access key; inspect history-api-access.json.')
+        config = {'token': access['token'], 'database': {'host': 'postgres',
+            'database': 'injection_monitoring', 'user': 'monitoring_reader',
+            'password': self.creds['monitoring_reader']}}
+        planned = {
+            '/data/lib/history_api.cjs': (ROOT / 'iot/nodered/history_api.cjs').read_text(encoding='utf-8'),
+            '/data/history-access.json': json.dumps(config, sort_keys=True) + '\n'}
+        # Compare digests, never print or pass the reader password as an argument.
+        probe = """const fs=require('fs'),crypto=require('crypto');
+const result={};for(const p of process.argv.slice(1)) result[p]=fs.existsSync(p)?
+crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'):null;
+process.stdout.write(JSON.stringify(result));"""
+        existing = json.loads(run(['docker', 'exec', 'nodered', 'node', '-e', probe, *planned]))
+        changed = {path: content for path, content in planned.items()
+                   if existing.get(path) != hashlib.sha256(content.encode('utf-8')).hexdigest()}
+        if HISTORY_MARKER not in settings:
+            settings += '\n' + HISTORY_ADDON
+        return settings, changed
 
     def wait_node_red(self):
         self.nr.read('/settings', timeout=90)
@@ -612,14 +649,17 @@ fs.chownSync(tmp,stat.uid,stat.gid);fs.renameSync(tmp,file);"""
             "const fs=require('fs'),p='/data/lib/capture_queue.cjs';process.stdout.write(fs.existsSync(p)?fs.readFileSync(p):'');"])
         queue_changed = old_queue != queue.strip()
         new_settings = self.settings if SETTINGS_MARKER in self.settings else self.settings + '\n' + SETTINGS_ADDON
+        new_settings, history_files = self.history_runtime_plan(new_settings)
         pending_restart = self.state / 'runtime-update-pending.json'
-        runtime_changed = queue_changed or new_settings != self.settings or self.install_connector
+        runtime_changed = queue_changed or bool(history_files) or new_settings != self.settings or self.install_connector
         if runtime_changed:
             # A crash after replacing files but before restart must not make a
             # subsequent run mistake on-disk equality for a running new module.
             save_private(pending_restart, {'restart_required': True})
         if queue_changed:
             self.write_container('/data/lib/capture_queue.cjs', queue)
+        for path, content in history_files.items():
+            self.write_container(path, content, private=path.endswith('history-access.json'))
         if new_settings != self.settings:
             self.write_container('/data/settings.js', new_settings)
         run(['docker', 'exec', 'nodered', 'node', '--check', '/data/settings.js'])
@@ -664,6 +704,12 @@ fs.chownSync(tmp,stat.uid,stat.gid);fs.renameSync(tmp,file);"""
         self.gf.request('GET', '/api/dashboards/uid/' + dashboard['uid'])
         print('Grafana datasource and dashboard applied; no GUI import needed.')
 
+    def verify_history(self):
+        token = load_json(self.state / 'history-api-access.json')['token']
+        page = self.nr.read('/monitoring/history', headers={'Authorization': 'Bearer ' + token}, timeout=60)
+        if not isinstance(page, dict) or not isinstance(page.get('cycles'), list):
+            raise DeployError('Desktop history endpoint returned an invalid response.')
+
     def verify(self):
         self.step('7. Verifying database access and deployed configuration')
         print('Checking Grafana database connections...', flush=True)
@@ -676,6 +722,8 @@ fs.chownSync(tmp,stat.uid,stat.gid);fs.renameSync(tmp,file);"""
         # be shown safely. The password still travels only through stdin.
         run(['docker', 'exec', '-i', 'nodered', 'node', '-e', POSTGRES_CONNECTION_CHECK,
              '/data', '/usr/src/node-red'], json.dumps(self.creds['monitoring_ingest']).encode(), timeout=30)
+        print('Checking the read-only desktop history endpoint...', flush=True)
+        self.verify_history()
         print('Checking the ingestion queue and metadata status...', flush=True)
         run(['bash', ROOT / 'scripts/check_server_ingestion.sh'])
         print('Checking that waveform counts are unchanged...', flush=True)
@@ -734,6 +782,7 @@ fs.chownSync(tmp,stat.uid,stat.gid);fs.renameSync(tmp,file);"""
         print('\nDeployment complete. Open your Grafana dashboard and set Latest cycles (max 100).')
         print('Then record one real cycle and verify it appears. Hardware and browser appearance need this check.')
         print('Backups:', self.backup)
+        print('Desktop history: set File > Server connection. Access key is in', self.state / 'history-api-access.json')
 
 
 def main():

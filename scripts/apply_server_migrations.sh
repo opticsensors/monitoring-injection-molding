@@ -15,5 +15,7 @@ if [[ "$schema_exists" != t ]]; then
 fi
 docker exec -i postgres psql -X -v ON_ERROR_STOP=1 -U postuser -d injection_monitoring \
     < "$task_root/iot/postgres/002_ingestion_recovery.sql"
+docker exec -i postgres psql -X -v ON_ERROR_STOP=1 -U postuser -d injection_monitoring \
+    < "$task_root/iot/postgres/003_history_reader.sql"
 docker exec postgres psql -X -U postuser -d injection_monitoring \
     -c 'TABLE monitoring.schema_migrations'

@@ -1,0 +1,9 @@
+{
+  "token": "test-only-history",
+  "database": {
+    "host": "postgres",
+    "database": "injection_monitoring",
+    "user": "monitoring_reader",
+    "password": "test-only-reader"
+  }
+}

@@ -67,6 +67,7 @@ def check():
         if families:
             app.setFont(QFont(families[0], 9))
     with tempfile.TemporaryDirectory() as directory:
+        os.environ["MONITORING_UI_SETTINGS_FILE"] = str(Path(directory) / "ui.ini")
         meta.SETTINGS_FILE = Path(directory) / 'run_setup.json'
         main.load_cycle_id = lambda: 0
         main.save_cycle_id = lambda cid: None
@@ -101,6 +102,7 @@ def check():
             graph.run()
             entries = [e for e in window.cycle_history.values() if e['capture']['session_id'] == window.session_id]
             assert len(entries) == 3, (mode, len(entries))
+            assert window.partEditor.key == meta.identity(entries[-1]['capture'])
             assert entries[0]['capture']['mold_temperature_c'] == 40
             assert entries[1]['capture']['mold_temperature_c'] == 60
             assert entries[2]['capture']['status'] == 'interrupted'
@@ -215,7 +217,7 @@ def check():
         output.mkdir(parents=True, exist_ok=True)
         window.grab().save(str(output / 'metadata-main.png'))
         window._measurements_dialog.grab().save(str(output / 'metadata-history.png'))
-        assert window._measurements_dialog.table.rowCount() == 13
+        assert window._measurements_dialog.table.rowCount() == 12  # Continuous capture is not a part.
         assert window.daq_srate == 6000 and window.daq_dec == 100
         window._measurements_dialog.hide()
         window.hide()

@@ -89,6 +89,36 @@ def check_grafana_updates():
     assert api.read(path + '/health')['status'] == 'OK'
     print('PASS: repeated installer datasource updates use real Grafana versions', flush=True)
 
+def check_history_api(messages):
+    # Requests stay inside the isolated Node-RED container/network.
+    probe = r"""
+const input=JSON.parse(require('fs').readFileSync(0,'utf8'));
+(async()=>{
+const root='http://127.0.0.1:1880',headers={Authorization:'Bearer test-only-history'};
+const denied=await fetch(root+'/monitoring/history');
+if(denied.status!==401)throw Error('History must require its access key');
+let cursor='',found=[];
+do {
+ const r=await fetch(root+'/monitoring/history?cursor='+encodeURIComponent(cursor),{headers});
+ if(!r.ok)throw Error('History HTTP '+r.status);
+ const page=await r.json(); found.push(...page.cycles); cursor=page.next_cursor;
+} while(cursor);
+for(const capture of input) {
+ const entry=found.find(e=>e.capture.machine_id===capture.machine_id&&e.capture.session_id===capture.session_id&&e.capture.cycle_id===capture.cycle_id);
+ if(!entry||entry.capture.sample_count!==capture.sample_count)throw Error('History missing capture');
+ const query=new URLSearchParams({machine_id:capture.machine_id,session_id:capture.session_id,cycle_id:capture.cycle_id});
+ const r=await fetch(root+'/monitoring/waveform?'+query,{headers});
+ if(!r.ok)throw Error('Waveform HTTP '+r.status);
+ const wave=await r.json();
+ if(wave.time_s.length!==capture.sample_count||wave.values.CH0_T_futaba.length!==capture.sample_count)throw Error('Waveform length mismatch');
+ if(Math.abs(wave.values.CH0_T_futaba[1]-(35+1/7))>1e-8)throw Error('Waveform values changed');
+}
+console.log('PASS: authenticated desktop history and original waveforms for both machines');
+})().catch(e=>{console.error(e.message);process.exitCode=1});
+"""
+    print(command('exec', '-T', 'nodered', 'node', '-e', probe,
+                  data=json.dumps([m['capture'] for m in messages])), flush=True)
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -103,11 +133,12 @@ def main():
                 for n, machine in enumerate(('55t', '160t'), 1)]
     where = f"machine_id IN ('55t', '160t') AND session_id='{session}'"
     stored = lambda n: sql(f"SELECT count(*) FROM monitoring.cycles WHERE {where} AND waveform_status='stored'") == str(n)
-    wait_for(lambda: sql('SELECT max(version) FROM monitoring.schema_migrations') == '2', 'schema ready')
+    wait_for(lambda: int(sql('SELECT max(version) FROM monitoring.schema_migrations')) >= 2, 'schema ready')
     # Retained test volumes may predate this release. Reapply the additive migration
     # to the isolated database so this test always exercises the shipped functions.
-    command('exec', '-T', 'postgres', 'psql', '-X', '-v', 'ON_ERROR_STOP=1', '-U', 'postuser',
-            '-d', 'injection_monitoring', data=(ROOT / 'iot/postgres/002_ingestion_recovery.sql').read_text(encoding='utf-8'))
+    for migration in ('002_ingestion_recovery.sql', '003_history_reader.sql'):
+        command('exec', '-T', 'postgres', 'psql', '-X', '-v', 'ON_ERROR_STOP=1', '-U', 'postuser',
+                '-d', 'injection_monitoring', data=(ROOT / 'iot/postgres' / migration).read_text(encoding='utf-8'))
     # MQTT subscription must exist before the first test publication.
     wait_for(lambda: 'Connected to broker' in command('logs', '--tail', '200', 'nodered'), 'MQTT subscriber connected')
     command('exec', '-T', 'nodered', 'node', '-e', POSTGRES_CONNECTION_CHECK,
@@ -118,6 +149,7 @@ def main():
         publish(message)
     wait_for(lambda: stored(2), 'two multi-chunk captures stored')
     wait_for(queue_empty, 'initial captures drained')
+    check_history_api(messages)
     predicate = sql("SELECT '(time >= '||min(first_time_ns)::text||' AND time <= '||max(last_time_ns)::text||"
         "' AND ('||string_agg(influx_predicate,' OR ')||'))' FROM monitoring.cycle_catalog WHERE " + where)
     result = influx('SELECT count("t_ms") FROM "autogen"."sensor_data" WHERE ' + predicate)

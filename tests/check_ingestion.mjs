@@ -24,6 +24,13 @@ const payload = {schema_version:1, kind:'capture', capture:c, measurements:m, sa
     {timestamp_ns:c.first_time_ns, time_s:0.000000001, sample_index:0, CH0_T_futaba:35},
     {timestamp_ns:c.last_time_ns, time_s:0.000000002, sample_index:1, CH0_T_futaba:36}]};
 try {
+    const enriched=structuredClone(payload);
+    enriched.capture.injection_speed_mm_s=35;
+    enriched.capture.signal_peaks={CH0_T_futaba:36};
+    assert(fn('nodered_function.js',{payload:structuredClone(enriched)})[0]);
+    enriched.capture.signal_peaks.CH0_T_futaba=999;
+    assert.equal(fn('nodered_function.js',{payload:enriched}),null);
+    assert.match(errors.at(-1),/peak does not match/);
     await db.exec(fs.readFileSync('iot/postgres/001_cycle_metadata.sql','utf8'));
     await db.exec(fs.readFileSync('iot/postgres/001_cycle_metadata.sql','utf8')); // reapply migration
     const beforeUpgrade={...c,session_id:'before-upgrade'};

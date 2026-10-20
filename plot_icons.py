@@ -181,6 +181,51 @@ def apply_icon():
     return _finish(pm, p)
 
 
+def sidebar_icon(visible=False):
+    """Window outline with a right-hand pane, matching desktop layout controls."""
+    s = _ICON_PX
+    pm, p = _canvas()
+    _pen(p, s, width_frac=0.055)
+    p.setBrush(QtCore.Qt.NoBrush)
+    p.drawRoundedRect(QtCore.QRectF(.16*s, .20*s, .68*s, .60*s), .035*s, .035*s)
+    p.drawLine(QtCore.QPointF(.60*s, .20*s), QtCore.QPointF(.60*s, .80*s))
+    if visible:
+        p.fillRect(QtCore.QRectF(.65*s, .26*s, .13*s, .48*s), _COLOR)
+    return _finish(pm, p)
+
+
+def refresh_icon():
+    """Circular reload arrow for fetching/updating history."""
+    s = _ICON_PX
+    pm, p = _canvas()
+    _pen(p, s, width_frac=.06)
+    p.setBrush(QtCore.Qt.NoBrush)
+    p.drawArc(QtCore.QRectF(.22*s, .22*s, .56*s, .56*s), 40*16, 285*16)
+    p.drawPolyline(QtGui.QPolygonF([
+        QtCore.QPointF(.57*s, .18*s),
+        QtCore.QPointF(.74*s, .28*s),
+        QtCore.QPointF(.76*s, .08*s),
+    ]))
+    return _finish(pm, p)
+
+
+def curves_icon():
+    """Axes and two traces for opening selected cycles in a plot."""
+    s = _ICON_PX
+    pm, p = _canvas()
+    _pen(p, s, width_frac=.055)
+    p.setBrush(QtCore.Qt.NoBrush)
+    p.drawPolyline(QtGui.QPolygonF([
+        QtCore.QPointF(.18*s, .18*s), QtCore.QPointF(.18*s, .80*s),
+        QtCore.QPointF(.84*s, .80*s)]))
+    for offset in (0, .16):
+        path = QtGui.QPainterPath(QtCore.QPointF(.25*s, (.66-offset)*s))
+        path.cubicTo(.42*s, (.65-offset)*s, .39*s, (.27-offset)*s, .55*s, (.32-offset)*s)
+        path.cubicTo(.68*s, (.34-offset)*s, .63*s, (.62-offset)*s, .82*s, (.61-offset)*s)
+        p.drawPath(path)
+    return _finish(pm, p)
+
+
 def eye_icon():
     """An open eye (toggles visibility of the faint past-cycle ghost curves)."""
     s = _ICON_PX

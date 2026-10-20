@@ -37,6 +37,7 @@ def main():
     # mounts must still be readable by container UIDs 1000, 999 and 472.
     public_mounts = [destination / 'flows.json', destination / 'datasources.yaml',
         ROOT / 'iot/postgres/001_cycle_metadata.sql', ROOT / 'iot/postgres/002_ingestion_recovery.sql',
+        ROOT / 'iot/postgres/003_history_reader.sql', ROOT / 'iot/nodered/history_api.cjs',
         ROOT / 'iot/nodered/capture_queue.cjs', ROOT / 'iot/grafana_dashboard.json',
         *(p for p in (ROOT / 'iot/validation').iterdir() if p.is_file())]
     for path in public_mounts:

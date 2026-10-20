@@ -2,6 +2,9 @@
 module.exports = {
     uiPort: 1880,
     flowFile: 'flows.json',
-    functionGlobalContext: {captureQueue: require('/opt/capture_queue.cjs')},
+    functionGlobalContext: {
+        captureQueue: require('/opt/capture_queue.cjs'),
+        historyApi: require('/opt/history_api.cjs')
+    },
     logging: {console: {level: 'info', metrics: false, audit: false}}
 };

@@ -37,6 +37,7 @@ try {
     assert(["complete", "interrupted"].includes(c.status), "Invalid acquisition status");
     assert(c.material === null || text(c.material, 200), "Invalid material");
     assert(optional(c.mold_temperature_c, -273.15), "Invalid mold setpoint");
+    assert(c.injection_speed_mm_s === undefined || optional(c.injection_speed_mm_s, 0), "Invalid speed setpoint");
     assert(c.pressure_settings_bar && typeof c.pressure_settings_bar === "object", "Missing pressure settings");
     for (const [key, value] of Object.entries(c.pressure_settings_bar)) {
         assert(/^[a-z][a-z0-9_]*$/.test(key) && optional(value, 0), "Invalid pressure setting");
@@ -44,6 +45,10 @@ try {
     const fields = c.config_snapshot && c.config_snapshot.field_names;
     assert(Array.isArray(fields) && fields.length > 0 && new Set(fields).size === fields.length, "Invalid channel list");
     assert(fields.every(f => /^CH[0-9]+_[A-Za-z0-9_]+$/.test(f)), "Invalid channel field name");
+    if (c.signal_peaks !== undefined) {
+        assert(c.signal_peaks && Object.keys(c.signal_peaks).length === fields.length &&
+            fields.every(f => finite(c.signal_peaks[f])), "Invalid signal peaks");
+    }
     assert(Array.isArray(data.samples) && data.samples.length > 0 && c.sample_count === data.samples.length, "Sample count mismatch");
     const first = ns(c.first_time_ns), last = ns(c.last_time_ns), base = ns(c.base_time_ns);
     assert(first <= last, "Invalid capture bounds");
@@ -71,6 +76,13 @@ try {
     });
     assert(data.samples[0].timestamp_ns === c.first_time_ns &&
            data.samples[data.samples.length-1].timestamp_ns === c.last_time_ns, "Manifest bounds mismatch");
+    if (c.signal_peaks) {
+        for (const field of fields) {
+            let peak = -Infinity;
+            for (const sample of data.samples) peak = Math.max(peak, sample[field]);
+            assert(peak === c.signal_peaks[field], "Signal peak does not match waveform");
+        }
+    }
     msg.capture = c;
     msg.lineProtocol = lines.join("\n");
     msg.query = "SELECT monitoring.register_capture($1::jsonb, md5($2::text), $3::jsonb) AS fingerprint";

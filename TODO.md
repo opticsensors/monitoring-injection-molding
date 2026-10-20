@@ -1,10 +1,10 @@
 # Implementation status and remaining deployment work
 
-Updated 2026-10-20 after the requested Grafana simplification. Checked items are
+Updated 2026-10-20 after the third GUI/history iteration. Checked items are
 implemented/locally verified unless server evidence is stated below. The server
-installer completed; browser, hardware and backup-restore checks remain open.
-The simplified dashboard is ready locally; its JSON still needs importing into
-the existing Grafana dashboard. No database or Node-RED change is needed for it.
+installer completed and the user confirms Grafana works. Hardware and backup
+restore checks remain open. Desktop online history is new and needs deployment;
+the GUI/demo can be reviewed locally first.
 The earlier full migration, acquisition-rate conversion and automatic local
 journal plans are superseded by the user's later decisions.
 
@@ -14,7 +14,7 @@ journal plans are superseded by the user's later decisions.
   Keep `(machine_id, session_id, cycle_id)`; Influx retains its numeric
   `cycle_num` field and existing machine/session tags. No waveform migration.
 - GUI: machine ID, material/grade, manual mold-temperature setpoint in degrees C,
-  limit pressure in bar; one part per cycle, weight in g, spiral length in mm.
+  injection speed in mm/s; one part per cycle, weight in g, spiral length in mm.
   Unknown values are null, never fabricated zeros. Additional pressures can be
   added through the pressure-settings registry and captured JSON settings.
 - Preserve all selectable trigger modes and the existing sampling settings,
@@ -29,21 +29,34 @@ journal plans are superseded by the user's later decisions.
 
 ### GUI and capture metadata
 
-- [x] Compact settings row with editable machine ID, material, nullable mold
-  setpoint and limit pressure; reusable preferences in ignored data/run_setup.json.
+- [x] Sidebar icon, one scrollable panel, compact equal-width inputs and one Apply
+  for future settings/selected-part measurements. Old pressure settings retain their meaning.
+- [x] History tab adds cycles automatically, with date/settings/duration/peak T/P.
+  Check rows to open independent comparison tabs using the Live plot components.
+- [x] Background server history loader, on-demand waveforms, and bounded RAM cache.
+  Unsent measurement edits survive server refreshes; Apply reconciles edited values.
+- [x] Compact Refresh/Plot history actions; balanced Material column, no idle helper text.
+- [x] One fixed top plot toolbar/readout for Live and comparison tabs, with independent
+  state and selected-cycle calculations. Compact cycle selector and 72 px sidebar inputs;
+  comparison explanation moved to the GUI log.
+- [x] Offline simulated preview: `py -3.11 scripts/preview_gui.py`.
+- [ ] Review the revised layout with the user.
+- [ ] Deploy migration 003 and authenticated read-only history routes; configure
+  File → Server connection, then check the actual historical cycles in the desktop.
+  Local API/PGlite/GUI checks pass; the new full Docker test awaits the server.
 - [x] Apply operator settings to future cycles; freeze a deep snapshot at the
   trigger boundary, including channel names/units/order, actual DAQ command
   parameters, conversion settings, trigger settings and rheology geometry.
 - [x] Lock machine selection during acquisition. New session IDs combine a
   readable timestamp and UUID; retain the tested installation-wide cycle counter.
-- [x] Toolbar history icon opens cycle history with machine/session/both cycle numbers, outcomes,
-  settings, weight/spiral length editing, clearing and independent metadata send.
+- [x] Toolbar history icon toggles History/Live; its checked state follows the active tab. Metadata import/export
+  remain under File; history has no local Load/Save buttons.
 - [x] Keep metadata across Next in RAM; explicitly save/load metadata for earlier
   sessions after restart. No automatic waveform or measurement archive added.
 - [x] Independent measurement revisions; original queued capture messages do not
   mutate when later measurements change. GUI states say queued/unconfirmed.
 - [x] Reopen DAQ configuration with active values, not startup defaults. Move
-  machine editing to Run setup. Sampling values and hardware commands unchanged.
+  machine editing to the sidebar. Sampling values and hardware commands unchanged.
 - [x] Continuous capture has cycle_id=0 and its own frozen snapshot; it is not
   treated as a single part for weight/length entry.
 
@@ -169,12 +182,11 @@ production commands were run by the assistant; this status records the user's lo
 - [x] Fresh diagnostic/catalog reconciliation imported 29 historical cycles.
 - [x] Finish the final production check that Influx history counts are unchanged.
 - [x] Pass production queue/quarantine and metadata status checks during deployment.
-- [ ] Complete Grafana browser checks and confirm one real newly recorded cycle
-  reaches the database and appears in the charts.
+- [x] Grafana works, confirmed by the user.
+- [ ] Confirm one real newly recorded cycle reaches the database and charts.
 - [x] Grafana PostgreSQL reader and dashboard applied; both datasource health
   checks passed during the completed deployment.
-- [ ] Import the 2026-10-20 dashboard and verify latest-N, numeric legends,
-  legacy/interrupted cycles and raw exports in the browser.
+- [x] The user reports the simplified 2026-10-20 Grafana dashboard works.
 - [ ] Verify BOTH selector queries and waveform panels update after a new cycle
   at the deployed refresh interval; otherwise explicitly refresh the dashboard
   pending a version-specific refresh adjustment.

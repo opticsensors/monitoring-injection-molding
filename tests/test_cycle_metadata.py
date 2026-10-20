@@ -40,6 +40,18 @@ class MetadataTests(unittest.TestCase):
         self.entry['measurements'] = meta.edit_measurements(self.entry['measurements'], '', '')
         self.assertIsNone(self.entry['measurements']['length_mm'])
 
+    def test_speed_and_peaks_are_capture_metadata_not_waveform_fields(self):
+        settings = meta.operator_settings('55t', 'PP', 40, {'limit': 120}, 35)
+        self.assertEqual(settings['injection_speed_mm_s'], 35)
+        self.assertEqual(settings['pressure_settings_bar']['limit'], 120)
+        self.assertIsNone(meta.operator_settings('55t')['injection_speed_mm_s'])
+        for invalid in ('nan', -2, True):
+            with self.assertRaises(ValueError):
+                meta.operator_settings('55t', injection_speed_mm_s=invalid)
+        self.assertEqual(self.entry['capture']['signal_peaks'], {'CH0_T_futaba': 31})
+        self.assertAlmostEqual(self.entry['capture']['recorded_duration_s'], .99)
+        self.assertNotIn('signal_peaks', self.message['samples'][0])
+
     def test_reject_invalid_numbers_and_machine_topics(self):
         for value in ('nan', 'inf', '-1', True):
             with self.assertRaises(ValueError):

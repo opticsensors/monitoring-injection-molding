@@ -32,6 +32,16 @@ def main():
         if node['type'] == 'mqtt in':
             node.update(datatype='utf8', wires=[['cycle-enqueue']])
     nodes += [
+        dict(id='cycle-history-list', type='http in', z=TAB, name='Read cycle history',
+             url='/monitoring/history', method='get', upload=False, swaggerDoc='',
+             x=280, y=560, wires=[['cycle-history-handler']]),
+        dict(id='cycle-history-waveform', type='http in', z=TAB, name='Read selected waveform',
+             url='/monitoring/waveform', method='get', upload=False, swaggerDoc='',
+             x=280, y=620, wires=[['cycle-history-handler']]),
+        function('cycle-history-handler', 'Authorized history read', 'nodered_history.js',
+                 [['cycle-history-response']], 560, 580),
+        dict(id='cycle-history-response', type='http response', z=TAB, name='History response',
+             statusCode='', headers={}, x=830, y=580, wires=[]),
         function('cycle-enqueue', 'Persist original message', 'nodered_enqueue.js',
                  [['cycle-claim']], 300, 140),
         dict(id='cycle-tick', type='inject', z=TAB, name='Recover pending work',

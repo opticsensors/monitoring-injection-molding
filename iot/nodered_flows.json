@@ -93,6 +93,71 @@
     "sessionExpiry": ""
   },
   {
+    "id": "cycle-history-list",
+    "type": "http in",
+    "z": "9a5797004b410dd8",
+    "name": "Read cycle history",
+    "url": "/monitoring/history",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 280,
+    "y": 560,
+    "wires": [
+      [
+        "cycle-history-handler"
+      ]
+    ]
+  },
+  {
+    "id": "cycle-history-waveform",
+    "type": "http in",
+    "z": "9a5797004b410dd8",
+    "name": "Read selected waveform",
+    "url": "/monitoring/waveform",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 280,
+    "y": 620,
+    "wires": [
+      [
+        "cycle-history-handler"
+      ]
+    ]
+  },
+  {
+    "id": "cycle-history-handler",
+    "type": "function",
+    "z": "9a5797004b410dd8",
+    "name": "Authorized history read",
+    "func": "// Separate read-only endpoint; never enters the ingestion queue.\ntry {\n    const api = global.get('historyApi');\n    const reply = await api.handle({method:msg.req.method, path:msg.req.path,\n        query:msg.req.query, authorization:msg.req.headers.authorization});\n    msg.statusCode = reply.status;\n    msg.headers = reply.headers;\n    msg.payload = reply.body;\n} catch (error) {\n    node.warn('History API unavailable; check history-access.json and the reader connection.');\n    msg.statusCode = 503;\n    msg.payload = {error:'History API unavailable; server setup is required.'};\n}\nreturn msg;\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 560,
+    "y": 580,
+    "wires": [
+      [
+        "cycle-history-response"
+      ]
+    ]
+  },
+  {
+    "id": "cycle-history-response",
+    "type": "http response",
+    "z": "9a5797004b410dd8",
+    "name": "History response",
+    "statusCode": "",
+    "headers": {},
+    "x": 830,
+    "y": 580,
+    "wires": []
+  },
+  {
     "id": "cycle-enqueue",
     "type": "function",
     "z": "9a5797004b410dd8",
@@ -155,7 +220,7 @@
     "type": "function",
     "z": "9a5797004b410dd8",
     "name": "Validate and route capture",
-    "func": "// Outputs: register capture (PostgreSQL), measurements (PostgreSQL).\nconst assert = (condition, message) => { if (!condition) throw new Error(message); };\nconst finite = value => typeof value === \"number\" && Number.isFinite(value);\nconst optional = (value, minimum) => value === null || (finite(value) && value >= minimum);\nconst integer = value => Number.isSafeInteger(value) && value >= 0;\nfunction text(value, max) {\n    return typeof value === \"string\" && value.length > 0 && value.length <= max && !/[\\x00-\\x1f]/.test(value);\n}\nfunction ns(value) {\n    assert(typeof value === \"string\" && /^[0-9]+$/.test(value), \"Expected decimal nanosecond string\");\n    const n = BigInt(value);\n    assert(n > 0n && n <= 9223372036854775806n, \"Timestamp out of Influx range\");\n    return n;\n}\nfunction measurements(m) {\n    assert(m && integer(m.revision) && text(m.update_id, 100), \"Invalid measurement revision/ID\");\n    assert(optional(m.weight_g, 0) && optional(m.length_mm, 0), \"Invalid part measurements\");\n}\ntry {\n    const data = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;\n    if (Array.isArray(data)) {\n        throw new Error('Legacy upload retained for reconciliation; drain old desktop spool before cutover');\n    }\n    assert(data && data.schema_version === 1, \"Unsupported metadata schema\");\n    measurements(data.measurements);\n    if (data.kind === \"measurements\") {\n        assert(text(data.machine_id, 128) && text(data.session_id, 200) && integer(data.cycle_id), \"Invalid cycle identity\");\n        msg.query = \"SELECT monitoring.receive_measurements($1, $2, $3::bigint, $4::jsonb) AS result\";\n        msg.params = [data.machine_id, data.session_id, data.cycle_id, JSON.stringify(data.measurements)];\n        return [null, msg];\n    }\n    assert(data.kind === \"capture\", \"Unknown message kind\");\n    const c = data.capture;\n    assert(c && text(c.machine_id, 128) && text(c.session_id, 200) && integer(c.cycle_id), \"Invalid capture identity\");\n    assert(integer(c.session_cycle) && (c.mode === \"cycle\" || c.mode === \"continuous\"), \"Invalid acquisition mode\");\n    assert((c.cycle_id === 0) === (c.mode === \"continuous\"), \"Cycle/mode mismatch\");\n    assert([\"complete\", \"interrupted\"].includes(c.status), \"Invalid acquisition status\");\n    assert(c.material === null || text(c.material, 200), \"Invalid material\");\n    assert(optional(c.mold_temperature_c, -273.15), \"Invalid mold setpoint\");\n    assert(c.pressure_settings_bar && typeof c.pressure_settings_bar === \"object\", \"Missing pressure settings\");\n    for (const [key, value] of Object.entries(c.pressure_settings_bar)) {\n        assert(/^[a-z][a-z0-9_]*$/.test(key) && optional(value, 0), \"Invalid pressure setting\");\n    }\n    const fields = c.config_snapshot && c.config_snapshot.field_names;\n    assert(Array.isArray(fields) && fields.length > 0 && new Set(fields).size === fields.length, \"Invalid channel list\");\n    assert(fields.every(f => /^CH[0-9]+_[A-Za-z0-9_]+$/.test(f)), \"Invalid channel field name\");\n    assert(Array.isArray(data.samples) && data.samples.length > 0 && c.sample_count === data.samples.length, \"Sample count mismatch\");\n    const first = ns(c.first_time_ns), last = ns(c.last_time_ns), base = ns(c.base_time_ns);\n    assert(first <= last, \"Invalid capture bounds\");\n    if (c.trigger_start_ns !== null) ns(c.trigger_start_ns);\n    if (c.trigger_end_ns !== null) ns(c.trigger_end_ns);\n    const tag = value => value.replace(/\\\\/g, \"\\\\\\\\\").replace(/([ ,=])/g, \"\\\\$1\");\n    const prefix = `sensor_data,machine_id=${tag(c.machine_id)},session_id=${tag(c.session_id)} `;\n    let previous = null;\n    const lines = data.samples.map((r, index) => {\n        const stamp = ns(r.timestamp_ns);\n        assert(previous === null || stamp > previous, \"Duplicate/backward sample timestamp\");\n        previous = stamp;\n        assert(stamp >= first && stamp <= last && stamp >= base, \"Sample outside capture bounds\");\n        assert(r.sample_index === index && finite(r.time_s) && r.time_s >= 0, \"Invalid sample index/time\");\n        assert(finite(r.time_s * 1000) && Math.abs(Number(stamp-base)/1e9-r.time_s) <= 0.0000011,\n               \"Relative time does not match the capture timestamp\");\n        assert(Object.keys(r).every(k => fields.includes(k) || [\"timestamp_ns\", \"time_s\", \"sample_index\"].includes(k)), \"Unexpected sample field\");\n        // Existing cycle_num and t_ms fields remain floats; only the new sample_index is integer.\n        const values = [`cycle_num=${c.cycle_id}`, `t_ms=${r.time_s * 1000}`, `sample_index=${index}i`];\n        for (const field of [...fields].sort()) {\n            assert(finite(r[field]), `Missing/non-finite channel ${field}`);\n            values.push(`${field}=${r[field]}`);\n        }\n        return prefix + values.join(\",\") + \" \" + r.timestamp_ns;\n    });\n    assert(data.samples[0].timestamp_ns === c.first_time_ns &&\n           data.samples[data.samples.length-1].timestamp_ns === c.last_time_ns, \"Manifest bounds mismatch\");\n    msg.capture = c;\n    msg.lineProtocol = lines.join(\"\\n\");\n    msg.query = \"SELECT monitoring.register_capture($1::jsonb, md5($2::text), $3::jsonb) AS fingerprint\";\n    msg.params = [JSON.stringify(c), msg.lineProtocol, JSON.stringify(data.measurements)];\n    delete msg.payload;\n    return [msg, null];\n} catch (error) {\n    msg.ingestPermanent = true;\n    node.error(error.message, msg);\n    return null;\n}\n",
+    "func": "// Outputs: register capture (PostgreSQL), measurements (PostgreSQL).\nconst assert = (condition, message) => { if (!condition) throw new Error(message); };\nconst finite = value => typeof value === \"number\" && Number.isFinite(value);\nconst optional = (value, minimum) => value === null || (finite(value) && value >= minimum);\nconst integer = value => Number.isSafeInteger(value) && value >= 0;\nfunction text(value, max) {\n    return typeof value === \"string\" && value.length > 0 && value.length <= max && !/[\\x00-\\x1f]/.test(value);\n}\nfunction ns(value) {\n    assert(typeof value === \"string\" && /^[0-9]+$/.test(value), \"Expected decimal nanosecond string\");\n    const n = BigInt(value);\n    assert(n > 0n && n <= 9223372036854775806n, \"Timestamp out of Influx range\");\n    return n;\n}\nfunction measurements(m) {\n    assert(m && integer(m.revision) && text(m.update_id, 100), \"Invalid measurement revision/ID\");\n    assert(optional(m.weight_g, 0) && optional(m.length_mm, 0), \"Invalid part measurements\");\n}\ntry {\n    const data = typeof msg.payload === 'string' ? JSON.parse(msg.payload) : msg.payload;\n    if (Array.isArray(data)) {\n        throw new Error('Legacy upload retained for reconciliation; drain old desktop spool before cutover');\n    }\n    assert(data && data.schema_version === 1, \"Unsupported metadata schema\");\n    measurements(data.measurements);\n    if (data.kind === \"measurements\") {\n        assert(text(data.machine_id, 128) && text(data.session_id, 200) && integer(data.cycle_id), \"Invalid cycle identity\");\n        msg.query = \"SELECT monitoring.receive_measurements($1, $2, $3::bigint, $4::jsonb) AS result\";\n        msg.params = [data.machine_id, data.session_id, data.cycle_id, JSON.stringify(data.measurements)];\n        return [null, msg];\n    }\n    assert(data.kind === \"capture\", \"Unknown message kind\");\n    const c = data.capture;\n    assert(c && text(c.machine_id, 128) && text(c.session_id, 200) && integer(c.cycle_id), \"Invalid capture identity\");\n    assert(integer(c.session_cycle) && (c.mode === \"cycle\" || c.mode === \"continuous\"), \"Invalid acquisition mode\");\n    assert((c.cycle_id === 0) === (c.mode === \"continuous\"), \"Cycle/mode mismatch\");\n    assert([\"complete\", \"interrupted\"].includes(c.status), \"Invalid acquisition status\");\n    assert(c.material === null || text(c.material, 200), \"Invalid material\");\n    assert(optional(c.mold_temperature_c, -273.15), \"Invalid mold setpoint\");\n    assert(c.injection_speed_mm_s === undefined || optional(c.injection_speed_mm_s, 0), \"Invalid speed setpoint\");\n    assert(c.pressure_settings_bar && typeof c.pressure_settings_bar === \"object\", \"Missing pressure settings\");\n    for (const [key, value] of Object.entries(c.pressure_settings_bar)) {\n        assert(/^[a-z][a-z0-9_]*$/.test(key) && optional(value, 0), \"Invalid pressure setting\");\n    }\n    const fields = c.config_snapshot && c.config_snapshot.field_names;\n    assert(Array.isArray(fields) && fields.length > 0 && new Set(fields).size === fields.length, \"Invalid channel list\");\n    assert(fields.every(f => /^CH[0-9]+_[A-Za-z0-9_]+$/.test(f)), \"Invalid channel field name\");\n    if (c.signal_peaks !== undefined) {\n        assert(c.signal_peaks && Object.keys(c.signal_peaks).length === fields.length &&\n            fields.every(f => finite(c.signal_peaks[f])), \"Invalid signal peaks\");\n    }\n    assert(Array.isArray(data.samples) && data.samples.length > 0 && c.sample_count === data.samples.length, \"Sample count mismatch\");\n    const first = ns(c.first_time_ns), last = ns(c.last_time_ns), base = ns(c.base_time_ns);\n    assert(first <= last, \"Invalid capture bounds\");\n    if (c.trigger_start_ns !== null) ns(c.trigger_start_ns);\n    if (c.trigger_end_ns !== null) ns(c.trigger_end_ns);\n    const tag = value => value.replace(/\\\\/g, \"\\\\\\\\\").replace(/([ ,=])/g, \"\\\\$1\");\n    const prefix = `sensor_data,machine_id=${tag(c.machine_id)},session_id=${tag(c.session_id)} `;\n    let previous = null;\n    const lines = data.samples.map((r, index) => {\n        const stamp = ns(r.timestamp_ns);\n        assert(previous === null || stamp > previous, \"Duplicate/backward sample timestamp\");\n        previous = stamp;\n        assert(stamp >= first && stamp <= last && stamp >= base, \"Sample outside capture bounds\");\n        assert(r.sample_index === index && finite(r.time_s) && r.time_s >= 0, \"Invalid sample index/time\");\n        assert(finite(r.time_s * 1000) && Math.abs(Number(stamp-base)/1e9-r.time_s) <= 0.0000011,\n               \"Relative time does not match the capture timestamp\");\n        assert(Object.keys(r).every(k => fields.includes(k) || [\"timestamp_ns\", \"time_s\", \"sample_index\"].includes(k)), \"Unexpected sample field\");\n        // Existing cycle_num and t_ms fields remain floats; only the new sample_index is integer.\n        const values = [`cycle_num=${c.cycle_id}`, `t_ms=${r.time_s * 1000}`, `sample_index=${index}i`];\n        for (const field of [...fields].sort()) {\n            assert(finite(r[field]), `Missing/non-finite channel ${field}`);\n            values.push(`${field}=${r[field]}`);\n        }\n        return prefix + values.join(\",\") + \" \" + r.timestamp_ns;\n    });\n    assert(data.samples[0].timestamp_ns === c.first_time_ns &&\n           data.samples[data.samples.length-1].timestamp_ns === c.last_time_ns, \"Manifest bounds mismatch\");\n    if (c.signal_peaks) {\n        for (const field of fields) {\n            let peak = -Infinity;\n            for (const sample of data.samples) peak = Math.max(peak, sample[field]);\n            assert(peak === c.signal_peaks[field], \"Signal peak does not match waveform\");\n        }\n    }\n    msg.capture = c;\n    msg.lineProtocol = lines.join(\"\\n\");\n    msg.query = \"SELECT monitoring.register_capture($1::jsonb, md5($2::text), $3::jsonb) AS fingerprint\";\n    msg.params = [JSON.stringify(c), msg.lineProtocol, JSON.stringify(data.measurements)];\n    delete msg.payload;\n    return [msg, null];\n} catch (error) {\n    msg.ingestPermanent = true;\n    node.error(error.message, msg);\n    return null;\n}\n",
     "outputs": 2,
     "timeout": 0,
     "noerr": 0,

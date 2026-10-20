@@ -82,6 +82,27 @@ JavaScript, `postgres/` contains migrations, `validation/` is the installer's
 isolated test stack, and `maintenance/` contains the detailed manual recovery guide.
 You normally use only `deploy.sh`; these files are managed by it.
 
+## Desktop history
+
+The GUI preview works offline. To enable **History → Refresh** (load from server), rerun
+`scripts/deploy.ps1`; it installs migration 003 and the read-only Node-RED endpoints.
+Grafana stays the same.
+
+After deployment, print the history key **in your server terminal**:
+
+```bash
+python3 -c 'import json,pathlib; print(json.loads((pathlib.Path.home()/".local/state/injection-monitoring/history-api-access.json").read_text())["token"])'
+```
+
+In the app, **File → Server connection**: server `http://172.20.48.28:1880`,
+paste that key. It is kept for this app run; `MONITORING_HISTORY_TOKEN` can supply
+it at startup. Database passwords stay on the server. Use HTTPS if accessing it
+outside the lab's trusted network.
+
+Metadata loads in pages in the background; waveforms load only for selected
+cycles. Legacy settings remain blank when unknown. T/P maxima come from the
+stored channels; Time is the recorded sample span.
+
 For unusual authentication, restore/rollback commands or the isolated integration
 test, see [the manual guide](maintenance/MANUAL_SETUP.md). The installer supports
 `NODERED_TOKEN`/`GRAFANA_TOKEN` for existing admin/service tokens, and
@@ -92,8 +113,9 @@ failure handling, including connections dropped while Node-RED restarts.
 User output on 2026-10-19 confirms release.oqzIvlaQ completed all installer stages:
 isolated Docker tests, backups, PostgreSQL setup, 29 matching historical cycles,
 Node-RED/Grafana deployment, production verification and scheduled maintenance.
-Browser/hardware checks and backup restore verification remain outstanding;
-see [current status](../TODO.md). No further deployment rerun is required.
+The user confirmed Grafana works. Hardware and backup restore checks remain;
+see [current status](../TODO.md). The new desktop history endpoints need the
+update described above; they have not been applied to the live server.
 The first run can take several minutes to download/build the isolated test stack.
 These are deployment tests using separate containers and synthetic data; no DAQ
 or active recording is needed. They are not a runtime dependency of the app.

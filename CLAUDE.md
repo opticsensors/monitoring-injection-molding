@@ -52,6 +52,7 @@ per process.
 
 ```
 main.py, MainWindow.py, graphswidget.py, plot_tools.py, plot_icons.py,
+plot_view.py, cycle_review.py, history_controller.py, history_client.py,
 config.py, config_window.py, sensor_types.py, rheology.py, app_logging.py,
 mqtt_publisher.py
                                     ← the GUI app; all import each other flatly,
@@ -136,8 +137,8 @@ within a deadline; writes are not automatically repeated. Manual procedures are 
   default 10, and numeric cycle legends. Selection combines 55t and 160t with one
   total count limit and no machine variable. It spans dates, excludes continuous captures and has no
   metadata filters/table. The collapsed raw Export row remains. The simplified
-  2026-10-20 dashboard is local and still needs importing into live Grafana;
-  no schema/Node-RED update is required. This does not remove stored metadata or
+  2026-10-20 dashboard works on the server per the user;
+  this does not remove stored metadata or
   continuous acquisition support from the desktop/backend.
 
 `refresh_run_snapshot()` uses `_saved_indices()` and `_channel_field_names()`
@@ -146,11 +147,24 @@ frozen indices. Do not interpret old data using the current GUI configuration.
 Settings are copied at the actual trigger boundary in GraphThread; measurements
 start unknown for every part. New sessions have a readable timestamp plus UUID.
 
-Only reusable Run setup preferences are saved automatically (`data/run_setup.json`).
-The compact settings row sits below the toolbar; its check mark applies edits.
-The toolbar history icon opens Cycle history. History stays in RAM across Next;
-the session Save or history window's Save writes metadata explicitly, and the
-history window's Load restores it. Existing failed-MQTT spooling
+Reusable Run setup preferences are saved in `data/run_setup.json`; sidebar visibility
+and history URL use QSettings. Machine/Material/Mold/Speed inputs share one right
+scrollable sidebar with per-part Weight/Spiral editing and one Apply. The sidebar
+icon toggles it; Live follows the latest completed part unless an edit is unfinished.
+Apply validates all inputs before saving; unchanged part values do not gain a revision.
+`Speed (mm/s)` is a manual injection
+setting, unrelated to measured CH6 flow (cm³/s); old pressure values are preserved.
+History is an embedded tab; Refresh loads server history, check rows and Plot to create independent
+Mold/Machine comparison tabs. Live and review share `PlotViewMixin` construction/tools,
+with per-view interaction state and one stationary top toolbar routed to the active
+plot. Hidden Live updates cannot overwrite comparison controls/readouts. Comparison
+dropdowns select one recorded waveform/geometry for calculations; the eye hides other
+cycles. The sidebar uses 72 px fields with full values in tooltips. Raw converted values use recorded fields/units,
+never current calibration. A 128 MB RAM waveform cache survives Next, not restart.
+History loads all metadata via paged read-only HTTP on a QThread, waveforms on demand.
+The server key stays in memory (or MONITORING_HISTORY_TOKEN); reader DB credentials
+remain on the server. Migration 003 and the new Node-RED runtime/routes need deployment.
+The normal Save remains; metadata import/export moved to File. Existing failed-MQTT spooling
 and broker-ACK cleanup remain unchanged. There is no automatic capture journal
 and no client database-ACK protocol. Sampling settings/commands and the external
 DAQ driver are unchanged by the metadata feature.
@@ -162,7 +176,7 @@ sequential chunks (5,000 points / 4 MB), retaining the whole-capture hash.
 The MQTT-to-disk acknowledgement gap remains; do not claim lossless delivery.
 Legacy arrays are now quarantined, so drain old PC spools before cutover.
 Apply `001_cycle_metadata.sql` on fresh schemas and `002_ingestion_recovery.sql`
-on both fresh/existing schemas; use `scripts/apply_server_migrations.sh`.
+plus `003_history_reader.sql` on fresh/existing schemas; use `scripts/apply_server_migrations.sh`.
 Migration 002 records measurement conflicts without rejecting a valid capture,
 preserves client edit timestamps as provenance and uses a non-login object owner.
 Backfill must reconcile a fresh diagnostic against `server.metadata.json`.

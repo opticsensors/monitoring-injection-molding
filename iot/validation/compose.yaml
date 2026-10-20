@@ -11,7 +11,8 @@ services:
       - pg-test:/var/lib/postgresql/data
       - ../postgres/001_cycle_metadata.sql:/docker-entrypoint-initdb.d/001.sql:ro
       - ../postgres/002_ingestion_recovery.sql:/docker-entrypoint-initdb.d/002.sql:ro
-      - ./test-roles.sql:/docker-entrypoint-initdb.d/003.sql:ro
+      - ../postgres/003_history_reader.sql:/docker-entrypoint-initdb.d/003.sql:ro
+      - ./test-roles.sql:/docker-entrypoint-initdb.d/004.sql:ro
     healthcheck:
       test: [CMD-SHELL, "pg_isready -U postuser -d injection_monitoring"]
       interval: 2s
@@ -33,6 +34,7 @@ services:
     environment:
       TEST_PG_USER: monitoring_ingest
       TEST_PG_PASSWORD: test-only-ingest
+      MONITORING_HISTORY_CONFIG: /opt/history-access.json
     depends_on:
       postgres:
         condition: service_healthy
@@ -45,6 +47,8 @@ services:
       - ./settings.js:/data/settings.js:ro
       - ../../data/validation/stack/flows.json:/data/flows.json:ro
       - ../nodered/capture_queue.cjs:/opt/capture_queue.cjs:ro
+      - ../nodered/history_api.cjs:/opt/history_api.cjs:ro
+      - ./history-access.json:/opt/history-access.json:ro
   grafana:
     image: grafana/grafana:12.0.0
     # An internal-only network does not reliably publish host ports. Only the

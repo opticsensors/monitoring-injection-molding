@@ -3,7 +3,7 @@ Matplotlib-style interaction tools for the pyqtgraph plots.
 
 ToolViewBox replaces the default ViewBox on every plot the user can interact
 with. The built-in mouse interaction (wheel zoom, free drag, right-click menu)
-is disabled; instead MainWindow drives a single global tool mode, mirroring
+is disabled; instead each owning plot view drives its own tool mode, mirroring
 the matplotlib toolbar:
 
     None     -> mouse does nothing on the plot (live view / no tool selected)
@@ -25,13 +25,10 @@ import pyqtgraph as pg
 class ToolViewBox(pg.ViewBox):
     """Main ViewBox of a plot: modal (pan/zoom/cursor) mouse interaction only."""
 
-    # Shared by every instance; driven by MainWindow.
-    tool_mode = None              # None | 'pan' | 'zoom' | 'cursor'
-    cursor_click_callback = None  # f(mouse_button, x_data), set by MainWindow
-
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, interaction=None, **kwargs):
         kwargs.setdefault('enableMenu', False)
         super().__init__(*args, **kwargs)
+        self.interaction = interaction
         self.y_buddies = []  # side-axis ViewBoxes that follow this view's Y changes
         # Matplotlib-style zoom rectangle: thin black outline, no fill. The
         # pyqtgraph default is a translucent yellow-filled box; updateScaleBox
@@ -63,7 +60,7 @@ class ToolViewBox(pg.ViewBox):
         ev.accept()  # wheel zoom disabled (was broken on the multi-axis plots)
 
     def mouseDragEvent(self, ev, axis=None):
-        mode = ToolViewBox.tool_mode
+        mode = getattr(self.interaction, 'tool_mode', None)
         if mode not in ('pan', 'zoom') or ev.button() != QtCore.Qt.LeftButton:
             ev.ignore()
             return
@@ -73,9 +70,9 @@ class ToolViewBox(pg.ViewBox):
         self._map_y_to_buddies(old_y)
 
     def mouseClickEvent(self, ev):
-        if ToolViewBox.tool_mode == 'cursor' and ToolViewBox.cursor_click_callback is not None:
+        if getattr(self.interaction, 'tool_mode', None) == 'cursor':
             x = self.mapSceneToView(ev.scenePos()).x()
-            ToolViewBox.cursor_click_callback(ev.button(), x)
+            self.interaction._on_cursor_click(ev.button(), x)
             ev.accept()
             return
         ev.ignore()

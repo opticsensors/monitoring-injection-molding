@@ -8,20 +8,23 @@ from tempfile import TemporaryDirectory
 import time
 from uuid import uuid4
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtCore, QtWidgets
 import cycle_metadata as metadata
-from metadata_widgets import RunSetup, MeasurementsDialog
+from metadata_widgets import RunSetup, HistoryPanel, PartEditor, compact_form, add_field
+from history_controller import HistoryController
 from sensor_types import sensor_unit
+from plot_icons import sidebar_icon
 
 logger = logging.getLogger(__name__)
 
 
-class MetadataController:
+class MetadataController(HistoryController):
     def initialize_metadata(self):
         self.cycle_history = {}
         self._session_config = None
         self._capture_starts = {}
         self._measurements_dialog = None
+        self.initialize_browser()
         try:
             self.run_settings = metadata.load_preferences(self.machine_id)
         except (OSError, ValueError, TypeError):
@@ -30,16 +33,126 @@ class MetadataController:
             self.messagesBox.appendPlainText("Saved run setup could not be read; check settings before recording.")
         self.machine_id = self.run_settings["machine_id"]
         self.runSetup = RunSetup(self.run_settings, self)
-        self.runSetup.applied.connect(self.apply_run_settings)
-        self.historyButton.clicked.connect(self.show_measurements)
-        self.gridLayout_5.removeWidget(self.frame_3)
-        self.gridLayout_5.removeWidget(self.frame_2)
-        self.gridLayout_5.addWidget(self.runSetup, 1, 0)
-        self.gridLayout_5.addWidget(self.frame_3, 2, 0)
-        self.gridLayout_5.addWidget(self.frame_2, 3, 0)
-        self.gridLayout_5.setRowStretch(1, 0)
-        self.gridLayout_5.setRowStretch(2, 1)
+        self.historyButton.setCheckable(True)
+        self.historyButton.clicked.connect(self.toggle_history)
+        self.partEditor = PartEditor(self)
+        self.historyPanel = HistoryPanel(self)
+        self._measurements_dialog = self.historyPanel
+        self.gridLayout_3.removeWidget(self.plotTabs)
+        self.workspaceTabs = QtWidgets.QTabWidget()
+        self.workspaceTabs.setTabsClosable(True)
+        self.workspaceTabs.addTab(self.plotTabs, "Live")
+        self.workspaceTabs.addTab(self.historyPanel, "History")
+        for index in (0, 1):
+            self.workspaceTabs.tabBar().setTabButton(index, QtWidgets.QTabBar.RightSide, None)
+            self.workspaceTabs.tabBar().setTabButton(index, QtWidgets.QTabBar.LeftSide, None)
+        self.workspaceTabs.tabCloseRequested.connect(self.close_workspace_tab)
+        self._plot_toolbar_changed = self.sync_plot_toolbar
+        def workspace_changed(index):
+            self.historyButton.setChecked(index == 1)
+            self.historyButton.setToolTip("Return to Live" if index == 1 else "Open cycle history")
+            self.sync_plot_toolbar()
+        self.workspaceTabs.currentChanged.connect(workspace_changed)
+        workspace_changed(self.workspaceTabs.currentIndex())
+        self.parametersButton = QtWidgets.QToolButton()
+        self.parametersButton.setIcon(sidebar_icon())
+        self.parametersButton.setIconSize(QtCore.QSize(22, 22))
+        self.parametersButton.setFixedSize(32, 28)
+        self.parametersButton.setAutoRaise(True)
+        self.parametersButton.setAccessibleName("Toggle parameter panel")
+        self.parametersButton.setShortcut("Ctrl+Alt+B")
+        self.parametersButton.setCheckable(True)
+        self.workspaceTabs.setCornerWidget(self.parametersButton)
+        sidebar = QtWidgets.QWidget()
+        sidebar_layout = QtWidgets.QVBoxLayout(sidebar)
+        sidebar_layout.setContentsMargins(12, 12, 0, 12)
+        sidebar_layout.setSpacing(12)
+        sidebar_layout.addWidget(self.runSetup)
+        sidebar_layout.addWidget(self.partEditor)
+        self.parametersApplyButton = QtWidgets.QPushButton("Apply")
+        self.parametersApplyButton.setFixedSize(58, 32)
+        self.parametersApplyButton.setToolTip(
+            "Apply settings to future cycles and save edited Weight/Spiral for the indicated cycle.")
+        self.parametersApplyButton.clicked.connect(self.apply_parameters)
+        actions = QtWidgets.QWidget()
+        add_field(compact_form(actions), "", self.parametersApplyButton)
+        sidebar_layout.addWidget(actions)
+        sidebar_layout.addStretch()
+        self.parameterPanel = QtWidgets.QScrollArea()
+        self.parameterPanel.setWidgetResizable(True)
+        self.parameterPanel.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.parameterPanel.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.parameterPanel.setWidget(sidebar)
+        self.parameterPanel.setFixedWidth(202)
+        self.workspaceSplit = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        self.workspaceSplit.addWidget(self.workspaceTabs)
+        self.workspaceSplit.addWidget(self.parameterPanel)
+        self.workspaceSplit.setStretchFactor(0, 1)
+        self.workspaceSplit.setSizes([1100, 202])
+        self.gridLayout_3.addWidget(self.workspaceSplit, 0, 0)
+        def toggle_parameters(visible):
+            self.parameterPanel.setVisible(visible)
+            self.parametersButton.setIcon(sidebar_icon(visible))
+            self.parametersButton.setToolTip(
+                ("Hide" if visible else "Show") + " parameters (Ctrl+Alt+B)")
+            self.ui_settings.setValue("parameters_visible", visible)
+        self.parametersButton.toggled.connect(toggle_parameters)
+        visible = self.ui_settings.value("parameters_visible", True, type=bool)
+        self.parametersButton.setChecked(visible)
+        self.parameterPanel.setVisible(visible)
+        self.parametersButton.setIcon(sidebar_icon(visible))
+        self.parametersButton.setToolTip(("Hide" if visible else "Show") + " parameters (Ctrl+Alt+B)")
+        menu = self.menubar.addMenu("File")
+        menu.addAction("Import metadata…", self.import_measurements)
+        menu.addAction("Export metadata…", self.export_measurements)
+        menu.addSeparator()
+        menu.addAction("Server connection…", self.server_connection)
         self.refresh_run_snapshot()
+
+    def active_plot_view(self):
+        index = self.workspaceTabs.currentIndex()
+        if index == 0:
+            return self
+        return self.workspaceTabs.currentWidget() if index > 1 else None
+
+    def route_plot_tool(self, name, checked=False):
+        view = self.active_plot_view()
+        if view is None:
+            return
+        if name == "home":
+            view.resetPlotView()
+        elif name == "ghosts":
+            view._on_hide_ghosts_toggled(checked)
+        else:
+            view._on_tool_toggled(name, checked)
+
+    def sync_plot_toolbar(self, changed_view=None):
+        """One stationary toolbar; inactive plots never overwrite its state."""
+        view = self.active_plot_view()
+        if changed_view is not None and changed_view is not view:
+            return
+        enabled = bool(view is not None and not view.plot_is_live and
+                       (view.splotlist or view.machine_splotlist))
+        mode = view.tool_mode if view is not None else None
+        for name, button in (("home", self.homeButton), ("zoom", self.zoomButton),
+                             ("pan", self.panButton), ("cursor", self.cursorButton),
+                             ("ghosts", self.hideGhostsButton)):
+            button.setEnabled(enabled)
+            if button.isCheckable():
+                previous = button.blockSignals(True)
+                button.setChecked(bool(getattr(view, "_ghosts_hidden", False))
+                                  if name == "ghosts" else mode == name)
+                button.blockSignals(previous)
+        self.hideGhostsButton.setToolTip(
+            "Hide other cycles" if view is not None and view is not self else "Hide previous cycles")
+        self.readoutBox.setEnabled(view is not None)
+        self.cycleReadoutLabel.setText(getattr(view, "_cycle_readout_text", "Cycle: --"))
+        readout = getattr(view, "_cursor_readout", ("Δt: --", "ΔP: --", "η: --", ""))
+        for label, text in zip((self.deltaTLabel, self.deltaPLabel, self.viscosityLabel), readout):
+            label.setText(text)
+        self.viscosityLabel.setToolTip(readout[3])
+        self.readoutBox.layout().activate()
+        self.readoutBox.adjustSize()
 
     def active_configuration(self):
         return deepcopy(dict(monitoring_time_s=self.time_lim, channels=self.daq_channels,
@@ -79,6 +192,25 @@ class MetadataController:
         self.runSetup.set_values(settings)
         self.refresh_run_snapshot()
         self.statusbar.showMessage("Settings applied to the next cycle", 3000)
+        return True
+
+    def apply_parameters(self):
+        """One explicit Apply: future-cycle settings and only edited part values."""
+        try:
+            settings = self.runSetup.values()
+            # Validate both groups before saving either. Blank part values clear them.
+            if self.partEditor.key and self.partEditor.dirty:
+                metadata.optional_number(self.partEditor.weight.text(), "Weight (g)")
+                metadata.optional_number(self.partEditor.length.text(), "Spiral (mm)")
+        except ValueError as exc:
+            QtWidgets.QMessageBox.warning(self, "Parameters", str(exc))
+            return False
+        if not self.apply_run_settings(settings):
+            return False
+        if self.partEditor.key and self.partEditor.dirty:
+            if not self.partEditor.apply():
+                return False
+            self.statusbar.showMessage("Settings and cycle measurements applied", 3000)
         return True
 
     def prepare_run_setup(self):
@@ -127,6 +259,10 @@ class MetadataController:
                 details.get("status", "complete"), details.get("reason", "trigger"))
             key = metadata.identity(entry["capture"])
             self.cycle_history[key] = entry
+            config = entry["capture"]["config_snapshot"]
+            self.remember_waveform(key, dict(time_s=xdata, fields=config["field_names"],
+                values={name: [row[index] for row in rows]
+                        for name, index in zip(config["field_names"], config["saved_indices"])}))
             if self.mqtt_enabled:
                 self._ensure_mqtt_publisher(machine_id=key[0])
                 if self.mqtt_publisher is not None:
@@ -134,6 +270,11 @@ class MetadataController:
                     entry["delivery"] = "Queued (unconfirmed)"
                     self._session_streamed = True
             self.refresh_measurements()
+            if cycle_id and self.workspaceTabs.currentIndex() == 0 and not self.partEditor.dirty:
+                # Live follows the newest completed part; history browsing and
+                # unfinished edits retain their selection.
+                if self.partEditor.set_entry(key):
+                    self.historyPanel.select_key(key)
         except (ValueError, KeyError) as exc:
             logger.exception("Capture metadata validation failed")
             self.messagesBox.appendPlainText(f"Cycle {cycle_id} could not be prepared for upload: {exc}")
@@ -147,16 +288,23 @@ class MetadataController:
         self.refresh_measurements()
         self.messagesBox.appendPlainText(f"Queued {len(xdata)} samples and metadata for cycle {cycle_id}.")
 
+    def toggle_history(self, checked):
+        if checked:
+            self.show_measurements()
+        else:
+            self.workspaceTabs.setCurrentIndex(0)
+
     def show_measurements(self):
-        if self._measurements_dialog is None:
-            self._measurements_dialog = MeasurementsDialog(self)
-        self._measurements_dialog.refresh()
-        self._measurements_dialog.show()
-        self._measurements_dialog.raise_()
+        self.historyPanel.refresh()
+        self.workspaceTabs.setCurrentIndex(1)
 
     def refresh_measurements(self):
         if self._measurements_dialog is not None:
             self._measurements_dialog.refresh()
+        if self.partEditor.key:
+            self.partEditor.set_entry(self.partEditor.key)
+        else:
+            self.select_latest_part()
 
     def update_measurements(self, key, weight, length):
         entry = self.cycle_history[key]
@@ -164,18 +312,29 @@ class MetadataController:
             QtWidgets.QMessageBox.warning(self, "Measurements", "Continuous recordings do not represent a single part.")
             return
         try:
-            entry["measurements"] = metadata.edit_measurements(entry["measurements"], weight, length)
+            baseline = max((entry["measurements"], entry.get("server_measurements", entry["measurements"])),
+                           key=lambda m: m["revision"])
+            entry["measurements"] = metadata.edit_measurements(baseline, weight, length)
+            entry["local_measurement_edit"] = True
             entry["delivery"] = "Measurements not sent"
             if self.mqtt_enabled:
                 self.send_measurements(key)
             self.refresh_measurements()
+            return True
         except ValueError as exc:
             QtWidgets.QMessageBox.warning(self, "Measurements", str(exc))
+            return False
 
     def send_measurements(self, key, force=False):
         if self.is_monitoring and key[0] != self.machine_id:
             QtWidgets.QMessageBox.warning(self, "Send metadata", "Stop recording before sending metadata for another machine.")
             return
+        entry = self.cycle_history[key]
+        remote = entry.get("server_measurements")
+        if remote and remote["revision"] >= entry["measurements"]["revision"]:
+            values = entry["measurements"]
+            entry["measurements"] = metadata.edit_measurements(remote, values.get("weight_g"), values.get("length_mm"))
+            entry["local_measurement_edit"] = True
         self._ensure_mqtt_publisher(force=force, machine_id=key[0])
         if self.mqtt_publisher is not None and (self.mqtt_enabled or force):
             self.mqtt_publisher.publish_records(metadata.measurement_message(self.cycle_history[key]))
