@@ -7,6 +7,9 @@ restore checks remain open. Desktop online history is new and needs deployment;
 the GUI/demo can be reviewed locally first.
 The earlier full migration, acquisition-rate conversion and automatic local
 journal plans are superseded by the user's later decisions.
+Work agreed on 2026-10-27 (melt temperature, History edits/deletion, File menu,
+server connection, per-session sidebar settings) is listed under "Planned" below
+and is not implemented yet.
 
 ## Agreed scope
 
@@ -196,6 +199,223 @@ production commands were run by the assistant; this status records the user's lo
 - [ ] Verify DAQ counts/timing, all physical trigger sources, calibration,
   repeated Start/Stop/Next/close, long cycles and amplifier wiring when the DAQ
   is available. No physical signal or end-to-end storage guarantee is claimed.
+
+## Planned: melt temperature, History tab and server connection (not implemented)
+
+Agreed with the user on 2026-10-27 and only written down for now. Each item
+records what was found in the code so the work can start from it.
+
+### 1. Melt temperature: REQUIRED
+
+- [ ] **Add `Melt (°C)` directly below `Mold (°C)` in the run setup.** Melt
+  temperature is a process parameter that must be recorded with every cycle,
+  and it must also appear as a History column.
+  - Same behaviour as Material/Mold/Speed (checked 2026-10-27): manual entry,
+    written to `data/run_setup.json` on Apply/Start/Next, kept across cycles,
+    sessions and restarts, frozen into each capture at the trigger edge.
+  - Desktop: `melt_temperature_c` in `operator_settings()` (lower bound
+    -273.15, as for mold), a `RunSetup` field, a History column next to
+    Mold (°C), the `.cycles.csv` field list in `export_cycle_summary()`, and the
+    preview/demo data.
+  - Server: settings travel inside `capture`, and the server stores the whole
+    capture JSON, so the value already reaches PostgreSQL and the history API;
+    older cycles read as blank. Still add validation in
+    `iot/nodered/nodered_function.js`, a generated column plus `cycle_catalog`
+    entry in a new migration, and the server metadata export. Grafana only if wanted.
+  - Must also be correctable through the settings-correction layer (2.3).
+  - **It is a setpoint, like the mold temperature** (confirmed by the user on
+    2026-10-27), not a measured value. Tooltip: "Manual melt-temperature
+    setpoint."; validation message "Melt setpoint", matching "Mold setpoint".
+
+### 2. History tab
+
+Current behaviour, for reference:
+
+- **Load server**: asks for URL and access key when none is set, then
+  `GET /monitoring/history` returns the 10 newest cycle summaries of all
+  machines, without waveforms. Existing rows and unsent local Weight/Spiral
+  edits are kept. Clicking again restarts from the newest page.
+- **Load more**: the next 10 older summaries via the page cursor. Disabled while
+  a request runs and at the end ("No older cycles"); failure/cancel keeps the position.
+- Waveforms download only on **Plot**, into the 128 MB RAM cache.
+
+#### 2.1 State column: clearer wording (desktop only)
+
+The column combines two things (`metadata_widgets.py:283-285`):
+
+1. Where the row came from / waveform status (`waveform_status`):
+   - **Local**: recorded by this app in this run, only in this PC's memory. It
+     stays "Local" even after it was sent over MQTT; the tooltip shows the
+     delivery state (e.g. "Queued (unconfirmed)").
+   - **Stored**: loaded from the server; the waveform is in InfluxDB and can be plotted.
+   - **Legacy**: old data from before the metadata system; can be plotted.
+   - **Pending**: the server has the metadata, but the waveform is not confirmed
+     as written yet. Plot fails with "waveform unavailable".
+   - **Metadata_only**: the server got Weight/Spiral but never the capture.
+2. **"· partial"**: capture status `interrupted`. The cycle was still running
+   when acquisition stopped (Stop mid-cycle, monitoring-time limit, device
+   error); the trigger never went low, so the waveform is cut off and its
+   Time, T max and P max may be wrong.
+
+Keep the column, but:
+
+- [ ] Show partial as **"Incomplete"**, highlighted (e.g. orange): it tells the
+  operator not to trust that cycle.
+- [ ] Rename the delivery labels, e.g. "This PC · not sent", "Sent (unconfirmed)",
+  "On server", "Server processing". Local → Stored after Load server is currently
+  the only GUI confirmation that the server received a cycle, and "Local" is
+  misleading for a cycle that was already sent.
+
+#### 2.2 Weight and Spiral columns (desktop only, low risk)
+
+- [ ] Add Weight (g) and Spiral (mm) columns from each row's `measurements`.
+- [ ] Optionally make them editable in the table through the same revisioned
+  path as the sidebar (`update_measurements()` → MQTT measurements message), so
+  the sidebar, the table and the server stay in sync.
+
+#### 2.3 Row deletion and row editing: IMPORTANT, every change must reach the server
+
+The operator must be able to remove a wrong cycle and correct wrongly entered
+settings from the History tab, and **every such change must be sent to the
+cloud/server** (PostgreSQL catalog, History on other PCs, Grafana). A change
+that exists only on this PC is not acceptable.
+
+Deletion:
+
+- [ ] **Soft delete ("Exclude / bad cycle")**, not real deletion. Sent like
+  Weight/Spiral, with a revision, so it can be undone. Grafana and History hide
+  excluded cycles (optionally a "show excluded" toggle). Real deletion is ruled
+  out: it contradicts "never delete waveform history", and the history API is
+  read-only by design (`iot/nodered/history_api.cjs:102`).
+- [ ] Removing a row only from the local list is not enough: a server row comes
+  back on the next Load server.
+- [ ] Current-session trap: Save writes every sample and looks up its cycle in
+  `cycle_history` (`metadata_controller.py:411`). Deleting the entry there makes
+  Save crash with a KeyError, so excluded cycles must be skipped explicitly in
+  the waveform/cycle export (or exported with an `excluded` flag), never just
+  removed from `cycle_history`.
+
+Editing Material / Mold / Melt / Speed:
+
+- [ ] **Correction layer, not overwriting the recorded values.** Captured
+  settings are immutable on purpose: the server rejects a conflicting capture
+  replay, the desktop requires local and server capture to match exactly
+  (`history_controller.py:155`), and metadata import does the same
+  (`metadata_controller.py:362`). Keep the recorded values and add revisioned
+  corrections, like Weight/Spiral. Table, Grafana and `.cycles.csv` show the
+  corrected value, with a tooltip such as "recorded as X".
+- [ ] **Multi-row editing.** Settings carry over between cycles, so one typo is
+  usually repeated on many consecutive cycles: select the rows, then
+  "Edit settings for N cycles". Cell-by-cell editing would be tedious.
+
+Server work shared by deletion and correction (one deployment):
+
+- [ ] One new revisioned message (or an additive extension of measurements v1)
+  carrying `excluded` and the setting corrections, with the same rule that an
+  older revision never overwrites a newer one.
+- [ ] New PostgreSQL migration (correction/excluded columns; catalog and history
+  views return the effective values), Node-RED validation, Grafana selector
+  filter, server metadata export, desktop merge/conflict handling, redeploy.
+
+Suggested order: (1) desktop only: State wording, Incomplete highlight,
+Weight/Spiral columns; (2) desktop + server in one deployment: Exclude cycle
+and multi-row settings correction, including Melt.
+
+### 3. Remove the File menu
+
+The top-left `File` menu holds Import metadata…, Export metadata… and Server
+connection… (`metadata_controller.py:105-109`). The user would prefer not to
+have it. They are only partly covered by GUI buttons:
+
+- Export metadata: mostly duplicated by **Save**, which already writes
+  `.metadata.json`. Difference: Save exports only the current session; File →
+  Export writes every cycle in memory (all sessions since start plus loaded
+  server rows).
+- Import metadata: no button equivalent. Restores metadata of earlier sessions
+  after a restart and reconciles server metadata exports. Imported local-only
+  cycles have no waveform in RAM, so Plot tries the server. Mostly redundant
+  once server history is used.
+- Server connection: no button; it also opens automatically on the first
+  Load server without a key. Unnecessary once item 4 is done.
+- [ ] Remove the menu: Save keeps the metadata export; drop Import (or replace it
+  with a History-tab "Open saved session…" that reads the CSV + metadata, so
+  offline sessions can also be plotted); replace Server connection with item 4
+  plus a status indicator.
+
+### 4. Server connection without prompts
+
+Now: `history_controller.py` keeps the URL in QSettings (default hard-coded
+`http://172.20.48.28:1880`) and the access key only in memory, or from the
+`MONITORING_HISTORY_TOKEN` process environment variable, which is not read from
+`.env`. So the dialog appears on the first Load server of every app run. MQTT is
+already configured from `.env` (`BROKER`, `PORT`, `user`, `password`, read
+directly by `mqtt_publisher.load_settings()`).
+
+Usual practice in plant-floor software: connection details are set once at
+commissioning by an engineer/administrator, in a machine-level configuration
+file or an admin-protected settings page; operators never type server addresses
+or passwords. Secrets live in the OS credential store (Windows Credential
+Manager / DPAPI) or an encrypted configuration, or are replaced by Windows/AD
+integrated login or certificates (e.g. PI System clients, OPC UA). Operators
+only see a connection-status indicator; user logins exist for auditing who
+changed what, not for connecting.
+
+**Decision (user, 2026-10-27): internal use only, so `.env` is enough.** No
+Windows Credential Manager, certificates or TLS for now.
+
+- [ ] Read `HISTORY_URL` and `HISTORY_TOKEN` from the same git-ignored `.env` as
+  MQTT; no prompt when they are present, and a short error pointing to `.env`
+  when they are missing or rejected. Remove the hard-coded IP.
+- [ ] The key already exists on the server: the installer generates it and keeps
+  it in `~/.local/state/injection-monitoring/history-api-access.json`
+  (`scripts/deploy_server.py:785`). Copy it into each PC's `.env` once. Update
+  that installer message and `iot/SERVER_SETUP.md:98`, which still point to
+  File → Server connection.
+- [ ] Keep `.env` out of Git (already ignored) and out of OneDrive sync.
+- [ ] Show broker/server status (green/red) in the GUI instead of a connection dialog.
+
+### 5. Sidebar: settings fixed per session, separate Part box
+
+Current behaviour (checked 2026-10-27):
+
+- Material/Mold/Speed can be edited at any time, also during a running cycle;
+  only Machine is locked while a session records (`begin_metadata_session()`,
+  unlocked in `receiveXYData()`).
+- Typing alone does nothing. A change takes effect on Apply, or automatically on
+  Start/Next (`prepare_run_setup()`), from the next trigger edge; the running
+  cycle keeps the snapshot it started with.
+- Risk: a value typed but not applied stays visible in the box while cycles keep
+  recording the old value, with no warning.
+- One Apply serves two targets: settings go to *future* cycles, Weight/Spiral go
+  to the *already finished* cycle shown as "Cycle 339 · 55t"
+  (`metadata_controller.py:72-76`). Confusing for the operator.
+
+**Decision (user, 2026-10-27):**
+
+- [ ] **Settings fixed per session.** Machine/Material/Mold/Melt/Speed are locked
+  while a session records, like Machine today; editable after Stop; applied on
+  Start/Next through the existing `prepare_run_setup()`. Remove the settings part
+  of Apply. Short hint while locked: "Stop to change; applies from Next".
+  - Matches the workflow: one setpoint set per session (on 2026-10-27, sessions
+    of 5 cycles with cycle times 18.96 → 18.01 → 17.55 → 17.39 → 17.32 s).
+  - Rejected alternative, locking only during a running cycle: cycles take
+    ~17-21 s with ~4-11 s gaps, so the fields would be disabled most of the time.
+  - Changing a setpoint means Stop, then Next. Press Stop between cycles,
+    otherwise the running cycle is saved as partial. Wrong entries are fixed
+    afterwards with the correction layer (2.3).
+  - While stopped, applying the DAQ configuration window must not reset typed
+    values (`main.py:974-975` currently restores the last applied ones).
+    Optionally save edits to `data/run_setup.json` as they are made, so closing
+    the app without starting keeps them.
+- [ ] **Separate Part box**, titled "Part · Cycle N · machine", with Weight/Spiral
+  and its own Save button (enabled only after an edit). It stays editable during
+  cycles: part N is weighed while part N+1 is moulded. Keep the
+  Apply/Discard/Cancel prompt when the selection would change with unsaved
+  values (`PartEditor.can_leave()`).
+- [ ] Update the tests that encode the current behaviour:
+  `tests/check_metadata_gui.py:95` applies settings mid-session from
+  `cycleStartedSig`, and `tests/check_history_gui.py:87-99` relies on the shared
+  Apply. Keep their checks that recorded captures never change.
 
 ## Separate follow-ups, not silently bundled into this rollout
 
