@@ -1,6 +1,6 @@
 # Implementation status and remaining deployment work
 
-Updated 2026-10-20 after the third GUI/history iteration. Checked items are
+Updated 2026-10-26 after the acquisition-readiness discussion. Checked items are
 implemented/locally verified unless server evidence is stated below. The server
 installer completed and the user confirms Grafana works. Hardware and backup
 restore checks remain open. Desktop online history is new and needs deployment;
@@ -10,6 +10,30 @@ journal plans are superseded by the user's later decisions.
 Work agreed on 2026-10-27 (melt temperature, History edits/deletion, File menu,
 server connection, per-session sidebar settings) is listed under "Planned" below
 and is not implemented yet.
+
+## Next supervised machine test
+
+Follow [MACHINE_TEST.md](MACHINE_TEST.md). Hardware repair, backup-restore testing
+and external alerting are not prerequisites for this supervised trial. Retain
+manual exports and an independent copy; keep those operational follow-ups open.
+
+- [x] Document Machine mold position as an accepted hardware limitation; use
+  other known-working trigger methods. Repair is deferred, not a general blocker.
+- [x] Fix this app's analog inputs at ±10 V in the GUI and application config.
+  Shared `daq_connectivity` range support remains unchanged.
+- [x] Clarify the sampling-divisor label without changing values or commands.
+- [x] Add `scripts/validate_acquisition.py`: launches the normal GUI and reports
+  consumed/returned scans per session using process-local observation only.
+- [ ] Run that diagnostic with the actual machine and inspect discards after
+  the initial buffered read, host timing, physical traces and saved results.
+- [ ] Compare saved cycle identities/counts/timestamps/values with server storage
+  and confirm Grafana refresh. Desktop online history remains a separate rollout.
+
+Local verification on 2026-10-26: all 65 Python unit tests passed, including the
+new observer tests using synthetic bytes through the installed driver without
+opening a port. Offscreen checks passed for fixed ranges, unchanged sampling
+commands, metadata/export behavior and the full diagnostic launcher. Hardware
+acquisition and live-server results remain unverified by these checks.
 
 ## Agreed scope
 
@@ -196,9 +220,10 @@ production commands were run by the assistant; this status records the user's lo
 - [ ] Verify BOTH selector queries and waveform panels update after a new cycle
   at the deployed refresh interval; otherwise explicitly refresh the dashboard
   pending a version-specific refresh adjustment.
-- [ ] Verify DAQ counts/timing, all physical trigger sources, calibration,
-  repeated Start/Stop/Next/close, long cycles and amplifier wiring when the DAQ
-  is available. No physical signal or end-to-end storage guarantee is claimed.
+- [ ] Verify DAQ counts/timing, the working physical trigger sources, calibration,
+  repeated Start/Stop/Next/close and long cycles when the DAQ is available.
+  Machine mold position amplifier wiring remains an accepted, deferred issue.
+  No physical signal or end-to-end storage guarantee is claimed.
 
 ## Planned: melt temperature, History tab and server connection (not implemented)
 
@@ -369,7 +394,7 @@ Windows Credential Manager, certificates or TLS for now.
 - [ ] The key already exists on the server: the installer generates it and keeps
   it in `~/.local/state/injection-monitoring/history-api-access.json`
   (`scripts/deploy_server.py:785`). Copy it into each PC's `.env` once. Update
-  that installer message and `iot/SERVER_SETUP.md:98`, which still point to
+  that installer message and `iot/SERVER_SETUP.md:104`, which still point to
   File → Server connection.
 - [ ] Keep `.env` out of Git (already ignored) and out of OneDrive sync.
 - [ ] Show broker/server status (green/red) in the GUI instead of a connection dialog.
@@ -404,7 +429,7 @@ Current behaviour (checked 2026-10-27):
     otherwise the running cycle is saved as partial. Wrong entries are fixed
     afterwards with the correction layer (2.3).
   - While stopped, applying the DAQ configuration window must not reset typed
-    values (`main.py:974-975` currently restores the last applied ones).
+    values (`main.py:975-976` currently restores the last applied ones).
     Optionally save edits to `data/run_setup.json` as they are made, so closing
     the app without starting keeps them.
 - [ ] **Separate Part box**, titled "Part · Cycle N · machine", with Weight/Spiral
@@ -419,16 +444,17 @@ Current behaviour (checked 2026-10-27):
 
 ## Separate follow-ups, not silently bundled into this rollout
 
-- Sampling-rate label/Hz-to-divisor conversion: explicitly deferred by the user.
+- Hz-to-divisor conversion and acquisition-rate changes remain deferred. Only
+  the misleading Hz label was corrected; existing command values are preserved.
 - Automatic desktop capture journaling, disk-retention policies, client chunk receipts and
   client database-ACK delivery: explicitly deferred to preserve tested behavior.
 - External driver all-scan/batching contract, cancellable discovery and hardware
   alignment changes: require a separate driver/hardware validation pass. The
   current driver can discard buffered scans; metadata work does not fix that.
-- Rendering/memory bounds for very long runs, range-aware calibration outside
-  the tested +/-10 V setup, and trigger-boundary inclusion/wiring checks remain
-  separate acquisition follow-ups. No claim that the old broad reliability
-  wishlist is fully completed.
+- Rendering/memory bounds for very long runs and trigger-boundary inclusion
+  remain separate acquisition follow-ups. Other input ranges are outside this
+  app's scope; the shared driver retains them. Machine mold position wiring
+  repair is deferred. No claim that the old broad reliability wishlist is complete.
 - Multi-PC allocation/conflict resolution, per-machine counter migration,
   recipe/MES/material catalogs, automatic historical downloads and other
   metadata kinds remain outside the confirmed single-PC workflow.

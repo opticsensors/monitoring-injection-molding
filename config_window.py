@@ -14,7 +14,7 @@ from sensor_types import (
     normalize_trigger_mode,
     sensor_category, sensor_label, sensor_unit, sensor_tooltip,
 )
-from config import CONFIG_DEFAULTS
+from config import CONFIG_DEFAULTS, DAQ_INPUT_RANGE_V
 
 
 class DaqConfigWindow(QtWidgets.QDialog):
@@ -23,7 +23,6 @@ class DaqConfigWindow(QtWidgets.QDialog):
     configSignal = QtCore.pyqtSignal(dict)
 
     AVAILABLE_CHANNELS = list(range(8))         # CH0..CH7
-    ALLOWED_VOLTAGE_RANGES = [0.2, 0.5, 1, 2, 5, 10]
     # Legacy analog type codes. 'I' was an analog inductive trigger; triggers are
     # digital-only now, so it maps to 'none'.
     LEGACY_TYPE_MAP = {'T': 'T_futaba', 'P': 'P_kistler', 'I': 'none'}
@@ -157,9 +156,9 @@ class DaqConfigWindow(QtWidgets.QDialog):
         self.timeEdit = QtWidgets.QLineEdit()
         self.timeEdit.setToolTip("Duration of monitoring session in seconds")
         daq_layout.addWidget(self.timeEdit, 0, 1)
-        daq_layout.addWidget(QtWidgets.QLabel("Sample Rate (Hz):"), 1, 0)
+        daq_layout.addWidget(QtWidgets.QLabel("Sampling divisor (srate):"), 1, 0)
         self.srateEdit = QtWidgets.QLineEdit()
-        self.srateEdit.setToolTip("Sampling rate in Hz")
+        self.srateEdit.setToolTip("DATAQ srate command value, not samples per second. Keep the validated setup values.")
         daq_layout.addWidget(self.srateEdit, 1, 1)
         daq_layout.addWidget(QtWidgets.QLabel("Decimation (dec):"), 2, 0)
         self.decEdit = QtWidgets.QLineEdit()
@@ -177,7 +176,7 @@ class DaqConfigWindow(QtWidgets.QDialog):
         self.channelTable.setRowCount(2)     # Type, Voltage Range
         self.channelTable.setColumnCount(self.num_channels)
         self.channelTable.setHorizontalHeaderLabels([f"CH {ch}" for ch in self.available_channels])
-        self.channelTable.setVerticalHeaderLabels(["Type", "Voltage Range"])
+        self.channelTable.setVerticalHeaderLabels(["Type", "Range (±V)"])
 
         for col, ch_num in enumerate(self.available_channels):
             combo = self._make_type_combo()
@@ -185,7 +184,8 @@ class DaqConfigWindow(QtWidgets.QDialog):
             self.channel_type_combos[ch_num] = combo
 
             edit = QtWidgets.QLineEdit()
-            edit.setToolTip(f"Voltage range for CH{ch_num} (one of 0.2, 0.5, 1, 2, 5, 10)")
+            edit.setReadOnly(True)
+            edit.setToolTip("Fixed at ±10 V. This application's sensor calibration requires this range.")
             self.channelTable.setCellWidget(1, col, edit)
             self.voltage_range_edits[ch_num] = edit
 
@@ -487,17 +487,14 @@ class DaqConfigWindow(QtWidgets.QDialog):
         # Channels: reset all to none, then apply defaults
         for ch_num in self.available_channels:
             self._select_data(self.channel_type_combos[ch_num], 'none')
-            self.voltage_range_edits[ch_num].setText("10")
+            self.voltage_range_edits[ch_num].setText(str(DAQ_INPUT_RANGE_V))
         default_channels = d.get('channels', [])
         default_types = d.get('channel_types', [])
-        default_voltages = d.get('voltage_ranges', [])
         for i, ch_num in enumerate(default_channels):
             if ch_num in self.channel_type_combos:
                 if i < len(default_types):
                     self._select_data(self.channel_type_combos[ch_num],
                                       self._normalize_type(default_types[i]))
-                if i < len(default_voltages):
-                    self.voltage_range_edits[ch_num].setText(str(default_voltages[i]))
 
         # Plot layout
         self._select_data(self.moldAxesCombo, bool(d.get('separate_plots', False)))
@@ -558,16 +555,7 @@ class DaqConfigWindow(QtWidgets.QDialog):
                 continue
             channels.append(ch_num)
             channel_types.append(code)
-            try:
-                v = float(self.voltage_range_edits[ch_num].text())
-            except ValueError:
-                self._warn(f"Invalid voltage range for CH{ch_num}. Please enter a number.")
-                return
-            if v not in self.ALLOWED_VOLTAGE_RANGES:
-                self._warn(f"Voltage range for CH{ch_num} must be one of "
-                           f"{self.ALLOWED_VOLTAGE_RANGES} (V).")
-                return
-            voltage_ranges.append(v)
+            voltage_ranges.append(DAQ_INPUT_RANGE_V)
 
         if len(channels) == 0:
             self._warn("No channels selected!\n\nSet at least one channel to a real type.")

@@ -8,10 +8,12 @@ Why this exists: ``test_hardware.py`` prints 4x/s but reads continuously, so a
 short trigger pulse is read and thrown away without ever reaching the screen.
 "I never saw it toggle" is therefore not proof that it never toggled.
 
-This script inspects EVERY scan and never forgets an edge. It reports, per bit:
+This script inspects every scan RETURNED BY THE DRIVER. It reports, per bit:
 how many edges it saw, how long it stayed in each state, and the shortest pulse
-it caught. It also measures the effective scan rate, so you know what pulse
-width the hardware itself is physically able to resolve.
+it caught. It also measures the returned scan rate. The binary-1 driver can
+discard buffered scans, so these are observed edges and host timings, not a
+guarantee of every physical edge or the hardware's pulse-width resolution.
+Use validate_acquisition.py to measure consumed versus returned scans in the GUI.
 
 It reads the real channel/rate settings from config/daq_config_defaults.json, so
 it sees exactly what main.py would see, and it flags which bit main.py is
@@ -41,7 +43,7 @@ from sensor_types import (TRIGGER_TYPE, DIGITAL_INPUTS, digital_bit,   # noqa: E
 from daq_connectivity import Daq_serial                                # noqa: E402
 
 BINARY_METHOD = 1      # must match main.py
-PRINT_PERIOD_S = 0.5   # live-line period (edge counts are cumulative, nothing is lost)
+PRINT_PERIOD_S = 0.5   # live-line period (observed edge counts are cumulative)
 N_BITS = 7             # D0..D6
 
 

@@ -35,9 +35,21 @@ The DAQ driver is a **separate editable package** at `../daq_connectivity`
 ```bash
 python scripts/test_hardware.py            # raw read of all channels incl. D4/D5
 python scripts/daq_diagnose.py             # scan-structure diagnostics (~40 s)
+python scripts/validate_acquisition.py     # normal GUI + per-session serial scan accounting
 python scripts/plot_csv_raw.py  # choose the waveform CSV in the file dialog; no CLI argument parser
 python scripts/generate_grafana_dashboard.py   # regen iot/grafana_dashboard.json from config
 ```
+
+For the next supervised machine session, use [MACHINE_TEST.md](MACHINE_TEST.md).
+The validation launcher observes acquisition reads in-process without editing
+the external driver or changing sampling/trigger behavior. JSON reports under
+data/diagnostics update every five seconds and on exit; normal Save is still
+required. Counts include waiting between cycles and distinguish the first
+buffered batch. Zero observed discards is not an end-to-end no-loss guarantee.
+This app now enforces ±10 V per analog channel; the GUI range cells are read-only.
+Non-10-V values in configuration files are normalized with a warning. Other apps
+retain the shared driver's range support. Sampling UI/logs say divisor (srate);
+the legacy sample_rate_hz key, numeric values and hardware commands are unchanged.
 
 ### GUI testing without a display (offscreen)
 
@@ -266,13 +278,16 @@ all keep reading `True` as "cycle running" whichever source is selected. If cycl
 come out inverted on the bench, the fix is switching between the two `Machine …`
 entries, not touching code.
 
-⚠️ Open hardware issue with this mode: the relay coil also gates the Kistler
+Accepted hardware limitation with this mode: the relay coil also gates the Kistler
 charge-amp reset, so driving it from mould-open leaves the amps in **reset during
 injection** — the cavity-pressure trace is destroyed at the source and no software
 can recover it. The proper fix is to invert *ahead of* the coil (an interposing
 relay whose NC contact feeds A1), which would also make this mode a pure label.
 The software inversion landed first, deliberately, to try the signal on the
-machine.
+machine. Hardware repair is deferred by the user. Keep this limitation documented;
+use the other known-working trigger methods for pressure recording. It is not a
+blocker for supervised tests using those methods, and no wiring change is planned
+in the current software work.
 
 `normalize_trigger_type()` maps the old `Inductive` / `Machine_signal` / `I`
 values in a stored `digital_map` onto `trigger`, and `normalize_trigger_mode()`

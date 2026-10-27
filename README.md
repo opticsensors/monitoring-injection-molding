@@ -47,6 +47,11 @@ Every channel is read as a raw ADC count and first scaled to volts. The DAQ inpu
 
 `V = raw × 10 / 32768`
 
+**This application requires ±10 V on every acquired analog channel. Do not change
+the input range.** The GUI displays a fixed range and the app enforces it, including
+when loading configuration files. The shared `daq_connectivity` library continues
+to support other ranges for other applications.
+
 That voltage is then converted per channel type. The values below are the defaults in `config/daq_config_defaults.json`. For the machine signals, `R` is the resolution given by the machine (mV per unit) and `initial` the value at 0 V.
 
 | Signal | Conversion | Default |
@@ -73,6 +78,21 @@ UPDATE demo and software (leave that as a reminder for me)
 
 Try simulated cycles: `py -3.11 scripts/preview_gui.py`. Add `--history-demo` to test loading 10 summaries at a time.
 Online history needs the [server history update](iot/SERVER_SETUP.md#desktop-history).
+
+## Machine validation
+
+Follow [MACHINE_TEST.md](MACHINE_TEST.md) for a supervised injection test, scan-loss
+diagnostics, local exports and server checks. Launch the normal GUI with scan
+accounting using `py -3.11 scripts/validate_acquisition.py`.
+
+Use a known-working trigger source. **Machine mold position has an accepted
+hardware limitation:** with the documented relay wiring it can keep the Kistler
+amplifiers in reset during injection. Software inversion cannot recover that
+pressure signal. Repair is deferred; the other working trigger methods remain
+available for testing and recording.
+
+The **Sampling divisor (srate)** field is the existing DAQ command parameter,
+not a frequency in Hz. Its value, decimation and hardware commands are unchanged.
 
 # IoT
 

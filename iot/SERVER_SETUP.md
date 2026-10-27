@@ -60,6 +60,12 @@ backup mount. Keep an off-server backup and periodically verify a restore.
 `health.log` is a local report, not an email/notification service. Backups are
 retained, so monitor available disk space.
 
+A supervised machine trial can precede restore testing and external alerting.
+Keep manual session exports and an independent copy, check disk space and verify
+server arrival. Follow [the machine-test checklist](../MACHINE_TEST.md); restore
+verification and monitored failures remain follow-ups before relying on the
+server as the sole recording store.
+
 After success, open Grafana, set Latest cycles (max 100) and check the curves.
 Record one real cycle and confirm it appears before returning to normal work.
 The installer cannot prove hardware behaviour, drain a disconnected PC's spool,
