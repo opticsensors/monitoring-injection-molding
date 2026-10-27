@@ -22,7 +22,7 @@ from copy import deepcopy
 
 import MainWindow
 from app_logging import setup_logging
-from config import CONFIG_DEFAULTS
+from config import CONFIG_DEFAULTS, DAQ_INPUT_RANGE_V, fixed_voltage_ranges
 from sensor_types import (sensor_category,
                           TRIGGER_TYPE, DIGITAL_INPUTS, digital_bit,
                           normalize_trigger_type, normalize_trigger_mode,
@@ -118,7 +118,7 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
 
         # Unit conversion constants + editable conversion parameters
         self.adc_resolution = 2**(16-1)  # 15-bit ADC full-scale count (32768)
-        self.voltage_scale = 10          # Volts at full-scale count
+        self.voltage_scale = DAQ_INPUT_RANGE_V  # Fixed app input/calibration range
         # Deep-ish copy so edits from the config window don't mutate CONFIG_DEFAULTS
         self.conversion = {k: dict(v) for k, v in CONFIG_DEFAULTS.get('conversion', {}).items()}
 
@@ -168,7 +168,7 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
             't2': pg.mkPen('#212121', width=2, style=QtCore.Qt.DotLine)}  # near-black
         # DAQ Configuration from defaults
         self.daq_channels = CONFIG_DEFAULTS['channels'].copy()
-        self.voltage_ranges = CONFIG_DEFAULTS['voltage_ranges'].copy()
+        self.voltage_ranges = fixed_voltage_ranges(self.daq_channels)
         self.daq_srate = CONFIG_DEFAULTS['sample_rate_hz']
         self.daq_dec = CONFIG_DEFAULTS['decimation']
         self.daq_deca = 1
@@ -924,6 +924,7 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
         '''
         Store DAQ configuration values from the config window (dict payload).
         '''
+        cfg = dict(cfg, voltage_ranges=fixed_voltage_ranges(cfg['channels']))
         self.time_lim = cfg['monitoring_time_s']
         self.daq_channels = cfg['channels']
         self.voltage_ranges = cfg['voltage_ranges']
@@ -967,7 +968,7 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
             self.plotDataItem_lst.append([])
             self.ydata_plts.append([])
 
-        logger.info("Configuration applied: channels=%s, types=%s, srate=%dHz, dec=%d, "
+        logger.info("Configuration applied: channels=%s, types=%s, srate=%d (divisor), dec=%d, "
                     "trigger=%s, machine_id=%s, mqtt=%s",
                     self.daq_channels, self.channel_types, self.daq_srate, self.daq_dec,
                     self.trigger_mode, self.machine_id, self.mqtt_enabled)
@@ -1032,7 +1033,7 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
         self.messagesBox.appendHtml('<p>Channels: %s</p>' % cfg['channels'])
         self.messagesBox.appendHtml('<p>Channel types: %s</p>' % channel_types)
         self.messagesBox.appendHtml('<p>Voltage ranges: %s</p>' % cfg['voltage_ranges'])
-        self.messagesBox.appendHtml('<p>Sample rate: %d Hz</p>' % cfg['sample_rate_hz'])
+        self.messagesBox.appendHtml('<p>Sampling divisor (srate): %d</p>' % cfg['sample_rate_hz'])
         self.messagesBox.appendHtml('<p>Decimation: %d</p>' % cfg['decimation'])
         self.messagesBox.appendHtml('<p>Display points: %d</p>' % cfg['display_points'])
         self.messagesBox.appendHtml('<p>Plot refresh rate: %.1f ms</p>' % cfg['plot_refresh_rate_ms'])

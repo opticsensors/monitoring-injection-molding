@@ -3,13 +3,20 @@ Application configuration defaults.
 
 Loads ``daq_config_defaults.json`` (next to this file) on import and exposes the
 merged result as ``CONFIG_DEFAULTS``. Built-in fallbacks are used if the file is
-missing or invalid. Pure: only ``json`` / ``pathlib``, no Qt.
+missing or invalid. Standard library only, no Qt. Input ranges are fixed at ±10 V.
 """
 import json
+import logging
 from pathlib import Path
 
 # Path to configuration defaults file (in the config/ folder).
 CONFIG_DEFAULTS_FILE = Path(__file__).parent / 'config' / 'daq_config_defaults.json'
+DAQ_INPUT_RANGE_V = 10
+
+
+def fixed_voltage_ranges(channels):
+    """This application's physical-unit calibration requires +/-10 V inputs."""
+    return [DAQ_INPUT_RANGE_V] * len(channels)
 
 
 def load_config_defaults():
@@ -61,6 +68,11 @@ def load_config_defaults():
     except Exception as e:
         print(f"Error loading config defaults: {e}, using built-in defaults")
 
+    ranges = fixed_voltage_ranges(defaults['channels'])
+    if defaults.get('voltage_ranges') != ranges:
+        logging.getLogger(__name__).warning(
+            "This app requires +/-10 V on every channel; ignoring configured voltage ranges.")
+    defaults['voltage_ranges'] = ranges
     return defaults
 
 
