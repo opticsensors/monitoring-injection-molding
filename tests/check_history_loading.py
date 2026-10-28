@@ -1,5 +1,6 @@
 """Exercise one-page history loading and on-demand curves without network/DAQ."""
 import os
+import json
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 from copy import deepcopy
 from pathlib import Path
@@ -26,8 +27,10 @@ def check():
 
     with tempfile.TemporaryDirectory() as directory:
         meta.SETTINGS_FILE = Path(directory) / "run.json"
+        meta.EDITS_FILE = Path(directory) / "edits.json"
         os.environ["MONITORING_UI_SETTINGS_FILE"] = str(Path(directory) / "ui.ini")
         window = main.MainWindow()
+        window._edit_timer.stop()
         window.mqtt_enabled = False
         window.resize(1500, 920)
         window.show()
@@ -67,6 +70,9 @@ def check():
                 if path == "/monitoring/waveform":
                     return deepcopy(waveform)
                 assert path == "/monitoring/history"
+                if "keys" in params:
+                    requested = {tuple(key) for key in json.loads(params["keys"])}
+                    return dict(cycles=[deepcopy(e) for e in records if meta.identity(e["capture"]) in requested], next_cursor=None)
                 cursor = params["cursor"]
                 start = int(cursor.split("-")[1]) if cursor else 0
                 entries = deepcopy(records[start:start + 10])
@@ -155,14 +161,30 @@ def check():
         before = len(reader.requests)
         panel.loadButton.click()
         wait_jobs()
-        assert len(reader.requests) == before + 1 and reader.requests[-1][1]["cursor"] == ""
+        assert len(reader.requests) == before + 3 and reader.requests[-1][1]["cursor"] == ""
         assert panel.table.rowCount() == 26 and local_key in window.cycle_history
         assert window.cycle_history[first_key]["measurements"]["weight_g"] == 12.5
         assert "retained" in panel.status.text()
         assert all(path == "/monitoring/history" for path, _ in reader.requests)
+        # Changes to an older loaded row arrive via identity refresh, even though
+        # it is outside the latest page. Hiding alone would leave a stale local row.
+        oldest = records[-1]
+        oldest_key = meta.identity(oldest['capture'])
+        oldest['review'] = meta.edit_review(meta.new_review(), excluded=True)
+        window.load_server_history()
+        wait_jobs()
+        assert window.cycle_history[oldest_key]['review']['excluded']
+        assert panel.table.rowCount() == 25
+        panel.showExcluded.setChecked(True)
+        assert panel.table.rowCount() == 26
+        panel.showExcluded.setChecked(False)
+        oldest['review'] = meta.edit_review(oldest['review'], excluded=False)
+        panel.loadButton.click()
+        wait_jobs()
+        assert panel.table.rowCount() == 26
         cursor = window._history_next_cursor
         reader.conflict = True
-        panel.loadButton.click()
+        window.load_server_history()
         wait_jobs()
         assert window._history_next_cursor == cursor and "disagree" in panel.status.text()
         assert window.cycle_history[first_key]["capture"] == records[0]["capture"]

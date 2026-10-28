@@ -7,6 +7,7 @@ from pathlib import Path
 import queue
 import sys
 import tempfile
+import threading
 from unittest.mock import patch
 from types import SimpleNamespace
 
@@ -69,9 +70,11 @@ def check():
     with tempfile.TemporaryDirectory() as directory:
         os.environ["MONITORING_UI_SETTINGS_FILE"] = str(Path(directory) / "ui.ini")
         meta.SETTINGS_FILE = Path(directory) / 'run_setup.json'
+        meta.EDITS_FILE = Path(directory) / 'edits.json'
         main.load_cycle_id = lambda: 0
         main.save_cycle_id = lambda cid: None
         window = main.MainWindow()
+        window._edit_timer.stop()  # No automatic connection attempts in synthetic tests.
         window.daq_channels = [0]
         window.voltage_ranges = [10]
         window.channel_types = ['T_futaba']
@@ -92,8 +95,11 @@ def check():
             graph.cycleEndedSig.connect(window.onCycleEnded)
             graph.cycleDiscardedSig.connect(window.onCycleDiscarded)
             graph.graphEndSig.connect(window.receiveXYData)
-            graph.cycleStartedSig.connect(lambda *_: window.apply_run_settings(
-                meta.operator_settings('test-machine', 'ABS', 60, {'limit': 150})))
+            # Programmatic text changes do not alter a running session's snapshot.
+            graph.cycleStartedSig.connect(lambda *_: window.runSetup.material.setText('Not applied'))
+            window.is_monitoring = True
+            assert all(not field.isEnabled() for field in (window.runSetup.machine, window.runSetup.material,
+                window.runSetup.temperature, window.runSetup.melt, window.runSetup.speed))
             for stamp, active in [(0, False), (1, True), (1.1, True), (3.2, True), (3.3, False),
                                   (4, True), (4.1, True), (6.2, True), (6.3, False),
                                   (7, True), (7.1, True), (7.5, True)]:
@@ -104,7 +110,7 @@ def check():
             assert len(entries) == 3, (mode, len(entries))
             assert window.partEditor.key == meta.identity(entries[-1]['capture'])
             assert entries[0]['capture']['mold_temperature_c'] == 40
-            assert entries[1]['capture']['mold_temperature_c'] == 60
+            assert entries[1]['capture']['mold_temperature_c'] == 40
             assert entries[2]['capture']['status'] == 'interrupted'
             assert all(e['delivery'] == 'Not sent' for e in entries)
             # Export must use captured settings even after setup changes, and use
@@ -115,9 +121,9 @@ def check():
             path = Path(directory) / f'{mode}.csv'
             window.save_session_export(path)
             summaries = check_export(path, entries)
-            assert [s['material'] for s in summaries] == ['PP, "grade A"', 'ABS', 'ABS']
-            assert [float(s['mold_temperature_c']) for s in summaries] == [40, 60, 60]
-            assert [float(s['pressure_limit_bar']) for s in summaries] == [120, 150, 150]
+            assert [s['material'] for s in summaries] == ['PP, "grade A"'] * 3
+            assert [float(s['mold_temperature_c']) for s in summaries] == [40, 40, 40]
+            assert [float(s['pressure_limit_bar']) for s in summaries] == [120, 120, 120]
             assert float(summaries[0]['weight_g']) == 0 and float(summaries[0]['length_mm']) == 125.5
             assert summaries[1]['weight_g'] == summaries[1]['length_mm'] == ''
             original_waveform = path.read_bytes()
@@ -139,7 +145,7 @@ def check():
         assert len(sent) == 3 and all(m['capture']['mode'] == 'cycle' for m in sent)
         assert all(m['capture']['machine_id'] == 'test-machine' for m in sent)
         # Wall/elapsed time zero is paired after setup, and the start slot retains it.
-        window.DaqThread = SimpleNamespace()
+        window.DaqThread = SimpleNamespace(_idle=threading.Event())
         with patch('metadata_controller.time.perf_counter', side_effect=[100.0, 100.002]), \
              patch('metadata_controller.time.time_ns', return_value=1792400000000000001):
             window.start_acquisition_clock()

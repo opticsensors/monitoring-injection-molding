@@ -8,7 +8,7 @@ import tempfile
 import time
 from unittest.mock import patch
 import numpy as np
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -19,6 +19,10 @@ from rheology import apparent_viscosity
 
 def check():
     app = QtWidgets.QApplication([])
+    font_id = QtGui.QFontDatabase.addApplicationFont('C:/Windows/Fonts/segoeui.ttf')
+    families = QtGui.QFontDatabase.applicationFontFamilies(font_id)
+    if families:
+        app.setFont(QtGui.QFont(families[0], 10))
     errors = []
     previous_hook = sys.excepthook
     def capture_error(kind, value, trace):
@@ -27,8 +31,10 @@ def check():
     sys.excepthook = capture_error
     with tempfile.TemporaryDirectory() as directory:
         meta.SETTINGS_FILE = Path(directory) / "run.json"
+        meta.EDITS_FILE = Path(directory) / "edits.json"
         os.environ["MONITORING_UI_SETTINGS_FILE"] = str(Path(directory) / "ui.ini")
         window = main.MainWindow()
+        window._edit_timer.stop()
         window.mqtt_enabled = False
         window.reset_Data_n_Plot_Vars()
         window.SubplotSetup()
@@ -38,17 +44,18 @@ def check():
         inputs = [window.runSetup.machine, window.runSetup.material, window.runSetup.temperature,
                   window.runSetup.speed, window.partEditor.weight, window.partEditor.length]
         sizes = [(w.width(), w.height()) for w in inputs]
-        assert len(set(sizes)) == 1, sizes
-        window.parametersButton.setChecked(False)
-        assert window.parameterPanel.isHidden()
-        window.parametersButton.setChecked(True)
-        # A short panel still lets the user reach every field and the single Apply.
-        window.parameterPanel.setFixedHeight(180)
+        assert len({height for width, height in sizes}) == 1 and all(width >= 80 for width, height in sizes), sizes
+        sidebar = window.presentation.sidebar
+        window.presentation.side_toggle.setChecked(True)
+        assert sidebar.isHidden()
+        window.presentation.side_toggle.setChecked(False)
+        # A short inspector still lets the user reach every measurement.
+        sidebar.setFixedHeight(180)
         app.processEvents()
-        assert window.parameterPanel.verticalScrollBar().maximum() > 0
-        assert window.parameterPanel.horizontalScrollBar().maximum() == 0
-        window.parameterPanel.setMinimumHeight(0)
-        window.parameterPanel.setMaximumHeight(16777215)
+        assert sidebar.verticalScrollBar().maximum() > 0
+        assert sidebar.horizontalScrollBar().maximum() == 0
+        sidebar.setMinimumHeight(0)
+        sidebar.setMaximumHeight(16777215)
         snapshot = deepcopy(window._run_snapshot)
         snapshot["injection_speed_mm_s"] = 35
         x = [0, .01, .02]
@@ -82,21 +89,23 @@ def check():
         window.refresh_measurements()
         assert window.partEditor.key == original and window.partEditor.weight.text() == "12.5"
         other = next(k for k in keys if k != original)
-        with patch.object(QtWidgets.QMessageBox, "question", return_value=QtWidgets.QMessageBox.Cancel):
-            assert not window.partEditor.set_entry(other)
-        # The shared Apply saves edited part values and future settings together,
-        # while preserving every recorded cycle's frozen settings.
+        assert window.partEditor.set_entry(other)  # Autosave before changing selection.
+        assert window.cycle_history[original]["measurements"]["weight_g"] == 12.5
+        window.partEditor.set_entry(original)
+        # Part autosave never changes the session setup. Start applies settings.
         captures = {key: deepcopy(entry["capture"]) for key, entry in window.cycle_history.items()}
         window.runSetup.material.setText("Next material")
         window.runSetup.speed.setText("42")
-        window.parametersApplyButton.click()
+        assert window.partEditor.apply()
         assert not window.partEditor.dirty
         assert window.cycle_history[original]["measurements"]["weight_g"] == 12.5
+        assert window._run_snapshot["material"] != "Next material"
+        assert window.prepare_run_setup()
         assert window._run_snapshot["material"] == "Next material"
         assert window._run_snapshot["injection_speed_mm_s"] == 42
         assert all(window.cycle_history[key]["capture"] == capture for key, capture in captures.items())
         revision = window.cycle_history[original]["measurements"]["revision"]
-        assert window.apply_parameters()
+        assert window.partEditor.apply()
         assert window.cycle_history[original]["measurements"]["revision"] == revision
         # Invalid part input must not partially apply the edited future settings.
         saved_settings = meta.SETTINGS_FILE.read_bytes()
@@ -104,8 +113,9 @@ def check():
         window.partEditor.weight.setText("invalid")
         window.partEditor._edited()
         with patch.object(QtWidgets.QMessageBox, "warning") as warning:
-            assert not window.apply_parameters()
-        warning.assert_called_once()
+            assert not window.partEditor.apply()
+        warning.assert_not_called()
+        assert "border" in window.partEditor.weight.styleSheet()
         assert meta.SETTINGS_FILE.read_bytes() == saved_settings
         assert window._run_snapshot["material"] == "Next material"
         assert window.cycle_history[original]["measurements"]["weight_g"] == 12.5
@@ -120,6 +130,7 @@ def check():
         older["measurements"]["revision"] = 10
         window.merge_server_history([older])
         assert window.cycle_history[original]["measurements"]["weight_g"] == 12.5
+        window.partEditor._edited()  # Explicit re-entry confirms the local value.
         assert window.partEditor.apply()
         assert window.cycle_history[original]["measurements"]["revision"] == 11
         # Same cycle number on two machines remains two distinct records/curves.
@@ -198,7 +209,7 @@ def check():
         app.processEvents()
         assert window.workspaceTabs.count() == 2
         window.show_measurements()
-        assert not window.homeButton.isEnabled() and window.homeButton.isVisible()
+        assert not window.homeButton.isEnabled() and not window.homeButton.isVisible()
         assert window.deltaTLabel.text() == "Δt: --"
         window.reset_Data_n_Plot_Vars()
         assert all(k in window._waveforms for k in keys)
@@ -214,11 +225,11 @@ def check():
         while window._history_jobs and time.monotonic() < deadline:
             app.processEvents()
             time.sleep(.005)
-        assert ticks and finished == [{"cycles": [], "next_cursor": None}] and not window._history_jobs
+        assert ticks and finished == [{"cycles": [], "next_cursor": None, "updates": []}] and not window._history_jobs
         window.hide()
         assert not errors, errors
     sys.excepthook = previous_hook
-    print("PASS: compact scrollable sidebar, shared Apply/validation, frozen settings, live history, "
+    print("PASS: compact scrollable inspector, part autosave/session settings, frozen settings, live history, "
           "selection/filtering, dirty edits, server merge, "
           "shared toolbar routing, per-view state, selected-cycle calculations, "
           "cached waveforms and responsive background loading.")

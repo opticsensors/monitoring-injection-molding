@@ -10,17 +10,20 @@ from uuid import uuid4
 
 from PyQt5 import QtCore, QtWidgets
 import cycle_metadata as metadata
-from metadata_widgets import RunSetup, HistoryPanel, PartEditor, compact_form, add_field
+from metadata_widgets import RunSetup
+from desktop_widgets import AutoSavePartEditor, EditableHistoryPanel
 from history_controller import HistoryController
+from edit_controller import EditController
 from sensor_types import sensor_unit
 from plot_icons import sidebar_icon
 
 logger = logging.getLogger(__name__)
 
 
-class MetadataController(HistoryController):
+class MetadataController(EditController, HistoryController):
     def initialize_metadata(self):
         self.cycle_history = {}
+        self.restore_pending_edits()
         self._session_config = None
         self._capture_starts = {}
         self._measurements_dialog = None
@@ -35,8 +38,8 @@ class MetadataController(HistoryController):
         self.runSetup = RunSetup(self.run_settings, self)
         self.historyButton.setCheckable(True)
         self.historyButton.clicked.connect(self.toggle_history)
-        self.partEditor = PartEditor(self)
-        self.historyPanel = HistoryPanel(self)
+        self.partEditor = AutoSavePartEditor(self)
+        self.historyPanel = EditableHistoryPanel(self)
         self._measurements_dialog = self.historyPanel
         self.gridLayout_3.removeWidget(self.plotTabs)
         self.workspaceTabs = QtWidgets.QTabWidget()
@@ -69,14 +72,6 @@ class MetadataController(HistoryController):
         sidebar_layout.setSpacing(12)
         sidebar_layout.addWidget(self.runSetup)
         sidebar_layout.addWidget(self.partEditor)
-        self.parametersApplyButton = QtWidgets.QPushButton("Apply")
-        self.parametersApplyButton.setFixedSize(58, 32)
-        self.parametersApplyButton.setToolTip(
-            "Apply settings to future cycles and save edited Weight/Spiral for the indicated cycle.")
-        self.parametersApplyButton.clicked.connect(self.apply_parameters)
-        actions = QtWidgets.QWidget()
-        add_field(compact_form(actions), "", self.parametersApplyButton)
-        sidebar_layout.addWidget(actions)
         sidebar_layout.addStretch()
         self.parameterPanel = QtWidgets.QScrollArea()
         self.parameterPanel.setWidgetResizable(True)
@@ -102,11 +97,14 @@ class MetadataController(HistoryController):
         self.parameterPanel.setVisible(visible)
         self.parametersButton.setIcon(sidebar_icon(visible))
         self.parametersButton.setToolTip(("Hide" if visible else "Show") + " parameters (Ctrl+Alt+B)")
-        menu = self.menubar.addMenu("File")
-        menu.addAction("Import metadata…", self.import_measurements)
-        menu.addAction("Export metadata…", self.export_measurements)
-        menu.addSeparator()
-        menu.addAction("Server connection…", self.server_connection)
+        self.statusbar.hide()
+        self._connection_states = {}
+        self.set_connection_status("broker", False, "Not checked" if self.mqtt_enabled else "Uploads off")
+        self.set_connection_status("server", False, "Not checked")
+        self._edit_timer = QtCore.QTimer(self)
+        self._edit_timer.setInterval(3000)
+        self._edit_timer.timeout.connect(self.sync_metadata)
+        self._edit_timer.start()
         self.refresh_run_snapshot()
 
     def active_plot_view(self):
@@ -179,8 +177,8 @@ class MetadataController(HistoryController):
         self._run_snapshot = deepcopy({**self.run_settings, "config_snapshot": config})
 
     def apply_run_settings(self, settings):
-        if self.is_monitoring and settings["machine_id"] != self.machine_id:
-            QtWidgets.QMessageBox.warning(self, "Machine ID", "Stop the session before changing machine ID.")
+        if self.is_monitoring:
+            QtWidgets.QMessageBox.warning(self, "Run setup", "Stop recording before changing session settings.")
             return False
         try:
             metadata.write_json(metadata.SETTINGS_FILE, settings)
@@ -191,26 +189,7 @@ class MetadataController(HistoryController):
         self.machine_id = settings["machine_id"]
         self.runSetup.set_values(settings)
         self.refresh_run_snapshot()
-        self.statusbar.showMessage("Settings applied to the next cycle", 3000)
-        return True
-
-    def apply_parameters(self):
-        """One explicit Apply: future-cycle settings and only edited part values."""
-        try:
-            settings = self.runSetup.values()
-            # Validate both groups before saving either. Blank part values clear them.
-            if self.partEditor.key and self.partEditor.dirty:
-                metadata.optional_number(self.partEditor.weight.text(), "Weight (g)")
-                metadata.optional_number(self.partEditor.length.text(), "Spiral (mm)")
-        except ValueError as exc:
-            QtWidgets.QMessageBox.warning(self, "Parameters", str(exc))
-            return False
-        if not self.apply_run_settings(settings):
-            return False
-        if self.partEditor.key and self.partEditor.dirty:
-            if not self.partEditor.apply():
-                return False
-            self.statusbar.showMessage("Settings and cycle measurements applied", 3000)
+        self.messagesBox.appendPlainText("Settings prepared for the new session.")
         return True
 
     def prepare_run_setup(self):
@@ -230,7 +209,7 @@ class MetadataController(HistoryController):
         self._capture_starts = {}
         if not self.cycle_mode:
             self.capture_started(0, deepcopy(self._run_snapshot), 0.0)
-        self.runSetup.machine.setEnabled(False)
+        self.runSetup.set_locked(True)
 
     def start_acquisition_clock(self):
         """Anchor wall time and DAQ elapsed time together, after UI/plot setup.
@@ -268,6 +247,7 @@ class MetadataController(HistoryController):
                 if self.mqtt_publisher is not None:
                     self.mqtt_publisher.publish_records(message)
                     entry["delivery"] = "Queued (unconfirmed)"
+                    entry["capture_delivery"] = entry["delivery"]
                     self._session_streamed = True
             self.refresh_measurements()
             if cycle_id and self.workspaceTabs.currentIndex() == 0 and not self.partEditor.dirty:
@@ -285,8 +265,12 @@ class MetadataController(HistoryController):
         message = metadata.capture_message(entry, metadata.samples_for(entry["capture"], xdata, rows))
         self.mqtt_publisher.publish_records(message)
         entry["delivery"] = "Queued (unconfirmed)"
+        entry["capture_delivery"] = entry["delivery"]
         self.refresh_measurements()
         self.messagesBox.appendPlainText(f"Queued {len(xdata)} samples and metadata for cycle {cycle_id}.")
+        self._submitted_updates.add(entry["measurements"]["update_id"])
+        if entry.get("local_review_edit"):
+            self.send_pending_edits([key], force=True)
 
     def toggle_history(self, checked):
         if checked:
@@ -307,18 +291,24 @@ class MetadataController(HistoryController):
             self.select_latest_part()
 
     def update_measurements(self, key, weight, length):
-        entry = self.cycle_history[key]
+        entry = deepcopy(self.cycle_history[key])
         if entry["capture"].get("mode") == "continuous":
             QtWidgets.QMessageBox.warning(self, "Measurements", "Continuous recordings do not represent a single part.")
             return
         try:
             baseline = max((entry["measurements"], entry.get("server_measurements", entry["measurements"])),
                            key=lambda m: m["revision"])
-            entry["measurements"] = metadata.edit_measurements(baseline, weight, length)
+            proposed = metadata.edit_measurements(baseline, weight, length)
+            if all(proposed[f] == entry["measurements"][f] for f in ("weight_g", "length_mm")) and not entry.get("measurement_conflict"):
+                return True
+            entry["measurements"] = proposed
             entry["local_measurement_edit"] = True
-            entry["delivery"] = "Measurements not sent"
-            if self.mqtt_enabled:
-                self.send_measurements(key)
+            entry["measurement_conflict"] = False
+            entry["edit_conflict"] = bool(entry.get("review_conflict"))
+            entry["delivery"] = "Pending sync"
+            if not self.commit_metadata_edits({key: entry}):
+                return False
+            self.send_pending_edits([key])
             self.refresh_measurements()
             return True
         except ValueError as exc:
@@ -326,20 +316,7 @@ class MetadataController(HistoryController):
             return False
 
     def send_measurements(self, key, force=False):
-        if self.is_monitoring and key[0] != self.machine_id:
-            QtWidgets.QMessageBox.warning(self, "Send metadata", "Stop recording before sending metadata for another machine.")
-            return
-        entry = self.cycle_history[key]
-        remote = entry.get("server_measurements")
-        if remote and remote["revision"] >= entry["measurements"]["revision"]:
-            values = entry["measurements"]
-            entry["measurements"] = metadata.edit_measurements(remote, values.get("weight_g"), values.get("length_mm"))
-            entry["local_measurement_edit"] = True
-        self._ensure_mqtt_publisher(force=force, machine_id=key[0])
-        if self.mqtt_publisher is not None and (self.mqtt_enabled or force):
-            self.mqtt_publisher.publish_records(metadata.measurement_message(self.cycle_history[key]))
-            self.cycle_history[key]["delivery"] = "Metadata queued (unconfirmed)"
-            self.refresh_measurements()
+        self.send_pending_edits([key], force=force)
 
     def export_measurements(self):
         path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save cycle measurements", "", "JSON (*.json)")
@@ -405,13 +382,14 @@ class MetadataController(HistoryController):
             with waveform.open("w", newline="", encoding="utf-8") as stream:
                 writer = csv.writer(stream)
                 writer.writerow(["session_id", "cycle_id", "session_cycle",
-                                 "timestamp_ns", "time_s", *config["field_names"]])
+                                 "timestamp_ns", "time_s", "excluded", *config["field_names"]])
                 for i, (x, row) in enumerate(zip(self.xdata, self.ydata)):
                     cid = self.cycle_numbers_data[i] if self.cycle_numbers_data else 0
                     capture = entries[cid]["capture"]
                     stamp = int(capture["base_time_ns"]) + round(float(x) * 1e9)
                     writer.writerow([capture["session_id"], cid, capture["session_cycle"],
-                                     str(stamp), x, *[row[j] for j in config["saved_indices"]]])
+                                     str(stamp), x, entries[cid].get("review", metadata.new_review())["excluded"],
+                                     *[row[j] for j in config["saved_indices"]]])
             metadata.export_cycle_summary(cycles, ordered_entries)
             metadata.export_metadata(manifest, ordered_entries)
             cycles.replace(cycles_path)

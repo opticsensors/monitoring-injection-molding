@@ -22,7 +22,7 @@ const api = history.createApi({config:{token}, influx,
 const request = (path='/monitoring/history', query={}, authorization='Bearer '+token, method='GET') =>
     api.handle({path,query,authorization,method});
 try {
-    for(const file of ['001_cycle_metadata.sql','002_ingestion_recovery.sql','003_history_reader.sql','003_history_reader.sql'])
+    for(const file of ['001_cycle_metadata.sql','002_ingestion_recovery.sql','003_history_reader.sql','004_cycle_review.sql','004_cycle_review.sql'])
         await db.exec(fs.readFileSync('iot/postgres/'+file,'utf8'));
     assert.equal((await request(undefined,{},'')).status,401);
     assert.equal(queries.length,0);

@@ -1,5 +1,6 @@
 """Read-only desktop history client. Network work never runs on the GUI thread."""
 import json
+from connection_settings import ENV_FILE
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -33,7 +34,7 @@ class HistoryClient:
                 return result
         except urllib.error.HTTPError as exc:
             if exc.code in (401, 403):
-                raise ValueError("History access denied. Check the access key in File → Server connection.") from None
+                raise ValueError(f"History access denied. Check HISTORY_TOKEN in {ENV_FILE}") from None
             if exc.code == 404:
                 raise ValueError("History API or waveform not found. The server may need the history update.") from None
             raise ValueError(f"History server returned HTTP {exc.code}.") from None
@@ -46,18 +47,39 @@ class HistoryJob(QtCore.QThread):
     progress = QtCore.pyqtSignal(str)
     failed = QtCore.pyqtSignal(str)
 
-    def __init__(self, client, keys=None, parent=None, *, cursor=""):
+    def __init__(self, client, keys=None, parent=None, *, cursor="", refresh_keys=(), lookup_only=False, include_excluded=False):
         super().__init__(parent)
         self.client, self.keys = client, keys
         self.cursor = cursor
+        self.refresh_keys, self.lookup_only, self.include_excluded = list(refresh_keys), lookup_only, include_excluded
         self.cancelled = False
 
     def run(self):
         try:
             result = []
             if self.keys is None:
+                updates = []
+                for offset in range(0, len(self.refresh_keys), 20):
+                    if self.isInterruptionRequested():
+                        self.cancelled = True
+                        return
+                    batch = self.refresh_keys[offset:offset + 20]
+                    self.progress.emit(f"Refreshing loaded cycles {offset + 1} / {len(self.refresh_keys)}…")
+                    response = self.client.get("/monitoring/history", {"keys": json.dumps(batch, separators=(",", ":"))})
+                    rows = response["cycles"]
+                    requested = {tuple(key) for key in batch}
+                    if not isinstance(rows, list) or len(rows) > len(batch) or any(
+                            (r["capture"]["machine_id"], r["capture"]["session_id"], r["capture"]["cycle_id"]) not in requested for r in rows):
+                        raise ValueError("Invalid cycle refresh response; deploy the server update.")
+                    updates.extend(rows)
+                if self.lookup_only:
+                    if not self.isInterruptionRequested():
+                        self.ready.emit({"updates": updates})
+                    self.cancelled = self.isInterruptionRequested()
+                    return
                 self.progress.emit("Loading up to 10 cycle summaries…")
-                page = self.client.get("/monitoring/history", {"cursor": self.cursor})
+                page = self.client.get("/monitoring/history", {"cursor": self.cursor,
+                                       "include_excluded": "1" if self.include_excluded else "0"})
                 rows, next_cursor = page["cycles"], page.get("next_cursor")
                 if not isinstance(rows, list) or len(rows) > 10:
                     raise ValueError("Invalid history page.")
@@ -66,7 +88,7 @@ class HistoryJob(QtCore.QThread):
                     raise ValueError("Invalid history cursor.")
                 if next_cursor is not None and next_cursor == self.cursor:
                     raise ValueError("The history server repeated a page.")
-                result = {"cycles": rows, "next_cursor": next_cursor}
+                result = {"cycles": rows, "next_cursor": next_cursor, "updates": updates}
             else:
                 for index, key in enumerate(self.keys):
                     if self.isInterruptionRequested():

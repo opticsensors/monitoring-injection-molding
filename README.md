@@ -71,13 +71,41 @@ UPDATE demo and software (leave that as a reminder for me)
 <img src="./figures/integration.jpg" alt="Circuit schematic" width="100%"/>
 
 
-- **Parameters:** sidebar icon shows/hides the compact panel. One Apply saves future settings and the selected part's Weight/Spiral.
-- **History:** new cycles appear automatically. Load server fetches the latest 10 summaries; Load more fetches the next 10. Check rows and Plot to compare.
-- **Plots:** the top tools/readings follow the active tab. In comparisons, select one cycle for calculations.
-- **Save:** writes waveform `.csv`, cycle summary `.cycles.csv`, and `.metadata.json`. Keep them together; save again after edits.
+Run the application with `py -3.11 main.py`.
 
-Try simulated cycles: `py -3.11 scripts/preview_gui.py`. Add `--history-demo` to test loading 10 summaries at a time.
-Online history needs the [server history update](iot/SERVER_SETUP.md#desktop-history).
+- **Setup:** embedded DAQ, Mold sensors, Machine data and Display tabs. Connect/Disconnect controls the single DAQ. Save configuration stages changes for the next recording; Display includes Automatic upload.
+- **Monitor:** Start/Stop, New session, Save/Send and plot tools share one toolbar. Enter Machine/Material/Mold/Melt/Speed before Start; they stay fixed for that session. New session focuses these inputs without clearing the stopped recording. Start begins the next session.
+- **Part measurements:** Weight/Spiral save automatically after a short pause, Enter or focus change. Monitor follows trigger starts; a field being edited stays attached to its original cycle until you leave it.
+- **History:** edit Machine or Material through Spiral directly in a cell. One load icon fetches pages of 10, then refreshes loaded identities and the newest page. Check/select rows to Plot, Exclude, Restore or Send edits.
+- **Plots:** each comparison opens in its own closable tab. Its tools and selected-cycle calculations stay independent of Monitor.
+- **Offline edits:** pending corrections survive restarts. They send with automatic upload or explicit Send edits; History readback confirms synchronization. Original captures and waveforms remain intact.
+- **Save:** exports waveform `.csv`, cycle summary `.cycles.csv`, and `.metadata.json`. Summaries show corrected settings; excluded cycles remain marked in the export. Save again after edits.
+
+MQTT and History share a commissioning `.env` (see [.env.example](.env.example)).
+For a OneDrive checkout it lives at `%LOCALAPPDATA%\InjectionMonitoring\.env`;
+otherwise the default is the repository's `.env`. `MONITORING_ENV_FILE` overrides
+the location for both services. Keep the actual file outside OneDrive and Git.
+Set `HISTORY_URL` and `HISTORY_TOKEN` once using the [server guide](iot/SERVER_SETUP.md#desktop-history).
+Connection messages appear in the bottom log. Online History and machine corrections require the [server update](iot/SERVER_SETUP.md#desktop-history).
+
+The approved Full inspector layout is shared by `main.py` and the offline demo:
+`py -3.11 scripts/preview_layouts.py`. The demo uses synthetic acquisition, a
+25-cycle in-memory server and disposable settings; it never opens the DAQ or a
+network connection. To render review images, add
+`--screenshots data/previews/inspector`.
+
+The inspector defaults to 250 px. Session settings appear only in Monitor;
+Setup and History use the full width. Trigger sits below DAQ settings and Machine
+variables fills the same width as the other groups. Icons have short tooltips;
+their source and license are in `assets/preview/lucide/`.
+Analog and digital tables fit their contents without a blank bottom strip;
+machine conversion values are centered in their numeric cells.
+
+Measurements entered during an active cycle are saved separately in
+`data/active_part_measurements.json`, then transferred to its completed record.
+Unfinished measurements after a restart, or measurements from discarded trigger
+noise, are retained in that file for recovery and never attached to a new cycle.
+Waveforms still require explicit Save or server storage.
 
 ## Machine validation
 
@@ -116,7 +144,8 @@ ssh -l 'eduard.almar@local.eurecat.org' 172.20.48.28
 | Node-RED | http://172.20.48.28:1880/ |
 
 Grafana shows the latest cycles from **55t and 160t combined** (max 100).
-For dashboard-only updates, import [iot/grafana_dashboard.json](iot/grafana_dashboard.json) into the existing dashboard.
+This release requires database migrations through **005**, Node-RED and the dashboard together.
+Use the deployment command above before using the new desktop's correction features.
 
 Query/export InfluxDB waveforms from a local **WSL/Linux terminal**:
 

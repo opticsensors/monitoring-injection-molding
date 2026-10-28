@@ -102,6 +102,18 @@ function createApi({config, query, influx = influxQuery}) {
             if (request.method !== 'GET') throw new RequestError(405, 'Read-only endpoint.');
             const params = request.query || {};
             if (request.path === '/monitoring/history') {
+                let keys = null;
+                if (params.keys !== undefined) {
+                    try {
+                        if (typeof params.keys !== 'string' || params.keys.length > 16000) throw new Error();
+                        keys = JSON.parse(params.keys);
+                        if (!Array.isArray(keys) || !keys.length || keys.length > 20) throw new Error();
+                        keys = keys.map(k => {
+                            if (!Array.isArray(k) || k.length !== 3) throw new Error();
+                            return identity({machine_id:k[0],session_id:k[1],cycle_id:String(k[2])});
+                        });
+                    } catch { throw new RequestError(400, 'Invalid cycle refresh identities.'); }
+                }
                 let cursor = null;
                 if (params.cursor) {
                     if (typeof params.cursor !== 'string' || params.cursor.length > 2048) {
@@ -113,19 +125,30 @@ function createApi({config, query, influx = influxQuery}) {
                         !/^\d{1,19}$/.test(cursor[0])) throw new RequestError(400, 'Invalid history cursor.');
                     identity({machine_id:cursor[1], session_id:cursor[2], cycle_id:cursor[3]});
                 }
-                const response = await query(`SELECT capture,measurements,waveform_status,first_time_ns::text AS stamp
+                const filters = [], values = keys ? keys.flat() : (cursor || []);
+                if (keys) {
+                    // Identity refresh always includes excluded rows. Otherwise a PC
+                    // would keep an old copy after another PC excludes that cycle.
+                    filters.push('(' + keys.map((_, i) =>
+                        `(machine_id=$${i*3+1} AND session_id=$${i*3+2} AND cycle_id=$${i*3+3}::bigint)`).join(' OR ') + ')');
+                } else {
+                    if (params.include_excluded !== '1') filters.push('NOT excluded');
+                    if (cursor) filters.push('(first_time_ns,machine_id,session_id,cycle_id) < ($1::bigint,$2,$3,$4::bigint)');
+                }
+                const response = await query(`SELECT capture,measurements,review,effective_settings,waveform_status,first_time_ns::text AS stamp
                     FROM monitoring.history_records
-                    ${cursor ? 'WHERE (first_time_ns,machine_id,session_id,cycle_id) < ($1::bigint,$2,$3,$4::bigint)' : ''}
-                    ORDER BY first_time_ns DESC,machine_id DESC,session_id DESC,cycle_id DESC LIMIT 11`, cursor || []);
-                const page = response.rows.slice(0, 10);
+                    ${filters.length ? 'WHERE ' + filters.join(' AND ') : ''}
+                    ORDER BY first_time_ns DESC,machine_id DESC,session_id DESC,cycle_id DESC LIMIT ${keys ? 20 : 11}`, values);
+                const page = response.rows.slice(0, keys ? 20 : 10);
                 const cycles = [];
                 for (const entry of page) {
                     const features = await summary(entry);
-                    cycles.push({capture:entry.capture,measurements:entry.measurements,summary:features,
+                    cycles.push({capture:entry.capture,measurements:entry.measurements,review:entry.review,
+                        effective_settings:entry.effective_settings,summary:features,
                         waveform_status:entry.waveform_status,delivery:'Server: '+entry.waveform_status});
                 }
                 const last = page.at(-1);
-                const next = response.rows.length > 10 ? Buffer.from(JSON.stringify([
+                const next = !keys && response.rows.length > 10 ? Buffer.from(JSON.stringify([
                     last.stamp,last.capture.machine_id,last.capture.session_id,String(last.capture.cycle_id)
                 ])).toString('base64url') : null;
                 return {status:200,headers,body:{cycles,next_cursor:next}};

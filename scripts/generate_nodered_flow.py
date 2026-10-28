@@ -52,7 +52,7 @@ def main():
         function('3c42711ed5d08dad', 'Validate and route capture', 'nodered_function.js',
                  [['cycle-register'], ['cycle-measurements']], 520, 140),
         postgres('cycle-register', 'Register capture', [['cycle-prepare']], 800, 60),
-        postgres('cycle-measurements', 'Update measurements', [['cycle-ack']], 800, 240),
+        postgres('cycle-measurements', 'Update cycle metadata', [['cycle-ack']], 800, 240),
         function('cycle-prepare', 'Prepare exact-ns write', 'nodered_prepare_write.js',
                  [['cycle-http']], 1030, 60),
         dict(id='cycle-http', type='http request', z=TAB, name='Write Influx 1.8', method='POST',

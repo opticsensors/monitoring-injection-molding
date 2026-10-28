@@ -37,14 +37,15 @@ existing IOTstack server, not an arbitrary Docker installation.
    containers are removed afterward; their volumes remain for inspection.
 2. Backs up PostgreSQL, Influx, Node-RED and Grafana. Grafana briefly stops for a
    consistent backup; Node-RED restarts only when its runtime setup changes.
-3. Creates/migrates the metadata database and configures its two login roles.
+3. Creates/migrates the metadata database through **005_machine_correction.sql** and configures its two login roles.
 4. Diagnoses existing history and backfills matching legacy cycles. Anomalies
    stop the installer for review; it never relabels native captures as legacy.
 5. Installs missing Node-RED components, sets up the queue and deploys the flow,
    preserving the existing MQTT connection/credentials and other flow tabs.
 6. Configures the Grafana PostgreSQL datasource and updates this dashboard,
    using the existing Influx datasource and retaining its folder.
-7. Checks both database connections, queue health and unchanged waveform counts.
+7. Checks both database connections, migration 005/catalog columns, History corrections,
+   queue health and unchanged waveform counts.
 8. If cron is available, installs daily backups at 02:00 server time and a
    five-minute health log, preserving unrelated cron jobs.
 
@@ -72,14 +73,11 @@ The installer cannot prove hardware behaviour, drain a disconnected PC's spool,
 or inspect the visual appearance of a chart. MQTT acknowledgement still does
 not guarantee database storage.
 
-For the dashboard-only simplification prepared on 2026-10-20, use Grafana's
-**Dashboards -> New -> Import**, upload `iot/grafana_dashboard.json`, and replace
-the existing dashboard with the same UID. Its existing datasources are retained.
-No server installation, database migration or Node-RED deployment is needed.
-The dashboard has one visible count control, numeric cycle legends and the
-existing collapsed raw Export row. It combines 55t and 160t in one latest-cycle
-selection (100 total), across recording dates, and
-omits continuous captures and metadata filters/tables.
+The current dashboard requires migration 004 because its selector filters excluded
+cycles. Deploy the database, Node-RED and dashboard together with the command above.
+The dashboard still has one visible count control, numeric cycle legends and the
+collapsed raw Export row. It combines 55t and 160t (100 total), omits continuous
+and excluded cycles, and retains the existing datasource/dashboard identity.
 
 ## Where the supporting files live
 
@@ -90,9 +88,17 @@ You normally use only `deploy.sh`; these files are managed by it.
 
 ## Desktop history
 
-The GUI preview works offline. To enable **History → Load server**, rerun
-`scripts/deploy.ps1`; it installs migration 003 and the read-only Node-RED endpoints.
-Grafana stays the same.
+The GUI preview works offline. Run `scripts/deploy.ps1` for this release: it applies
+missing migrations 003/004/005, the read-only History endpoints, MQTT correction
+handling and Grafana's exclusion filter. Existing capture JSON and waveforms are
+preserved. The migration runner skips older view definitions on a newer database;
+rerunning 005 preserves corrections. The isolated stack checks the actual migration
+runner twice and exercises correction/exclude/restore messages before production.
+
+Machine corrections are stored in the existing revisioned review JSON. Migration
+005 adds validation and `cycle_catalog.effective_machine_id`; capture keys and
+Influx waveform routing retain the original machine ID. The installer includes
+this migration automatically. This change has not been deployed to the live server.
 
 After deployment, print the history key **in your server terminal**:
 
@@ -100,16 +106,46 @@ After deployment, print the history key **in your server terminal**:
 python3 -c 'import json,pathlib; print(json.loads((pathlib.Path.home()/".local/state/injection-monitoring/history-api-access.json").read_text())["token"])'
 ```
 
-In the app, **File → Server connection**: server `http://172.20.48.28:1880`,
-paste that key. It is kept for this app run; `MONITORING_HISTORY_TOKEN` can supply
-it at startup. Database passwords stay on the server. Use HTTPS if accessing it
-outside the lab's trusted network.
+Add the following to the **same local `.env` as MQTT** on each PC:
+
+```dotenv
+HISTORY_URL=http://172.20.48.28:1880
+HISTORY_TOKEN=the-key-from-your-server-terminal
+```
+
+The URL is an installation setting, not a hard-coded desktop default. For a
+OneDrive checkout, use `%LOCALAPPDATA%\InjectionMonitoring\.env`; move an existing
+repository `.env` there, preserving its MQTT settings. Outside OneDrive the
+default remains the repository `.env`. `MONITORING_ENV_FILE` can specify another
+local path. The shared file format is [.env.example](../.env.example); keep actual
+credentials outside Git and OneDrive. Missing/rejected settings produce a short
+error pointing to the file. Database passwords remain on the server.
+The agreed deployment is internal-network use; this update adds no TLS or
+Windows Credential Manager setup.
 
 **Load server** fetches the latest 10 summaries; **Load more** fetches the next 10.
-Already loaded/local rows are kept. **Plot** downloads only selected curves, kept
+Load server also refreshes already loaded identities, including exclusions made
+on other PCs. Already loaded/local rows and pending edits are kept. **Plot** downloads only selected curves, kept
 in RAM for reuse. No CSV files are created automatically. Legacy settings remain
 blank when unknown. T/P maxima come from the stored channels; Time is the recorded
 sample span.
+
+History uses Exclude/Restore rather than physical deletion. The database stores
+the original capture and the latest revisioned correction (`kind=review`), not a
+full audit trail of every accepted edit. The catalog/API/export return effective
+Material/Mold/Melt/Speed values. Older captures have blank Melt until corrected.
+Rejected competing review proposals are available in `monitoring.review_conflicts`.
+
+Pending settings, exclusion and part-measurement edits are written to the PC's
+`data/pending_edits.json` before success is shown. They survive restarts and respect
+automatic upload being off. Send edits explicitly queues selected proposals;
+manual session Send also sends that session's pending corrections. Connectivity
+loss leaves work pending. Server readback of the same/newer revision and values
+confirms synchronization; broker acknowledgement alone does not. A concurrent
+server correction is retained alongside the local proposal for explicit resolution.
+This journal contains edited metadata only, never waveform samples: normal Save
+is still needed for an offline recording. Exports retain excluded waveforms and
+mark them, and keep original capture settings in `.metadata.json`.
 
 For unusual authentication, restore/rollback commands or the isolated integration
 test, see [the manual guide](maintenance/MANUAL_SETUP.md). The installer supports
@@ -122,8 +158,8 @@ User output on 2026-10-19 confirms release.oqzIvlaQ completed all installer stag
 isolated Docker tests, backups, PostgreSQL setup, 29 matching historical cycles,
 Node-RED/Grafana deployment, production verification and scheduled maintenance.
 The user confirmed Grafana works. Hardware and backup restore checks remain;
-see [current status](../TODO.md). The new desktop history endpoints need the
-update described above; they have not been applied to the live server.
+see [current status](../TODO.md). The History/correction update through migration
+004/005 have not been applied to the live server during this implementation.
 The first run can take several minutes to download/build the isolated test stack.
 These are deployment tests using separate containers and synthetic data; no DAQ
 or active recording is needed. They are not a runtime dependency of the app.

@@ -1,7 +1,7 @@
 """Cycle metadata and wire format. No hardware, network, or automatic capture archive.
 
-Only reusable operator preferences are automatically persisted. Cycle metadata
-is kept in memory and written with the user's Save action (or explicit export).
+Operator preferences and pending metadata edits are persisted automatically.
+Waveforms retain the explicit Save lifecycle.
 """
 from copy import deepcopy
 import csv
@@ -16,6 +16,8 @@ SCHEMA_VERSION = 1
 # Add pressure settings here; keys are stable identifiers, labels can change.
 PRESSURE_SETTINGS = (("limit", "Limit pressure (bar)"),)
 SETTINGS_FILE = Path(__file__).parent / "data" / "run_setup.json"
+EDIT_FIELDS = ("material", "mold_temperature_c", "melt_temperature_c", "injection_speed_mm_s", "machine_id")
+EDITS_FILE = Path(__file__).parent / "data" / "pending_edits.json"
 
 
 def optional_number(value, label, minimum=0):
@@ -33,7 +35,7 @@ def optional_number(value, label, minimum=0):
 
 
 def operator_settings(machine_id, material=None, mold_temperature_c=None,
-                      pressure_settings_bar=None, injection_speed_mm_s=None):
+                      pressure_settings_bar=None, injection_speed_mm_s=None, melt_temperature_c=None):
     machine = str(machine_id).strip()
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", machine):
         raise ValueError("Machine ID: use 1-64 letters, numbers, dots, underscores or hyphens.")
@@ -43,6 +45,7 @@ def operator_settings(machine_id, material=None, mold_temperature_c=None,
     pressures = pressure_settings_bar or {}
     return {"machine_id": machine, "material": material,
             "mold_temperature_c": optional_number(mold_temperature_c, "Mold setpoint", -273.15),
+            "melt_temperature_c": optional_number(melt_temperature_c, "Melt setpoint", -273.15),
             "injection_speed_mm_s": optional_number(injection_speed_mm_s, "Speed (mm/s)"),
             "pressure_settings_bar": {key: optional_number(pressures.get(key), label)
                                       for key, label in PRESSURE_SETTINGS}}
@@ -81,6 +84,66 @@ def edit_measurements(previous, weight, length):
                   weight_g=optional_number(weight, "Weight (g)"),
                   length_mm=optional_number(length, "Spiral length (mm)"))
     return result
+
+
+def new_review():
+    return {"revision": 0, "update_id": "initial", "updated_at_ns": None,
+            "excluded": False, "settings": {}}
+
+
+def validate_review(review):
+    if not isinstance(review, dict) or type(review.get("revision")) is not int or not 0 <= review["revision"] <= 9007199254740991:
+        raise ValueError("Invalid correction revision.")
+    if not isinstance(review.get("update_id"), str) or not 1 <= len(review["update_id"]) <= 100:
+        raise ValueError("Invalid correction ID.")
+    if review["revision"]:
+        stamp = review.get("updated_at_ns")
+        if not isinstance(stamp, str) or not re.fullmatch(r"[0-9]{1,19}", stamp) or not 0 < int(stamp) <= 9223372036854775806:
+            raise ValueError("Invalid correction timestamp.")
+    if type(review.get("excluded")) is not bool or not isinstance(review.get("settings"), dict):
+        raise ValueError("Invalid cycle correction.")
+    settings = review["settings"]
+    if set(settings) - set(EDIT_FIELDS):
+        raise ValueError("Unknown correction field.")
+    normalized = operator_settings(**{"machine_id": "validation", **settings})
+    if any(normalized[field] != value for field, value in settings.items()):
+        raise ValueError("Invalid corrected setting.")
+    return deepcopy(review)
+
+
+def edit_review(previous, settings=None, excluded=None):
+    if settings and set(settings) - set(EDIT_FIELDS):
+        raise ValueError("Unknown correction field.")
+    result = deepcopy(previous)
+    if settings:
+        normalized = operator_settings(**{"machine_id": "validation", **settings})
+        result["settings"].update({field: normalized[field] for field in settings})
+    if excluded is not None:
+        result["excluded"] = excluded
+    result.update(revision=previous["revision"] + 1, update_id=str(uuid4()), updated_at_ns=str(time.time_ns()))
+    return validate_review(result)
+
+
+def effective_settings(entry):
+    return {**entry["capture"], **entry.get("review", new_review())["settings"]}
+
+
+def review_message(entry):
+    machine, session, cycle = identity(entry["capture"])
+    return deepcopy({"schema_version": SCHEMA_VERSION, "kind": "review",
+                     "machine_id": machine, "session_id": session, "cycle_id": cycle,
+                     "review": entry["review"]})
+
+
+def save_pending_edits(entries, path=None):
+    """Persist edited metadata only, before reporting success to the operator."""
+    pending = [deepcopy(e) for e in entries if e.get("local_review_edit") or e.get("local_measurement_edit")]
+    write_json(path or EDITS_FILE, {"schema_version": 1, "kind": "cycle_metadata_export", "cycles": pending})
+
+
+def load_pending_edits(path=None):
+    path = Path(path or EDITS_FILE)
+    return read_metadata(path) if path.exists() else []
 
 
 def samples_for(capture, xdata, rows):
@@ -150,24 +213,27 @@ def export_metadata(path, entries):
 
 
 def export_cycle_summary(path, entries):
-    """Write one row per capture, with frozen settings and the latest measurements.
+    """Write effective settings and measurements; preserve excluded rows with a flag.
 
     Called inside the session export's staging directory. Unknown values become
     empty CSV cells; zero remains a real measurement. Names match the SQL catalog.
     """
     pressure_keys = [key for key, _ in PRESSURE_SETTINGS]
     fields = ["machine_id", "session_id", "cycle_id", "session_cycle", "material",
-              "mold_temperature_c", "injection_speed_mm_s", "recorded_duration_s",
+              "mold_temperature_c", "melt_temperature_c", "injection_speed_mm_s", "recorded_duration_s",
               *[f"pressure_{key}_bar" for key in pressure_keys],
               "weight_g", "length_mm", "mode", "acquisition_status", "acquisition_reason",
-              "sample_count", "first_time_ns", "last_time_ns", "metadata_revision"]
+              "sample_count", "first_time_ns", "last_time_ns", "metadata_revision", "excluded", "review_revision"]
     with Path(path).open("w", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=fields)
         writer.writeheader()
         for entry in entries:
             capture, measurements = entry["capture"], entry["measurements"]
-            row = {name: capture.get(name) for name in fields}
+            effective = effective_settings(entry)
+            row = {name: effective.get(name) for name in fields}
             row.update(weight_g=measurements.get("weight_g"),
+                       excluded=entry.get("review", new_review())["excluded"],
+                       review_revision=entry.get("review", new_review())["revision"],
                        length_mm=measurements.get("length_mm"),
                        metadata_revision=measurements["revision"],
                        acquisition_status=capture["status"],
@@ -212,5 +278,6 @@ def read_metadata(path, *, with_source=False):
             raise ValueError("Invalid measurement revision.")
         for name in ("weight_g", "length_mm"):
             measurements[name] = optional_number(measurements.get(name), name)
+        entry["review"] = validate_review(entry.get("review", new_review()))
         entry["delivery"] = "Imported; server state unconfirmed"
     return (entries, data.get('source', 'local')) if with_source else entries

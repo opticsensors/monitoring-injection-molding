@@ -11,7 +11,7 @@ def selection_sql():
              f"CASE WHEN length({count}) > 9 THEN 100 "
              f"ELSE LEAST(100, GREATEST(1, {count}::integer)) END ELSE 10 END")
     return ("SELECT * FROM monitoring.cycle_catalog WHERE "
-            "waveform_status IN ('stored', 'legacy') AND mode = 'cycle' "
+            "waveform_status IN ('stored', 'legacy') AND mode = 'cycle' AND NOT excluded "
             "AND machine_id IN ('55t', '160t') "
             "ORDER BY first_time_ns DESC, machine_id, session_id, cycle_id LIMIT " + limit)
 

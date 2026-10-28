@@ -25,15 +25,10 @@ import threading
 import time
 from pathlib import Path
 
-try:
-    from dotenv import dotenv_values
-except ImportError:          # python-dotenv not installed: minimal parser below
-    dotenv_values = None
-
 import paho.mqtt.client as mqtt
+from connection_settings import ENV_FILE, read_env_file
 
 _MODULE_DIR = Path(__file__).parent
-ENV_FILE = _MODULE_DIR / '.env'
 PENDING_DIR = _MODULE_DIR / 'data' / 'pending'
 
 logger = logging.getLogger('mqtt_publisher')
@@ -57,30 +52,15 @@ def status_topic(machine_id):
     return f"{machine_id}/{STATUS_TOPIC_SUFFIX}"
 
 
-def _read_env_file(path):
-    """Minimal .env fallback parser (KEY=VALUE lines, strips quotes)."""
-    vals = {}
-    try:
-        for line in Path(path).read_text().splitlines():
-            line = line.strip()
-            if not line or line.startswith('#') or '=' not in line:
-                continue
-            key, _, value = line.partition('=')
-            vals[key.strip()] = value.strip().strip('"').strip("'")
-    except OSError:
-        pass
-    return vals
-
-
 def load_settings():
-    """Read broker settings from the .env file next to this module.
+    """Read broker settings from the shared commissioning .env file.
 
     The file is read directly (never through os.environ) so keys like ``user``
     cannot collide with same-named Windows/shell environment variables.
     Raises RuntimeError if BROKER or PORT is missing. The topic is not read
     here - it comes from machine_id via ``data_topic``.
     """
-    vals = dotenv_values(ENV_FILE) if dotenv_values else _read_env_file(ENV_FILE)
+    vals = read_env_file(ENV_FILE)
     broker = (vals.get('BROKER') or '').strip()
     port = (vals.get('PORT') or '').strip()
     if not broker or not port:
@@ -214,8 +194,10 @@ class MqttPublisher:
         # Derived, not configured: a throwaway machine_id therefore diverts the
         # data away from a real machine's topic as well as retagging it.
         self.topic = data_topic(self.machine_id)
+        self.auto_drain = True
         self._queue = queue.Queue()
         self._stop_event = threading.Event()
+        self._flush_on_stop = True
         self._worker = threading.Thread(target=self._run, daemon=True,
                                         name='MqttPublisherWorker')
 
@@ -257,8 +239,9 @@ class MqttPublisher:
         self._worker.start()
         logger.info("Publisher started (machine_id=%s)", self.machine_id)
 
-    def stop(self, timeout=5):
-        """Flush what we can, spill the rest to disk and shut down."""
+    def stop(self, timeout=5, *, flush=True):
+        """Shut down; flush=False retains queued work without initiating more sends."""
+        self._flush_on_stop = flush
         self._stop_event.set()
         self._worker.join(timeout=timeout)
         try:
@@ -282,14 +265,15 @@ class MqttPublisher:
                 records = self._queue.get(timeout=0.5)
             except queue.Empty:
                 # Idle: retry any batches spilled to disk (at most every 10 s)
-                if time.time() - last_drain > 10:
+                if self.auto_drain and time.time() - last_drain > 10:
                     self._drain_pending()
                     last_drain = time.time()
                 continue
             if not self._publish(records):
                 self._spill_to_disk(records)
             else:
-                self._drain_pending()
+                if self.auto_drain:
+                    self._drain_pending()
                 last_drain = time.time()
 
         # Shutting down: try to publish whatever is still queued, spill on failure
@@ -298,7 +282,7 @@ class MqttPublisher:
                 records = self._queue.get_nowait()
             except queue.Empty:
                 break
-            if not self._publish(records):
+            if not self._flush_on_stop or not self._publish(records):
                 self._spill_to_disk(records)
 
     # -------------------------------------------------------------- internals
@@ -317,10 +301,15 @@ class MqttPublisher:
                 logger.warning("MQTT not connected, batch will be spilled to disk")
                 return False
             payload = json.dumps(records)
-            info = self.client.publish(self.topic, payload, qos=1)
+            # Pending metadata may belong to another machine. Its scoped identity
+            # determines the topic even when the active session is different.
+            machine = (records.get('capture', records).get('machine_id')
+                       if isinstance(records, dict) else None)
+            topic = data_topic(machine) if machine else self.topic
+            info = self.client.publish(topic, payload, qos=1)
             info.wait_for_publish(timeout=5)
             if info.is_published():
-                logger.info("Published %s to %s", self._describe(records), self.topic)
+                logger.info("Published %s to %s", self._describe(records), topic)
                 return True
             logger.error("Publish to %s failed rc=%s", self.topic, info.rc)
             return False

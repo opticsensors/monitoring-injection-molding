@@ -30,6 +30,12 @@ The DAQ driver is a **separate editable package** at `../daq_connectivity`
 (`pip install -e ../daq_connectivity`); edits there are live. App deps:
 `pip install -r requirements.txt`.
 
+`main.DaqDevice` subclasses that driver so discovery tries once per Connect.
+The shared driver's `config_daq()` otherwise waits indefinitely for a missing
+device. An absent device now ends the worker, logs the reason and re-enables
+Connect; failed configuration also releases any partly opened serial port.
+`py -3.11 tests/check_daq_connection.py` covers absence, retry and port failures.
+
 ### Hardware / diagnostic scripts (need the DAQ connected)
 
 ```bash
@@ -66,7 +72,8 @@ per process.
 main.py, MainWindow.py, graphswidget.py, plot_tools.py, plot_icons.py,
 plot_view.py, cycle_review.py, history_controller.py, history_client.py,
 config.py, config_window.py, sensor_types.py, rheology.py, app_logging.py,
-mqtt_publisher.py
+mqtt_publisher.py, connection_settings.py, edit_controller.py,
+desktop_controller.py, desktop_widgets.py
                                     ← the GUI app; all import each other flatly,
                                       so they must stay together on sys.path
 config/    daq_config_defaults.json ← hand-maintained channel layout (source of truth)
@@ -85,7 +92,9 @@ Because the app modules use **flat imports** (`import MainWindow`,
 - `config.py` → `config/daq_config_defaults.json`
 - `main.py` `CYCLE_ID_FILE` → `data/cycle_id.txt`
 - `app_logging.py` `LOG_DIR` → `data/logs/`
-- `mqtt_publisher.py` `PENDING_DIR` → `data/pending/`, `ENV_FILE` → `.env` (root)
+- `mqtt_publisher.py` `PENDING_DIR` → `data/pending/`; `connection_settings.py`
+  resolves the shared `.env` (outside OneDrive for synced checkouts).
+- `cycle_metadata.py` → `data/pending_edits.json` for edited metadata only.
 - `scripts/generate_grafana_dashboard.py` anchors to repo root (`ROOT`) and adds
   it to `sys.path` to import `sensor_types`.
 
@@ -114,10 +123,11 @@ isolated Docker integration, backups, PostgreSQL setup, 29 matching historical
 cycles, Node-RED/Grafana deployment and production database/queue/count checks.
 Daily backups at 02:00 server time and five-minute health logs are scheduled.
 Latest backup: 20261019T142821Z-bc4f36. Browser checks, one real new cycle and backup
-restore verification remain pending; no further deployment rerun is required.
+restore verification remain pending. The subsequent History/correction release requires
+a new coordinated deployment through migration 005.
 Earlier installer fixes are retained: connector lookup uses package.json;
 Grafana PUT uses a freshly read datasource version; only test Grafana joins a
-second project bridge to publish localhost:13000. All 54 local unit tests pass;
+second project bridge to publish localhost:13000. The earlier local unit tests passed;
 the corrected full container test passed on the user's server. Container logs
 survive test teardown, and cleanup errors do not replace the original failure.
 The user is not recording; avoid repeating the acquisition-pause reminder.
@@ -126,11 +136,11 @@ within a deadline; writes are not automatically repeated. Manual procedures are 
 `iot/maintenance/MANUAL_SETUP.md` rather than the quick-start guide.
 
 - **Manual Save:** waveform `.csv` with `session_id, cycle_id, session_cycle,
-  timestamp_ns, time_s, CH<n>_<type>, ...`; companion `.cycles.csv` with one row
-  per capture (machine ID, identity, settings, latest measurements, mode/outcome,
+  timestamp_ns, time_s, excluded, CH<n>_<type>, ...`; companion `.cycles.csv` with one row
+  per capture (machine ID, identity, effective settings, latest measurements, exclusion, mode/outcome,
   counts/bounds and revision). Join on `(session_id, cycle_id)`; the summary
   supplies machine ID. Nulls are blank, zeros are preserved. Full manifests and
-  calibration/units remain in `.metadata.json`, which history Load still uses.
+  calibration/units remain in `.metadata.json`. There is no File/Import menu.
   All files are staged before replacement; re-Save refreshes edited measurements.
 - **MQTT capture v1:** `schema_version=1`, `kind=capture`, `capture` (scoped
   identity, immutable settings, status/count/exact bounds), `measurements`
@@ -139,6 +149,10 @@ within a deadline; writes are not automatically repeated. Manual procedures are 
 - **MQTT measurements v1:** `kind=measurements`, scoped identity and a complete
   weight/length pair plus increasing revision/update ID. Explicit null clears a
   value. Old retries must never overwrite newer measurements.
+- **MQTT review v1:** `kind=review`, scoped identity, `review` with revision,
+  update ID, client timestamp, excluded boolean and partial settings overrides.
+  Explicit null clears a setting; missing keys inherit the original capture.
+  Only the latest accepted correction is kept; rejected proposals are diagnostic records.
 - **Influx:** existing `machine_id` and `session_id` tags, `cycle_num` float
   mapped to logical cycle_id, `t_ms`, channel floats; new captures add integer
   `sample_index`. Do not rename historical fields or add a per-cycle tag.
@@ -159,32 +173,59 @@ frozen indices. Do not interpret old data using the current GUI configuration.
 Settings are copied at the actual trigger boundary in GraphThread; measurements
 start unknown for every part. New sessions have a readable timestamp plus UUID.
 
-Reusable Run setup preferences are saved in `data/run_setup.json`; sidebar visibility
-and history URL use QSettings. Machine/Material/Mold/Speed inputs share one right
-scrollable sidebar with per-part Weight/Spiral editing and one Apply. The sidebar
-icon toggles it; Live follows the latest completed part unless an edit is unfinished.
-Apply validates all inputs before saving; unchanged part values do not gain a revision.
-`Speed (mm/s)` is a manual injection
-setting, unrelated to measured CH6 flow (cm³/s); old pressure values are preserved.
-History is an embedded tab; Load server loads the latest 10 summaries, check rows and Plot to create independent
-Mold/Machine comparison tabs. Live and review share `PlotViewMixin` construction/tools,
-with per-view interaction state and one stationary top toolbar routed to the active
-plot. Hidden Live updates cannot overwrite comparison controls/readouts. Comparison
-dropdowns select one recorded waveform/geometry for calculations; the eye hides other
-cycles. The sidebar uses 72 px fields with full values in tooltips. Raw converted values use recorded fields/units,
-never current calibration. A 128 MB RAM waveform cache survives Next, not restart.
-History fetches one 10-row page per click via read-only HTTP on a QThread; Load more
-uses the next cursor and is disabled at the end or while busy. Reloading latest
-resets pagination but retains existing rows/edits. Failed/cancelled/rejected pages
-do not advance the cursor. Waveforms load on demand and reuse the RAM cache.
-`scripts/preview_gui.py --history-demo` uses a simulated 25-cycle server with the
-same desktop loading flow; no network or real data is involved.
-The server key stays in memory (or MONITORING_HISTORY_TOKEN); reader DB credentials
-remain on the server. Migration 003 and the new Node-RED runtime/routes need deployment.
-The normal Save remains; metadata import/export moved to File. Existing failed-MQTT spooling
-and broker-ACK cleanup remain unchanged. There is no automatic capture journal
-and no client database-ACK protocol. Sampling settings/commands and the external
-DAQ driver are unchanged by the metadata feature.
+Reusable settings are saved in `data/run_setup.json` on Start. Machine,
+Material, Mold, Melt and Speed are locked while recording, and unlock after final
+Stop data. Mold/Melt are manual setpoints; Speed is a manual mm/s setting, distinct
+from measured CH6 flow in cm³/s. Applying DAQ configuration preserves unfinished
+sidebar text. Part measurements autosave after 400 ms, Enter or focus loss.
+Monitor selects the cycle at trigger start, deferring selection while a field has
+focus. Active measurements use `data/active_part_measurements.json`; completion
+moves them into the normal pending-edit journal. Discarded/restarted unfinished
+parts retain separate recovery records and never inherit a reused cycle number.
+
+History shows Weight/Spiral, effective corrected settings, delivery/storage state
+and orange Incomplete. Edit Machine/Material/Mold/Melt/Speed/Weight/Spiral inline;
+check/select multiple rows for Exclude / Restore / Send edits. Corrections never change `capture`; a tooltip shows the
+recorded value. Show excluded reveals hidden rows. CSV exports retain all samples
+with an excluded flag; cycle summaries use effective settings, while full metadata
+keeps original captures. No physical deletion or waveform migration is introduced.
+
+`edit_controller.py` persists pending review/measurement proposals to
+`data/pending_edits.json` before reporting success. This is not a waveform archive.
+Uploads off means pending; explicit Send edits or session Send can queue changes.
+Enabled uploads retry through the existing MQTT mechanism. Pending metadata remains
+until History readback confirms the same/newer revision and values. A competing
+server edit remains a visible conflict for explicit resolution; only the local
+changed fields are rebased over untouched server corrections.
+
+History uses a read-only QThread client, 10 summaries per page and a 128 MB RAM
+waveform cache. Load server also refreshes already-loaded identities in bounded
+batches, including excluded records, before merging the newest page. This updates
+old rows after changes on another PC. One load icon pages until exhausted, then
+refreshes. Failed loads retain the cursor.
+Waveforms load only on Plot. Comparison views preserve their independent tools,
+recorded units/geometry and calculations; the shared toolbar follows the active tab.
+The main window and offline preview share `desktop_widgets.py` and
+`desktop_controller.py`: native Setup/Monitor/History/closable Plot tabs, embedded
+configuration, narrow Monitor inspector and icon toolbars. The preview only
+replaces device/network operations and isolates preferences/journals in a temporary
+directory. Setup configuration is staged until Start (Connect uses staged scan
+settings). Start waits for the DAQ's idle acknowledgement and rearms the same serial
+handle with the updated scan description before checking the trigger.
+
+`connection_settings.py` reads both MQTT and History from one commissioning file:
+BROKER/PORT/user/password and HISTORY_URL/HISTORY_TOKEN. For OneDrive checkouts the
+default is `%LOCALAPPDATA%\InjectionMonitoring\.env`; otherwise it is `.env` beside
+the app. MONITORING_ENV_FILE overrides both. The existing local file was moved
+outside this checkout without changing contents. No credential dialog/hard-coded
+History IP remains. Broker status reflects the client connection; server status is
+the latest History request. Database credentials stay on the server. Internal-only
+`.env` configuration is the user's decision; no Credential Manager/TLS work here.
+
+Migrations 004/005, the History runtime and Grafana selector require deployment through
+the existing installer. Local implementation/test success is not live-server proof.
+No automatic capture journal or new database-ACK protocol is added. Sampling and
+the external DAQ driver remain unchanged.
 
 Server recovery lives in `iot/nodered/capture_queue.cjs`, loaded through Node-RED's
 `functionGlobalContext.captureQueue`. Originals are persisted before processing,
@@ -193,12 +234,16 @@ sequential chunks (5,000 points / 4 MB), retaining the whole-capture hash.
 The MQTT-to-disk acknowledgement gap remains; do not claim lossless delivery.
 Legacy arrays are now quarantined, so drain old PC spools before cutover.
 Apply `001_cycle_metadata.sql` on fresh schemas and `002_ingestion_recovery.sql`
-plus `003_history_reader.sql` on fresh/existing schemas; use `scripts/apply_server_migrations.sh`.
+plus missing `003_history_reader.sql`, `004_cycle_review.sql` and
+`005_machine_correction.sql`; use
+`scripts/apply_server_migrations.sh`. The runner skips older view definitions on
+newer schemas and safely reapplies the current migration. The isolated deployment
+test exercises this runner twice against its own container.
 Migration 002 records measurement conflicts without rejecting a valid capture,
 preserves client edit timestamps as provenance and uses a non-login object owner.
 Backfill must reconcile a fresh diagnostic against `server.metadata.json`.
 The desktop freezes the session mode for Send and pairs wall/elapsed clocks
-after plot setup. Server metadata imports prompt before replacing divergent edits.
+after plot setup. History readback preserves divergent local edit proposals.
 
 ### Two cycle numbers, one counter
 
@@ -213,17 +258,12 @@ produced. It is **derived, not counted** — `_session_cycle()` returns
 `cycle_base` captured when the session starts. There is no second counter to
 drift, and discards reuse both numbers for free.
 
-A **session** runs from Start (or Next) until the next Start/Next — exactly the
-span of one `session_id`, which both paths mint. `session_cycle` resets there
-and nowhere else:
-
-- **Stop** ends acquisition but *not* the session: its data is still in memory
-  and Save/Send act on it (the final worker-data signal enables Save/Send), so the readout keeps
-  showing the final count.
-- **Save** is a read-only export and never a boundary — it is optional (a
-  cloud-only session is never saved) and may run more than once.
-- **Next** is only reachable after Stop and calls `reset_Data_n_Plot_Vars()`,
-  which is what actually retires a session.
+A **session** starts on Start; each Start creates its own `session_id` and resets
+`session_cycle`. Stop ends acquisition but retains its buffers for Save/Send.
+The final worker-data signal unlocks configuration and enables Start/Save/Send.
+Save exports the retained session and may run more than once. **Next** only opens
+Monitor and focuses the session inputs; it neither clears buffers nor starts
+acquisition. The next Start retires the previous session buffers.
 
 The toolbar readout and the message log both show the pair as
 `Cycle: 3  (#1487)` / `Cycle 3 (#1487) started` via `_cycle_label()`.
@@ -341,15 +381,15 @@ change when the mould does.
 - **DI-4108 scan alignment**: the reader must start on a scan boundary. See
   `daq_serial.align_stream()` in the `daq_connectivity` repo; a misaligned
   stream makes the digital word appear in an analog slot.
-- **Next / reconnect**: reuse the open serial connection (`DaqThread.rearmDaq`)
+- **Start / reconnect**: reuse the open serial connection (`DaqThread.rearmDaq`)
   — do NOT close+reopen the COM port back-to-back (Windows "Acceso denegado").
 - **Plot rebuilds**: rebuilding plots on the *current* tab yields no resize
   event; force a scene-level relayout (`_relayout_canvas`), not a widget resize
   (which Windows coalesces away).
 - **MQTT topics are derived, never configured**: `data_topic()` /
   `status_topic()` in `mqtt_publisher.py` build `<machine_id>/sensors` and
-  `<machine_id>/status` from the `machine_id` in the config window. `.env` holds
-  only `BROKER` / `PORT` / `user` / `password` — there is no `TOPIC` key, so the
+  `<machine_id>/status` from the `machine_id` in the config window. the shared `.env` holds
+  `BROKER` / `PORT` / `user` / `password` plus History URL/token — there is no `TOPIC` key, so the
   topic and the `machine_id` tag on the records cannot disagree. The `sensors`
   suffix is part of the contract with Node-RED's `+/sensors` subscription: a new
   machine needs no server-side change, but renaming the suffix breaks ingestion.

@@ -200,7 +200,7 @@ class DaqConfigWindow(QtWidgets.QDialog):
         self.channelTable.setColumnWidth(0, 130)
         self._style_table_headers(self.channelTable)
 
-        channel_layout.addWidget(self.channelTable)
+        channel_layout.addWidget(self.channelTable, 0, QtCore.Qt.AlignLeft)
         channel_group.setLayout(channel_layout)
         layout.addWidget(channel_group)
 
@@ -231,7 +231,7 @@ class DaqConfigWindow(QtWidgets.QDialog):
         self.digitalTable.setFixedHeight(dig_header_h + 34 + 6)
         self._style_table_headers(self.digitalTable)
 
-        digital_layout.addWidget(self.digitalTable)
+        digital_layout.addWidget(self.digitalTable, 0, QtCore.Qt.AlignLeft)
         digital_group.setLayout(digital_layout)
         layout.addWidget(digital_group)
         layout.addStretch(1)
@@ -431,9 +431,11 @@ class DaqConfigWindow(QtWidgets.QDialog):
 
         for row, code in enumerate(MACHINE_CONVERSION_ORDER):
             init_edit = QtWidgets.QLineEdit()
+            init_edit.setAlignment(QtCore.Qt.AlignCenter)
             self.machine_init_edits[code] = init_edit
             self.machineTable.setCellWidget(row, 0, init_edit)
             res_edit = QtWidgets.QLineEdit()
+            res_edit.setAlignment(QtCore.Qt.AlignCenter)
             self.machine_res_edits[code] = res_edit
             self.machineTable.setCellWidget(row, 1, res_edit)
             header_item = self.machineTable.verticalHeaderItem(row)

@@ -430,7 +430,7 @@ class Installer:
         self.step('Testing this release with isolated containers before production changes')
         paths = [ROOT / 'iot/nodered_flows.json', ROOT / 'iot/grafana_dashboard.json',
                  ROOT / 'scripts/prepare_stack_test.py', ROOT / 'scripts/diagnose_influxdb.py',
-                 ROOT / 'scripts/deploy_server.py', ROOT / 'tests/check_stack.py']
+                 ROOT / 'scripts/deploy_server.py', ROOT / 'scripts/apply_server_migrations.sh', ROOT / 'tests/check_stack.py']
         for folder in ('iot/nodered', 'iot/postgres', 'iot/validation'):
             paths.extend(p for p in (ROOT / folder).rglob('*') if p.is_file())
         digest = hashlib.sha256()
@@ -709,6 +709,8 @@ process.stdout.write(JSON.stringify(result));"""
         page = self.nr.read('/monitoring/history', headers={'Authorization': 'Bearer ' + token}, timeout=60)
         if not isinstance(page, dict) or not isinstance(page.get('cycles'), list):
             raise DeployError('Desktop history endpoint returned an invalid response.')
+        if any(not isinstance(row.get('review'), dict) or 'effective_settings' not in row for row in page['cycles']):
+            raise DeployError('Desktop history endpoint is missing the cycle correction update.')
 
     def verify(self):
         self.step('7. Verifying database access and deployed configuration')
@@ -723,6 +725,9 @@ process.stdout.write(JSON.stringify(result));"""
         run(['docker', 'exec', '-i', 'nodered', 'node', '-e', POSTGRES_CONNECTION_CHECK,
              '/data', '/usr/src/node-red'], json.dumps(self.creds['monitoring_ingest']).encode(), timeout=30)
         print('Checking the read-only desktop history endpoint...', flush=True)
+        if sql('SELECT max(version) FROM monitoring.schema_migrations').strip() != '5':
+            raise DeployError('Expected database migration 005 (editable machine setting).')
+        sql('SELECT melt_temperature_c,excluded,review_revision,effective_machine_id FROM monitoring.cycle_catalog LIMIT 0')
         self.verify_history()
         print('Checking the ingestion queue and metadata status...', flush=True)
         run(['bash', ROOT / 'scripts/check_server_ingestion.sh'])
@@ -782,7 +787,9 @@ process.stdout.write(JSON.stringify(result));"""
         print('\nDeployment complete. Open your Grafana dashboard and set Latest cycles (max 100).')
         print('Then record one real cycle and verify it appears. Hardware and browser appearance need this check.')
         print('Backups:', self.backup)
-        print('Desktop history: set File > Server connection. Access key is in', self.state / 'history-api-access.json')
+        print('Desktop: set HISTORY_URL and HISTORY_TOKEN in the same local .env as MQTT.')
+        print('History access key is in', self.state / 'history-api-access.json')
+        print('OneDrive checkouts use %LOCALAPPDATA%\\InjectionMonitoring\\.env (or MONITORING_ENV_FILE).')
 
 
 def main():

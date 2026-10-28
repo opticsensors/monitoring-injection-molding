@@ -134,7 +134,8 @@ name and file. Never use production's Compose project for these tests.
 
 Confirm `injection_monitoring` is absent or belongs to this app. The helper
 creates it if absent, applies 001 only to a fresh schema, then applies additive
-migration 002. It leaves `postdb`, passwords and waveform data alone.
+migrations 002–004. On reruns it skips older view definitions and reapplies only
+the current migration. It leaves `postdb`, passwords and waveform data alone.
 
 ```bash
 cd "$deploy_root"
@@ -264,7 +265,7 @@ In Grafana (`http://172.20.48.28:3000`):
    historical curves without a date filter, and refresh after a new capture.
 
 The catalog now supplies identity-only predicates. The dashboard adds one outer
-time range. Deploy migration 002 and the new dashboard together. Upgrade the lab
+time range. Deploy migrations through 005 and the new dashboard together. Upgrade the lab
 PC, verify Windows clock synchronization (`w32tm /query /status`), then resume
 recording. Hardware trigger/rate/sample accounting checks remain necessary when
 the DAQ returns; this release does not fix the separate driver/rate issue.
@@ -295,11 +296,13 @@ docker exec nodered node /data/lib/capture_queue.cjs export QUEUE_ID_FROM_STATUS
 docker cp nodered:/data/legacy-review.json ./legacy-review.json
 ```
 
-Export refuses to overwrite an existing file. For measurement conflicts, export
-fresh `server.metadata.json` (section 6), copy it to the PC and Load it in Cycle
-history. The GUI asks before replacing divergent local edits with server values;
-Save the local metadata first if needed. Edit from the fresh server revision,
-send, verify the server values, then mark the specific conflict resolved in psql:
+Export refuses to overwrite an existing file. For measurement/correction conflicts,
+use History → Load server on the PC. Local proposals remain visible with a conflict
+state. Review them and explicitly Save/Send edits to submit a newer revision;
+untouched server setting corrections are preserved. Read History again to verify.
+Server metadata JSON remains a maintenance export; the File/Import menu was removed.
+Rejected review proposals are in `monitoring.review_conflicts`. After reconciling
+a measurement conflict, mark its specific diagnostic record resolved in psql:
 
 ```sql
 UPDATE monitoring.measurement_conflicts SET resolved_at=clock_timestamp()

@@ -16,6 +16,7 @@ from time import perf_counter
 from datetime import datetime
 import logging
 import queue
+import threading
 import numpy as np
 from pathlib import Path
 from copy import deepcopy
@@ -29,6 +30,8 @@ from sensor_types import (sensor_category,
                           trigger_is_inverted)
 from config_window import DaqConfigWindow
 from metadata_controller import MetadataController
+from desktop_controller import DesktopController
+from desktop_widgets import configure_application
 from plot_view import PlotViewMixin
 
 logger = logging.getLogger('main')
@@ -63,7 +66,7 @@ def save_cycle_id(cid):
 # User Interface threads: ################################################################
 ##########################################################################################
 # The main GUI window class:
-class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
+class MainWindow(DesktopController, MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
     """Main window of the GUI:
 
     Shows buttons for configuration, to connect or disconnect DAQ communication, start/stop reading, save session data and exit app;
@@ -79,6 +82,7 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
 
     def __init__(self, parent = None):
         super(MainWindow, self).__init__(parent)
+        configure_application(QtWidgets.QApplication.instance())
         self.setupUi(self)
 
         self.modules = 1 # Always use module 1 for DAQ (4 channels)
@@ -242,9 +246,12 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
         for n in range(self.nplots):
             self.plotDataItem_lst.append([])
         
-        self.initialize_metadata()
         #Initial message:
         self.messagesBox.appendHtml('<p style="color:blue;">DAQ Monitoring System v2.0</p><p></p>')
+        self.initialize_desktop_state()
+        self.initialize_metadata()
+        if not self.preview_mode:
+            self.install_desktop_layout()
 
 
     def raw_to_volts(self, raw):
@@ -372,11 +379,11 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
             for job in self._history_jobs:
                 job.requestInterruption()
             self._close_after_history = True
-            self.statusbar.showMessage("Cancelling the server request before closing…")
+            self.messagesBox.appendPlainText("Cancelling the server request before closing…")
             event.ignore()
             return
         self._close_after_history = False
-        if not self.partEditor.can_leave():
+        if not self.historyPanel.flush_edits() or not self.partEditor.can_leave():
             event.ignore()
             return
         reply = QtWidgets.QMessageBox.question(self, "Message", 'Are you sure you want to leave? Any unsaved work will be lost.', 
@@ -437,6 +444,7 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
         To emit the signal to stop reading and enable/disable the buttons accordingly.
         '''
         logger.info("Monitoring stopped (session %s)", self.session_id)
+        self._stopping = True
         self.stopSig.emit()
         self.is_monitoring = False  # New setup waits for the final-data signal
         self._set_plot_live(False)  # plot no longer follows data: tools usable
@@ -450,6 +458,7 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
         self.saveSessionButton.setEnabled(False)
         # Offer the manual cloud send only if this session did not already stream live
         self.sendSessionButton.setEnabled(False)
+        self.refresh_desktop_controls()
 
     def stop_message(self):
         '''
@@ -464,121 +473,41 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
         self.messagesBox.appendHtml('<p>Finished session.</p>')
 
     def rem_devs(self):
-        '''
-        Remove/disconnect the DAQ device.
-        Enable/disable the buttons accordingly.
-        '''
-        self.disconnectSig.emit()
-        self.stopThreadSig.emit()
-        self.is_monitoring = False
+        """Release the worker before its serial handle or signal connections."""
+        thread = getattr(self, "DaqThread", None)
+        if thread is not None:
+            thread.stop_Thread()
+            if not thread.wait(2000):
+                self.messagesBox.appendPlainText("DAQ is still stopping. Try disconnecting again.")
+                return False
+            thread.disconnectDaq()
+            for signal, slot in ((thread.ConnectSig, self.HandleDaqConnectSig),
+                                 (thread.readErrorSig, self.HandleReadErrorSig),
+                                 (self.startSig, thread.startSignalRec),
+                                 (self.stopSig, thread.stopSignalRec),
+                                 (self.disconnectSig, thread.disconnectDaq),
+                                 (self.stopThreadSig, thread.stop_Thread)):
+                try:
+                    signal.disconnect(slot)
+                except (TypeError, RuntimeError):
+                    pass
         self.daq_connected = False
-        sleep(0.2)
-        
-        try:
-            #Disconnect signals:
-            self.DaqThread.ConnectSig.disconnect(self.HandleDaqConnectSig)
-            self.startSig.disconnect(self.DaqThread.startSignalRec)
-            self.disconnectSig.disconnect(self.DaqThread.disconnectDaq)
-            self.stopThreadSig.disconnect(self.DaqThread.stop_Thread)
-        except:
-            pass
-        
-        #Enable/Disable buttons:
+        self._connecting = False
         self.configurationButton.setEnabled(True)
         self.removeDeviceButton.setEnabled(False)
         self.nextButton.setEnabled(False)
         self.startButton.setEnabled(False)
-
-        #Disconnected DAQ message:
-        self.messagesBox.appendHtml('<p>DAQ device is disconnected.</p>')
+        self.messagesBox.appendPlainText("DAQ disconnected.")
+        self.refresh_desktop_controls()
+        return True
 
     def next_Session(self):
-        '''
-        Reset variables for data storage and plots.
-        Setup the plots.
-        Initially defined configuration is assumed.
-        Verify DAQ connection before starting, reconnect if needed.
-        '''
-        if not self.prepare_run_setup():
+        if self.desktop_busy() or not self.historyPanel.flush_edits() or not self.partEditor.can_leave():
             return
-        # Re-arm the DAQ for the next session. Reuse the still-open connection
-        # (like the first Start does) instead of closing and reopening the COM
-        # port back-to-back, which raced the Windows handle release and failed
-        # with "Acceso denegado". rearmDaq falls back to a full reconnect only
-        # if the live connection has actually dropped.
-        self.messagesBox.appendHtml('<p>Verifying DAQ connection...</p>')
+        self.presentation.navigate("monitor")
+        self.presentation.side_toggle.setChecked(False)
+        self.runSetup.material.setFocus()
 
-        reconnected = self.DaqThread.rearmDaq()
-
-        if not reconnected:
-            self.messagesBox.appendHtml('<p style="color:red;">DAQ reconnection failed. Please use "Find Device" to reconnect.</p>')
-            self.daq_connected = False
-            self.nextButton.setEnabled(False)
-            self.startButton.setEnabled(False)
-            self.findDeviceButton.setEnabled(True)
-            self.removeDeviceButton.setEnabled(False)
-            self.configurationButton.setEnabled(True)
-            return
-        
-        self.messagesBox.appendHtml('<p style="color:green;">DAQ connection verified.</p>')
-        
-        # Check trigger initial state
-        if not self.check_trigger_initial_state():
-            QtWidgets.QMessageBox.warning(self, "Trigger Warning",
-                f"The selected trigger ({self.trigger_mode}) is already active.\n\n"
-                "Monitoring must start between cycles, with the trigger inactive.\n\n"
-                "Please wait for the current cycle to finish and try again.")
-            self.messagesBox.appendHtml('<p style="color:red;">Cannot start: trigger already active. Must be inactive to start.</p>')
-            return
-
-        # Proceed with session setup
-        self.reset_Data_n_Plot_Vars()
-        self.begin_metadata_session()
-        logger.info("Monitoring session %s starting (trigger=%s)", self.session_id, self.trigger_mode)
-        self._ensure_mqtt_publisher()
-        self.startButton.setEnabled(False)
-        self.findDeviceButton.setEnabled(False)
-
-        self.SubplotSetup()
-        self.graphThread = GraphThread(self.dataQueue, self.sensors[:self.nplots], self.time_lim,
-                                       self.n_display_points, self.plot_refresh_rate, self)
-        # Next mints a new session_id above, so the relative cycle count restarts
-        # here too: the thread's cycle_base is the global counter this session
-        # starts from (see _session_cycle).
-        self.session_cycle_base = self.graphThread.cycle_base
-        self.graphThread.graphUpdateSig.connect(self.ploter)
-        self.graphThread.updateYAxisSig.connect(self.updateYAxisRanges)
-        self.graphThread.updateArrowsSig.connect(self.updateArrows)
-        self.graphThread.updateXAxisRangeSig.connect(self.updateXAxisRange)  # NEW CONNECTION
-        self.graphThread.monitTimeEndSig.connect(self.stopReading)
-        self.graphThread.monitTimeEndSig.connect(self.end_message)
-        self.graphThread.graphEndSig.connect(self.receiveXYData)
-        self.DaqThread.readQueueSig.connect(self.graphThread.readQueue)
-        self.stopSig.connect(self.graphThread.stop_Thread)
-        
-        # Connect cycle mode signals
-        if self.cycle_mode:
-            self.graphThread.cycleWaitingSig.connect(self.onCycleWaiting)
-            self.graphThread.cycleStartedSig.connect(self.onCycleStarted)
-            self.graphThread.cycleEndedSig.connect(self.onCycleEnded)
-            self.graphThread.cycleDiscardedSig.connect(self.onCycleDiscarded)
-
-        self.stopButton.setEnabled(True)
-        #Monitoring message:
-        self.messagesBox.appendHtml('<p>Monitoring with unit conversion...</p>')
-        self.graphThread.start()
-        self.start_acquisition_clock()
-        self.startSig.emit()
-        self.is_monitoring = True  # Add this line
-        # Continuous mode follows data all session; cycle mode starts still (waiting)
-        self._set_plot_live(not self.cycle_mode)
-
-        self.nextButton.setEnabled(False)
-        self.stopButton.setEnabled(True)
-        self.removeDeviceButton.setEnabled(False)
-        self.saveSessionButton.setEnabled(False)
-        self.sendSessionButton.setEnabled(False)
-        
     def start_monitoring(self):
         '''
         Start monitoring:
@@ -586,8 +515,19 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
         - Setup subplots;
         - Emit start signal.
         '''
+        if self.desktop_busy() or not self.historyPanel.flush_edits() or not self.partEditor.can_leave():
+            return
         if self.daq_connected:
             if not self.prepare_run_setup():
+                return
+            self.apply_staged_configuration()
+            # Start also handles later sessions. Reuse the open serial handle,
+            # applying the saved DAQ settings before reading the trigger.
+            if not self.DaqThread.set_configuration(self.active_configuration()):
+                self.messagesBox.appendPlainText("DAQ is still stopping. Try Start again.")
+                return
+            if not self.DaqThread.rearmDaq():
+                self.HandleDaqConnectSig(False)
                 return
             # Check trigger initial state
             if not self.check_trigger_initial_state():
@@ -637,6 +577,9 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
             self.start_acquisition_clock()
             self.startSig.emit()
             self.is_monitoring = True  # Add this line
+            self.nextButton.setEnabled(False)
+            self.presentation.navigate("monitor")
+            self.refresh_desktop_controls()
             # Continuous mode follows data all session; cycle mode starts still (waiting)
             self._set_plot_live(not self.cycle_mode)
 
@@ -690,6 +633,7 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
             f'<p style="color:orange;">Cycle {self._cycle_label(cycle_num)} discarded '
             f'({duration:.2f}s &lt; {self.min_cycle_s:.2f}s minimum - treated as noise)</p>')
         self._capture_starts.pop(cycle_num, None)
+        self.discard_part_draft(cycle_num)
         # Number is reused for the retry, so keep showing it while we wait again.
         self._set_cycle_readout(cycle_num)
         self._set_plot_live(False)
@@ -707,7 +651,9 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
                                   {"status": "interrupted" if self.graphThread.stop_reason in ("device_error", "processing_error") else "complete",
                                    "reason": self.graphThread.stop_reason})
         self.is_monitoring = False
-        self.runSetup.machine.setEnabled(True)
+        self._stopping = False
+        self.runSetup.set_locked(False)
+        self.startButton.setEnabled(self.daq_connected)
         self.removeDeviceButton.setEnabled(self.daq_connected)
         self.nextButton.setEnabled(self.daq_connected)
         self.saveSessionButton.setEnabled(bool(xvals))
@@ -724,6 +670,8 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
             self.stopSig.disconnect(self.graphThread.stop_Thread)
         except (TypeError, RuntimeError):
             pass
+
+        self.refresh_desktop_controls()
 
     # ------------------------------------------------------------ cloud upload
     def _ensure_mqtt_publisher(self, force=False, machine_id=None):
@@ -743,6 +691,7 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
         try:
             from mqtt_publisher import MqttPublisher
             self.mqtt_publisher = MqttPublisher(machine_id=machine_id)
+            self.mqtt_publisher.auto_drain = bool(self.mqtt_enabled)
             self.mqtt_publisher.start()
             s = self.mqtt_publisher.settings
             self.messagesBox.appendHtml(
@@ -800,6 +749,8 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
         after a live stream or a send (self._session_streamed), so this can never
         repeat a manual enqueue. MQTT duplicate delivery is still possible.
         """
+        if not self.historyPanel.flush_edits() or not self.partEditor.can_leave():
+            return
         if self._session_streamed:
             self.messagesBox.appendHtml(
                 '<p style="color:orange;">Already queued. Database storage is unconfirmed.</p>')
@@ -834,6 +785,7 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
         else:
             self.messagesBox.appendHtml(
                 '<p style="color:orange;">Nothing to send - no finished session data.</p>')
+        self.refresh_desktop_controls()
 
     # ------------------------------------------------------------------- setup
 
@@ -843,13 +795,15 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
         What to do when findDeviceButton is clicked:
         - Connect to DAQ device
         '''
+        if self.desktop_busy():
+            return
         self.startButton.setEnabled(False)
-        try:
-            self.rem_devs()
-        except:
-            pass
+        if not self.rem_devs():
+            return
 
         # Start DAQ connection
+        self._connecting = True
+        self.refresh_desktop_controls()
         self.messagesBox.appendHtml('<p>Attempting to connect to DAQ device...</p>')
         self.daqThStart()
 
@@ -861,9 +815,10 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
 
         # The trigger always lives on a digital input, so the digital word is
         # always part of the scan.
-        self.DaqThread = DaqThread(self.daq_channels, self.voltage_ranges,
-                                   self.daq_dec, self.daq_deca, self.daq_srate,
-                                   self.dataQueue, self.sensors[:self.nplots],
+        cfg = self._configuration_draft or self.active_configuration()
+        self.DaqThread = DaqThread(cfg['channels'], fixed_voltage_ranges(cfg['channels']),
+                                   cfg['decimation'], self.daq_deca, cfg['sample_rate_hz'],
+                                   self.dataQueue, [f'CH{ch}' for ch in cfg['channels']],
                                    read_digital=True)
         self.DaqThread.ConnectSig.connect(self.HandleDaqConnectSig)
         self.DaqThread.readErrorSig.connect(self.HandleReadErrorSig)
@@ -901,6 +856,7 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
         '''
         Handle DAQ connection status
         '''
+        self._connecting = False
         if ConnectedT_F == True:
             self.messagesBox.appendHtml('<p style="color:green;">DAQ device: connected.</p>')
             # Only enable Start button if NOT currently monitoring
@@ -909,16 +865,18 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
             self.removeDeviceButton.setEnabled(True)
             self.configurationButton.setEnabled(False)
         else:
-            self.messagesBox.appendHtml('<p style="color:red;">DAQ device: connection failed!</p>')
+            reason = getattr(getattr(self, 'DaqThread', None), 'connection_error', '')
+            self.messagesBox.appendPlainText('DAQ connection failed: ' + (reason or 'Check the USB connection and try again.'))
+            self.startButton.setEnabled(False)
+            self.nextButton.setEnabled(False)
+            self.removeDeviceButton.setEnabled(False)
+            self.findDeviceButton.setEnabled(True)
+            self.configurationButton.setEnabled(True)
         self.daq_connected = ConnectedT_F
+        self.refresh_desktop_controls()
 
     def configure(self):
-        '''
-        Configure DAQ parameters
-        '''
-        self.ModuleSelectWin = DaqConfigWindow(initial_config=self.active_configuration())
-        self.ModuleSelectWin.configSignal.connect(self.cnfg_Sig_Received)
-        self.ModuleSelectWin.show()
+        self.presentation.navigate("setup")
 
     def cnfg_Sig_Received(self, cfg):
         '''
@@ -938,7 +896,7 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
         self.plot_channels = list(cfg.get('plot_channels', cfg['channels']))
         self.mqtt_enabled = bool(cfg.get('mqtt_enabled', False))
         if not self.mqtt_enabled and self.mqtt_publisher is not None:
-            self.mqtt_publisher.stop()
+            self.mqtt_publisher.stop(flush=False)
             self.mqtt_publisher = None
         new_machine_id = str(cfg.get('machine_id', self.machine_id)).strip() or self.machine_id
         if new_machine_id != self.machine_id:
@@ -972,8 +930,8 @@ class MainWindow(MetadataController, PlotViewMixin, QtWidgets.QMainWindow, MainW
                     "trigger=%s, machine_id=%s, mqtt=%s",
                     self.daq_channels, self.channel_types, self.daq_srate, self.daq_dec,
                     self.trigger_mode, self.machine_id, self.mqtt_enabled)
-        self.run_settings['machine_id'] = self.machine_id
-        self.runSetup.set_values(self.run_settings)
+        # Run setup belongs to Start/Next. Applying DAQ configuration must not
+        # discard settings the operator has typed while stopped.
         self.refresh_run_snapshot()
         self.config_message(cfg)
         self.findDeviceButton.setEnabled(True)
@@ -1094,6 +1052,24 @@ class MqttSelfTestThread(QtCore.QThread):
 
 # DAQ thread: ############################################################################
 ##########################################################################################
+class DaqNotFoundError(ConnectionError):
+    """A Connect attempt found no DATAQ USB device."""
+
+
+class DaqDevice(daq.Daq_serial):
+    """Use the shared driver's configuration with single-attempt discovery.
+
+    The driver's config_daq() otherwise polls discovery forever when absent.
+    Raising here also covers unplugging before a rearm, without changing the
+    shared package or bypassing its scan configuration/verification.
+    """
+
+    def discovery(self):
+        if not super().discovery():
+            raise DaqNotFoundError('DAQ not found. Connect the DAQ by USB and try again.')
+        return True
+
+
 class DaqThread(QtCore.QThread):
     ConnectSig = QtCore.pyqtSignal(bool)
     readQueueSig = QtCore.pyqtSignal()
@@ -1109,6 +1085,7 @@ class DaqThread(QtCore.QThread):
         self.deca = deca
         self.srate = srate
         self.IsConnected = False
+        self.connection_error = ''
         self.startsigrec = False
         self.stopsigrec = False
         self.stopThread = False
@@ -1116,16 +1093,39 @@ class DaqThread(QtCore.QThread):
         self.read_digital = read_digital  # append D4/D5 digital word to each scan
         self.daq_device = None
         self.binary_method = 1
+        self._idle = threading.Event()
+        self._idle.set()
+
+    def set_configuration(self, cfg):
+        """Update the scan description only after the previous read loop stops."""
+        if not self._idle.wait(2):
+            return False
+        self.channels = list(cfg['channels'])
+        self.voltage_ranges = fixed_voltage_ranges(self.channels)
+        self.dec, self.srate = cfg['decimation'], cfg['sample_rate_hz']
+        self.sensors = [f'CH{ch}' for ch in self.channels]
+        dev = self.daq_device
+        if dev is not None:
+            dev.channels = list(self.channels)
+            dev.dec, dev.deca, dev.srate = self.dec, self.deca, self.srate
+            dev.read_digital = self.read_digital
+            dev.configs = dev.voltage_range_to_config(self.voltage_ranges)
+            if self.read_digital:
+                dev.configs.append(dev.DIGITAL_CHANNEL_CONFIG)
+            dev.numofchannel = len(dev.configs)
+            dev.numofbyteperscan = 2 * dev.numofchannel
+        return True
 
     def ConnectDaq(self):
         '''
         Connect to DAQ device with improved error handling
         '''
+        self.connection_error = ''
         try:
             output_mode = 'binary'
             
             # Create DAQ connection
-            self.daq_device = daq.Daq_serial(
+            self.daq_device = DaqDevice(
                 channels=self.channels,
                 voltage_ranges=self.voltage_ranges,
                 dec=self.dec,
@@ -1145,14 +1145,18 @@ class DaqThread(QtCore.QThread):
             
             logger.info("DAQ connected (channels=%s, srate=%s, dec=%s)",
                         self.channels, self.srate, self.dec)
-            self.ConnectSig.emit(True)
             self.IsConnected = True
+            self.ConnectSig.emit(True)
             return True
 
         except Exception as e:
-            logger.exception("DAQ connection error: %s", e)
+            self.connection_error = str(e)
+            if isinstance(e, DaqNotFoundError):
+                logger.info('%s', e)
+            else:
+                logger.exception("DAQ connection error: %s", e)
+            self.disconnectDaq()
             self.ConnectSig.emit(False)
-            self.IsConnected = False
             return False
 
     def rearmDaq(self):
@@ -1169,6 +1173,8 @@ class DaqThread(QtCore.QThread):
         open port instead of reopening it. Falls back to a full reconnect only
         if the live connection has genuinely gone away.
         '''
+        if not self._idle.wait(2):
+            return False
         dev = self.daq_device
         if self.IsConnected and dev is not None and getattr(dev, 'ser', None) is not None \
                 and dev.ser.is_open:
@@ -1256,6 +1262,7 @@ class DaqThread(QtCore.QThread):
 
             self.startsigrec = False
             self.stopsigrec = False
+            self._idle.set()
 
     @QtCore.pyqtSlot()
     def stop_Thread(self):
@@ -1263,19 +1270,31 @@ class DaqThread(QtCore.QThread):
         
     @QtCore.pyqtSlot()
     def disconnectDaq(self):
-        if self.IsConnected == True and self.daq_device is not None:
+        # Configuration can fail after opening USB, before IsConnected is set.
+        # Release that partial connection too, so a later click can retry.
+        dev = self.daq_device
+        port = getattr(dev, 'ser', None)
+        if port is not None and port.is_open:
             try:
-                self.daq_device.close_serial()
-                self.IsConnected = False
+                dev.close_serial()
             except Exception as e:
                 logger.error("Error closing DAQ: %s", e)
+            finally:
+                if port.is_open:
+                    try:
+                        port.close()
+                    except Exception as e:
+                        logger.error("Error releasing DAQ serial port: %s", e)
+        self.IsConnected = False
 
     @QtCore.pyqtSlot()
     def stopSignalRec(self):
+        self._idle.clear()
         self.stopsigrec = True
 
     @QtCore.pyqtSlot()
     def startSignalRec(self):
+        self._idle.clear()
         # MainWindow set the shared wall/elapsed baseline immediately before
         # emitting startSig. Do not introduce a second, later time zero here.
         self.startsigrec = True
@@ -1745,6 +1764,8 @@ pg.setConfigOption('foreground', 'k')
 
 if __name__ == "__main__":
     setup_logging()
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
     app = QtWidgets.QApplication(sys.argv)
     form = MainWindow()
     form.showMaximized()

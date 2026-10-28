@@ -38,6 +38,8 @@ try {
     await db.query('SELECT monitoring.mark_stored($1,$2,$3,md5($4))',[c.machine_id,'before-upgrade',c.cycle_id,'original']);
     await db.exec(fs.readFileSync('iot/postgres/002_ingestion_recovery.sql','utf8'));
     await db.exec(fs.readFileSync('iot/postgres/002_ingestion_recovery.sql','utf8')); // safe migration rerun
+    await db.exec(fs.readFileSync('iot/postgres/003_history_reader.sql','utf8'));
+    await db.exec(fs.readFileSync('iot/postgres/004_cycle_review.sql','utf8'));
     const upgraded=(await db.query("SELECT capture,waveform_status FROM monitoring.cycles WHERE session_id='before-upgrade'")).rows[0];
     assert.deepEqual(upgraded.capture,beforeUpgrade);
     assert.equal(upgraded.waveform_status,'stored');

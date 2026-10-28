@@ -7,6 +7,7 @@ Keeps test data for inspection. Grafana browser checks remain in SERVER_SETUP.md
 import argparse
 import base64
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -134,11 +135,14 @@ def main():
     where = f"machine_id IN ('55t', '160t') AND session_id='{session}'"
     stored = lambda n: sql(f"SELECT count(*) FROM monitoring.cycles WHERE {where} AND waveform_status='stored'") == str(n)
     wait_for(lambda: int(sql('SELECT max(version) FROM monitoring.schema_migrations')) >= 2, 'schema ready')
-    # Retained test volumes may predate this release. Reapply the additive migration
-    # to the isolated database so this test always exercises the shipped functions.
-    for migration in ('002_ingestion_recovery.sql', '003_history_reader.sql'):
-        command('exec', '-T', 'postgres', 'psql', '-X', '-v', 'ON_ERROR_STOP=1', '-U', 'postuser',
-                '-d', 'injection_monitoring', data=(ROOT / 'iot/postgres' / migration).read_text(encoding='utf-8'))
+    # Exercise the actual migration runner and a rerun on this project's container.
+    # Resolve the container from Compose; never fall back to production's name.
+    container = command('ps', '-q', 'postgres')
+    assert container and '\n' not in container, 'Expected one isolated PostgreSQL container'
+    migration_env = {**os.environ, 'MONITORING_POSTGRES_CONTAINER': container}
+    for _ in range(2):
+        subprocess.run(['bash', str(ROOT / 'scripts/apply_server_migrations.sh')], env=migration_env, check=True)
+    assert sql('SELECT max(version) FROM monitoring.schema_migrations') == '5'
     # MQTT subscription must exist before the first test publication.
     wait_for(lambda: 'Connected to broker' in command('logs', '--tail', '200', 'nodered'), 'MQTT subscriber connected')
     command('exec', '-T', 'nodered', 'node', '-e', POSTGRES_CONNECTION_CHECK,
@@ -150,6 +154,20 @@ def main():
     wait_for(lambda: stored(2), 'two multi-chunk captures stored')
     wait_for(queue_empty, 'initial captures drained')
     check_history_api(messages)
+    review = dict(schema_version=1, kind='review', machine_id='55t', session_id=session, cycle_id=1,
+        review=dict(revision=1, update_id='isolated-review', updated_at_ns=str(time.time_ns()),
+                    excluded=True, settings=dict(mold_temperature_c=80, melt_temperature_c=220)))
+    publish(review)
+    wait_for(lambda: sql(f"SELECT excluded FROM monitoring.cycle_catalog WHERE {where} AND cycle_id=1") == 't',
+             'cycle exclusion stored')
+    assert sql(f"SELECT mold_temperature_c FROM monitoring.cycle_catalog WHERE {where} AND cycle_id=1") == '80'
+    assert sql(f"SELECT melt_temperature_c FROM monitoring.cycle_catalog WHERE {where} AND cycle_id=1") == '220'
+    review['review'].update(revision=2, update_id='isolated-restore', excluded=False)
+    publish(review)
+    wait_for(lambda: sql(f"SELECT excluded FROM monitoring.cycle_catalog WHERE {where} AND cycle_id=1") == 'f',
+             'cycle exclusion undone')
+    wait_for(queue_empty, 'corrections drained')
+    print('PASS: corrections, melt setpoint and reversible exclusion through the real MQTT flow', flush=True)
     predicate = sql("SELECT '(time >= '||min(first_time_ns)::text||' AND time <= '||max(last_time_ns)::text||"
         "' AND ('||string_agg(influx_predicate,' OR ')||'))' FROM monitoring.cycle_catalog WHERE " + where)
     result = influx('SELECT count("t_ms") FROM "autogen"."sensor_data" WHERE ' + predicate)

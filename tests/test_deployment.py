@@ -408,8 +408,10 @@ class DeploymentTests(unittest.TestCase):
         self.installer.creds = {'monitoring_ingest': 'private-test-password'}
         self.installer.before_count = [{'count': 45447}]
         with patch('scripts.deploy_server.run', return_value='OK') as run, \
+             patch('scripts.deploy_server.sql', return_value='5') as sql, \
              patch.object(self.installer, 'influx_count', return_value=self.installer.before_count):
             self.installer.verify()
+        self.assertEqual(sql.call_count, 2)
         probe, health = run.call_args_list
         self.assertEqual(probe.args[0][:6], ['docker', 'exec', '-i', 'nodered', 'node', '-e'])
         self.assertEqual(probe.args[0][6], deploy.POSTGRES_CONNECTION_CHECK)

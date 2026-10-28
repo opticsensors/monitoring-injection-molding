@@ -1,4 +1,4 @@
-// Outputs: register capture (PostgreSQL), measurements (PostgreSQL).
+// Outputs: register capture (PostgreSQL), measurement/review update (PostgreSQL).
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const finite = value => typeof value === "number" && Number.isFinite(value);
 const optional = (value, minimum) => value === null || (finite(value) && value >= minimum);
@@ -22,6 +22,22 @@ try {
         throw new Error('Legacy upload retained for reconciliation; drain old desktop spool before cutover');
     }
     assert(data && data.schema_version === 1, "Unsupported metadata schema");
+    if (data.kind === "review") {
+        assert(text(data.machine_id, 128) && text(data.session_id, 200) && integer(data.cycle_id) && data.cycle_id > 0, "Invalid cycle identity");
+        const r = data.review;
+        assert(r && integer(r.revision) && r.revision > 0 && text(r.update_id, 100), "Invalid review revision/ID");
+        ns(r.updated_at_ns);
+        assert(typeof r.excluded === 'boolean' && r.settings && typeof r.settings === 'object' && !Array.isArray(r.settings), "Invalid cycle review");
+        for (const [key, value] of Object.entries(r.settings)) {
+            assert(['machine_id','material','mold_temperature_c','melt_temperature_c','injection_speed_mm_s'].includes(key), 'Unknown correction field');
+            assert(key === 'machine_id' ? (text(value,64) && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(value)) :
+                key === 'material' ? (value === null || text(value,200)) :
+                optional(value, key === 'injection_speed_mm_s' ? 0 : -273.15), 'Invalid corrected setting');
+        }
+        msg.query = "SELECT monitoring.receive_review($1, $2, $3::bigint, $4::jsonb) AS result";
+        msg.params = [data.machine_id, data.session_id, data.cycle_id, JSON.stringify(r)];
+        return [null, msg];
+    }
     measurements(data.measurements);
     if (data.kind === "measurements") {
         assert(text(data.machine_id, 128) && text(data.session_id, 200) && integer(data.cycle_id), "Invalid cycle identity");
@@ -37,6 +53,7 @@ try {
     assert(["complete", "interrupted"].includes(c.status), "Invalid acquisition status");
     assert(c.material === null || text(c.material, 200), "Invalid material");
     assert(optional(c.mold_temperature_c, -273.15), "Invalid mold setpoint");
+    assert(c.melt_temperature_c === undefined || optional(c.melt_temperature_c, -273.15), "Invalid melt setpoint");
     assert(c.injection_speed_mm_s === undefined || optional(c.injection_speed_mm_s, 0), "Invalid speed setpoint");
     assert(c.pressure_settings_bar && typeof c.pressure_settings_bar === "object", "Missing pressure settings");
     for (const [key, value] of Object.entries(c.pressure_settings_bar)) {
