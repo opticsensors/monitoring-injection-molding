@@ -1,0 +1,176 @@
+[
+  {
+    "file": "Zhang_MSR_TR98_71_2008revision.pdf",
+    "url": "https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr98-71.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 1014432,
+    "pages": 22,
+    "sha256": "b550996ade9c8cea7131a0be6059ce4ffd248e0f0562381abb94b76ca2d83bba"
+  },
+  {
+    "file": "MVTec_3D_Vision_guide.pdf",
+    "url": "https://www.mvtec.com/fileadmin/Redaktion/mvtec.com/products/halcon/documentation/solution_guide/solution_guide_iii_c_3d_vision.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 16795374,
+    "pages": 238,
+    "sha256": "f2747b3fa68a2452cb6daa5edf97027803f54c19b517cbcd5cc9c0f1841b7e04"
+  },
+  {
+    "file": "Hagemann_2021_bias_uncertainty_arxiv.pdf",
+    "url": "https://arxiv.org/pdf/2107.13484",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 22863683,
+    "pages": 22,
+    "sha256": "1d3e5c43b7896cb8d4cd43ff1f19b61769ac0a42af66673ea4fbb898489e54b5"
+  },
+  {
+    "file": "Strobl_2008_unknown_grid_dimensions.pdf",
+    "url": "https://www.robotic.dlr.de/fileadmin/robotic/stroblk/publications/strobl_2008randa.pdf",
+    "retrieved": "2026-11-04",
+    "status": "failed",
+    "reason": "HTTPSConnectionPool(host='www.robotic.dlr.de', port=443): Max retries exceeded with url: /fileadmin/robotic/stroblk/publications/strobl_2008randa.pdf (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000020DE12D6B50>, 'Connection to www.robotic.dlr.de timed out. (connect timeout=45)'))"
+  },
+  {
+    "file": "Strobl_2011_imperfect_planar_target.pdf",
+    "url": "https://elib.dlr.de/71888/1/strobl_2011iccv.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 2244842,
+    "pages": 8,
+    "sha256": "442b308fe16004cf1dab3d2565a3743b08fc038c576aa4d9f668e0c4be827d53"
+  },
+  {
+    "file": "Hartley_Zisserman_2004_introduction_sample.pdf",
+    "url": "https://www.robots.ox.ac.uk/~vgg/hzbook/hzbook2/HZintroduction.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 782891,
+    "pages": 21,
+    "sha256": "444fa7f18431546156255e6357040df23893512eaed6c3f9692859235653bd17"
+  },
+  {
+    "file": "NIST_TN1297_1994.pdf",
+    "url": "https://nvlpubs.nist.gov/nistpubs/legacy/tn/nbstechnicalnote1297.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 435960,
+    "pages": 25,
+    "sha256": "f2c8e6026d5589a63d492f192b72cd905f554b477a6049532256170aec477e92"
+  },
+  {
+    "file": "NISTIR7197_2005_inspection_workstation.pdf",
+    "url": "https://nvlpubs.nist.gov/nistpubs/Legacy/IR/nistir7197.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 1503757,
+    "pages": 62,
+    "sha256": "516c6b9de64fd92404bba02560a6d973c6a83a6811a74bcdfb02dc43059f17d2"
+  },
+  {
+    "file": "NIST_checkerboard_tool_guide.pdf",
+    "url": "https://www.nist.gov/document/checkerboard-user-guide-and-documentation",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 913344,
+    "pages": 5,
+    "sha256": "cb2ca45714a5e64cf4ca54d1e10559831b4c702383a9165d994873a470bbe866"
+  },
+  {
+    "file": "Barazzetti_2011_targetless_calibration.pdf",
+    "url": "https://isprs-archives.copernicus.org/articles/XXXVIII-5-W16/335/2011/isprsarchives-XXXVIII-5-W16-335-2011.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 1803223,
+    "pages": 8,
+    "sha256": "010aaca200f6f178133a66a4aba70868cef65babac164c956853c2f3bf42732a"
+  },
+  {
+    "file": "Strobl_2009_narrow_angular_field.pdf",
+    "url": "https://elib.dlr.de/62660/1/Strobl-Iros09_calib.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 1318810,
+    "pages": 7,
+    "sha256": "4fb9c5b23f617442043e5d4dcf2ddd9a4fcdbea32acdab569a36a060fdf9d738"
+  },
+  {
+    "file": "Stamatopoulos_2010_long_focal_length.pdf",
+    "url": "https://www.isprs.org/proceedings/XXXVIII/part5/papers/110.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 328728,
+    "pages": 5,
+    "sha256": "8c4d595da94be0a1995bbcc3345a37ca1104335c61a1e3c8fd953efa8dd88ad0"
+  },
+  {
+    "file": "Tang_2012_calibration_harp.pdf",
+    "url": "https://arxiv.org/pdf/1212.5656",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 1444319,
+    "pages": 24,
+    "sha256": "a8bb4561e704fa836b20c41e545ef7da921c78f1ea7ae7d439c8bd961bda8c79"
+  },
+  {
+    "file": "Steger_1998_subpixel_performance.pdf",
+    "url": "https://iuks.in.tum.de/_media/members/steger/publications/1998/eemcv-98-steger.pdf",
+    "retrieved": "2026-11-04",
+    "status": "failed",
+    "reason": "HTTPSConnectionPool(host='iuks.in.tum.de', port=443): Max retries exceeded with url: /_media/members/steger/publications/1998/eemcv-98-steger.pdf (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000021B0B868850>, 'Connection to iuks.in.tum.de timed out. (connect timeout=40)'))"
+  },
+  {
+    "file": "Steger_1998_subpixel_performance.pdf",
+    "url": "https://mv.in.tum.de/_media/members/steger/publications/1998/eemcv-98-steger.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 615652,
+    "pages": 23,
+    "sha256": "068507f4a8c7776edac66089c439db4e17a633599ab6a83761b6134a0ec6d20d"
+  },
+  {
+    "file": "Duda_Frese_2018_checkerboard_corners.pdf",
+    "url": "https://bmva-archive.org.uk/bmvc/2018/contents/papers/0508.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 3677469,
+    "pages": 10,
+    "sha256": "5fcb0624f67d4ed802433541c006180f81401524e2ee56861de3708ab2d407b7"
+  },
+  {
+    "file": "Rosenberger_2016_radiometry_geometry.pdf",
+    "url": "https://acta.imeko.org/index.php/acta-imeko/article/view/IMEKO-ACTA-05%20%282016%29-04-13/pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 790606,
+    "pages": 7,
+    "sha256": "4a3a0c58f5219af1abbab10704579880248a141e3ea6f2142e163e59b1a64ea4"
+  },
+  {
+    "file": "EMVA1288_General_4_0_2021.pdf",
+    "url": "https://www.emva.org/wp-content/uploads/EMVA1288General_4.0Release.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 2667827,
+    "pages": 45,
+    "sha256": "aa71d6ae87494da6c53b012dff1fffe2b363e08588575466667355487201bd64"
+  },
+  {
+    "file": "NPL_GPG39_2014_vision_dimensional.pdf",
+    "url": "https://www.npl.co.uk/special-pages/gpg39_dimensional",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 1848139,
+    "pages": 97,
+    "sha256": "d4812c854a8e8c540464f564e968fca31f1f874a72931c3882c21843a67fa74d"
+  },
+  {
+    "file": "NIST_M48_vision_validation_2026.pdf",
+    "url": "https://nps-ext.nist.gov/nps/nps_public_api/api/Publication/file/962124",
+    "retrieved": "2026-11-04",
+    "status": "failed",
+    "reason": "HTTPSConnectionPool(host='nps-ext.nist.gov', port=443): Read timed out. (read timeout=30)"
+  }
+]

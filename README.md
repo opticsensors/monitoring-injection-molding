@@ -1,6 +1,12 @@
 # `monitoring-injection-molding`
 Integration of temperature and pressure sensors inside the cavity of an injection mold with real-time monitoring. Automatic cycle detection via an inductive proximity sensor or machine trigger. The machine signals (injection pressure, screw speed and screw position) are read on the same DAQ scan as the in-mold sensors, so each detected cycle is saved with all channels time-aligned.
 
+The planned [inspection cell](inspection_cell/README.md) has its own hardware,
+software and validation workspace in this repository. It documents automatic
+spiral length/diameter measurement and weighing, including the initial Machina
+proposal and source files. The cell is still in design; acquisition software is
+not yet implemented there.
+
 # Hardware
 
 UPDATE photos: added new connector for machine outputs and rewired 

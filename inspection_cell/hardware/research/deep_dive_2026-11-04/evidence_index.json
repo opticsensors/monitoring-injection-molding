@@ -1,0 +1,1082 @@
+{
+  "schema_version": 1,
+  "updated": "2026-11-04",
+  "paths_relative_to": "inspection_cell/hardware/research/deep_dive_2026-11-04",
+  "purpose": "Localizar decisiones y evidencia; no base de resultados físicos.",
+  "physical_tests_performed": false,
+  "purchases_confirmed": false,
+  "source_policy": "Datos primarios, experiencias, cálculos y pendientes separados. Precios observados no equivalen a oferta entregada. Ver manifiesto para SHA-256 y fallos de descarga.",
+  "sources": [
+    {
+      "id": "D-MVTEC",
+      "type": "manufacturer_manual",
+      "url": "https://www.mvtec.com/fileadmin/Redaktion/mvtec.com/products/halcon/documentation/solution_guide/solution_guide_iii_a_1d_measuring.pdf",
+      "local_file": "sources/MVTec_1D_Measuring_26_05.pdf",
+      "access": "downloaded",
+      "read_scope": "pp9–11 y 24–26: perfiles en gris, localización de bordes y condiciones de medida",
+      "analysis_file": "optics_and_lighting.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-GLASS",
+      "type": "manufacturer_datasheet",
+      "url": "https://www.schott.com/-/media/project/onex/products/b/borofloat/downloads/schott-borofloat-technical-data-sheet-english-26032019.pdf?rev=aa66d15af04a4ce7994f5e7699350364",
+      "local_file": "sources/SCHOTT_BOROFLOAT33_technical_data.pdf",
+      "access": "downloaded",
+      "read_scope": "p1: densidad, módulo, expansión y límites de uso",
+      "analysis_file": "fixture_and_materials.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-TPL",
+      "type": "manufacturer_datasheet",
+      "url": "https://www.tpl-vision.com/documents/techsheets/TPL_CSBACK_Product_Profile_EN.pdf",
+      "local_file": "sources/TPL_CSBACK_Product_Profile_EN.pdf",
+      "access": "downloaded",
+      "read_scope": "p6 y concepto de ajuste: área útil, exterior, potencia y condiciones",
+      "analysis_file": "lighting_candidates.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-AD",
+      "type": "manufacturer_manual",
+      "url": "https://aandd.jp/products/manual/balances/ad4212d.pdf",
+      "local_file": "sources/AD4212D_system_weighing_manual.pdf",
+      "access": "downloaded",
+      "read_scope": "pp16 y 44: estática y entorno; no es candidata económica",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-JONES",
+      "type": "research_article",
+      "url": "https://www.iastatedigitalpress.com/jtmae/article/14168/galley/12932/download/",
+      "local_file": "sources/Jones_2011_spiral_flatbed_scanner.pdf",
+      "access": "downloaded",
+      "read_scope": "Artículo completo, especialmente pp3–8: método, sesgo, R&R y límites del escáner",
+      "analysis_file": "existing_solutions.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-USS-OLD",
+      "type": "manufacturer_manual",
+      "url": "https://file.ussolid.com/content/JFDBS/JFDBS28.pdf",
+      "local_file": "sources/USS_DBS28_manual.pdf",
+      "access": "downloaded",
+      "read_scope": "Tabla de familia hasta 3 kg; no sustituye al manual de 5 kg",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-USS-MIRROR",
+      "type": "manufacturer_manual_user_mirror",
+      "url": "https://raw.githubusercontent.com/raleighlittles/USS-DBS-Driver/main/docs/USS-DBS28-30%20Product%20Manual.pdf",
+      "local_file": "sources/USS_DBS28_30_manual_community_mirror.pdf",
+      "access": "downloaded",
+      "read_scope": "Manual de otra revisión alojado por usuario: modos y conexión",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-BACKLIGHT-PAPER",
+      "type": "research_article",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC8038391/fullTextXML",
+      "local_file": "sources/Harmatys_2021_backlight_uncertainty.xml",
+      "access": "downloaded",
+      "read_scope": "Método, resultados y discusión; condiciones de luz cambian bordes interior/exterior",
+      "analysis_file": "optics_and_lighting.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-USS5",
+      "type": "manufacturer_manual",
+      "url": "https://file.ussolid.com/content/JFDBS/English_Manual_JFDBS00028_61_51-5kg.pdf",
+      "local_file": "sources/USS_DBS28_61_51_5kg_manual.pdf",
+      "access": "downloaded",
+      "read_scope": "PDF p4 / impresa p3: tabla 5 kg; PDF p5 / impresa p7: RS-232 continuo",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-VA-LIGHT",
+      "type": "manufacturer_datasheet",
+      "url": "https://hs.va-imaging.com/hubfs/Supportshare/MachineVisionLights/VA-BLBL2-BottomLitCollimatedBacklightSeries-Datasheet.pdf",
+      "local_file": "sources/VA_BLBL2_collimated_datasheet.pdf",
+      "access": "downloaded",
+      "read_scope": "pp1–2: variante 211×200, masa y dimensiones; discrepancia con web",
+      "analysis_file": "lighting_candidates.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-THERMAL-PAPER",
+      "type": "research_article",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC9786690/fullTextXML",
+      "local_file": "sources/Nimura_2022_camera_thermal_test_stand.xml",
+      "access": "downloaded",
+      "read_scope": "Método, montaje, resultados y conclusión; deriva propia de su montaje, no transferible",
+      "analysis_file": "optics_and_lighting.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-NIST",
+      "type": "metrology_guide",
+      "url": "https://www.nist.gov/document/nistir69692014092620150624revpdf",
+      "local_file": "sources/NISTIR_6969_2014_rev2015.pdf",
+      "access": "downloaded",
+      "read_scope": "GMP10, PDF pp24–29: desequilibrio térmico, convección y manipulación; no adoptar protocolo entero",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-PROFILE20",
+      "type": "manufacturer_datasheet",
+      "url": "https://cdn.item24.com/product-assets/DOK_PROD_37003_%23SEN_%23AIN_%23V1.pdf",
+      "local_file": "sources/ITEM_profile_20x20.pdf",
+      "access": "downloaded",
+      "read_scope": "p1: sección 0.0.370.03, I=0,72 cm4; perfil concreto",
+      "analysis_file": "mechanical_frame.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-PROFILE40",
+      "type": "manufacturer_datasheet",
+      "url": "https://cdn.item24.com/product-assets/DOK_PROD_2603_%23SALL_%23AIN_%23V1.pdf",
+      "local_file": "sources/ITEM_profile_40x40.pdf",
+      "access": "downloaded",
+      "read_scope": "p1: sección 0.0.026.03, I=13,96 cm4; perfil concreto",
+      "analysis_file": "mechanical_frame.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-FLEXION",
+      "type": "manufacturer_guide",
+      "url": "https://cdn.item24.com/product-assets/DOK_DATA_profil-tech-daten_%23SEN_%23AIN_%23V3.pdf",
+      "local_file": "sources/ITEM_profile_deflection.pdf",
+      "access": "downloaded",
+      "read_scope": "Apartados de material, flexión, torsión y montaje; modelo de voladizo ideal",
+      "analysis_file": "mechanical_frame.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-MICROSPIRAL",
+      "type": "research_article",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC6562889/fullTextXML",
+      "local_file": "sources/Micro_spiral_process_fingerprints_2019.xml",
+      "access": "downloaded",
+      "read_scope": "Método 2.2, materiales y resultados; frente por cuadrantes/ángulo, POM",
+      "analysis_file": "existing_solutions.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-INLINE3D",
+      "type": "research_article_mirror",
+      "url": "https://pdfs.semanticscholar.org/b0d6/a95dac06927a0c851f73d8c7f333728d985c.pdf",
+      "local_file": "sources/Aminabadi_2022_inline_3D_moulded_parts.pdf",
+      "access": "downloaded",
+      "read_scope": "pp3–12 y 16–17: sujeción, sistema, identificación, repetibilidad sobre piezas estabilizadas 48 h",
+      "analysis_file": "existing_solutions.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-USS300",
+      "type": "manufacturer_manual",
+      "url": "https://file.ussolid.com/content/JFDBS/Manual-USS-DBS46%20Precision%20Balance.pdf",
+      "local_file": "sources/USS_DBS46_300g_manual.pdf",
+      "access": "downloaded",
+      "read_scope": "PDF p4 tabla rasterizada revisada visualmente; p5 modo continuo y conexión",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-USS5",
+      "type": "manufacturer_product",
+      "url": "https://ussolid.de/u-s-solid-prazisionswaage-digitale-laborwaage-5000g-x-0-01-g-rs232-usb-schnittstelle-ac-dc-netzteil/",
+      "access": "web_consulted",
+      "read_scope": "Precio observado discrepante 105,37 / 115,43 / 119 EUR; web y manual discrepan en repetibilidad y tamaño.",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-USS32",
+      "type": "manufacturer_product",
+      "url": "https://ussolid.de/u-s-solid-prazisionswaage-digitale-laborwaage-3200g-x-0-01-g-rs232-schnittstelle-ac-dc-netzteil/",
+      "access": "web_consulted",
+      "read_scope": "3,2 kg, RS-232, 86,57 EUR observado; entrega España pendiente.",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-USS-SHIP",
+      "type": "manufacturer_policy",
+      "url": "https://ussolid.de/versand-und-rucksendungen/",
+      "access": "web_consulted",
+      "read_scope": "Página describe Alemania; no confirma coste entregado a España.",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-SBS",
+      "type": "brand_product",
+      "url": "https://www.expondo.es/steinberg-systems-bascula-de-precision-digital-de-0-2-a-3000-g-0-01-g-196-x-160-mm-10031315",
+      "access": "web_consulted",
+      "read_scope": "3 kg / 0,01 g, 178 EUR IVA incluido observado; repetibilidad separada no localizada.",
+      "analysis_file": "../../components/scales_shortlist.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-SBS-PORT",
+      "type": "brand_product_photo",
+      "url": "https://assets.expondo.com/asset/product_photos/10031315_photo_4?twic=v1/contain=1500x1500",
+      "access": "web_consulted",
+      "read_scope": "Inspección visual: D-sub macho de 9 pines, DC12V/1A; no pinout.",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-SBS-SIZE",
+      "type": "brand_product_photo",
+      "url": "https://assets.expondo.com/asset/product_photos/10031315_photo_6?twic=v1/contain=1500x1500",
+      "access": "web_consulted",
+      "read_scope": "Inspección visual: cuerpo 300×205×95 mm y plato 196×160 mm.",
+      "analysis_file": "mechanical_frame.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-PCE1100",
+      "type": "manufacturer_product",
+      "url": "https://www.pce-instruments.com/espanol/balanza/balanza/balanza-de-precision-pce-instruments-balanza-de-precisi_n-pce-bsk-1100-det_5935470.htm",
+      "access": "web_consulted",
+      "read_scope": "Modelo 1,1 kg, coste y accesorios; total conectado es escenario, no oferta cerrada.",
+      "analysis_file": "../../components/scales_shortlist.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-EFFILUX",
+      "type": "supplier_product",
+      "url": "https://www.edmundoptics.es/p/white-200-x-200-high-power-led-backlight/49405/",
+      "access": "web_consulted",
+      "read_scope": "Panel del PPT: 1,9 kg, 239 mm exterior, 765 EUR sin IVA; accesorios aparte.",
+      "analysis_file": "lighting_candidates.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-TPL-LOAN",
+      "type": "manufacturer_service",
+      "url": "https://www.tpl-vision.com/services/material-loans/",
+      "access": "web_consulted",
+      "read_scope": "Programa de préstamo habitual de 15 días laborables; confirmar región/condiciones.",
+      "analysis_file": "lighting_candidates.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-VA-COL",
+      "type": "manufacturer_product",
+      "url": "https://va-imaging.com/products/bottom-lit-backlight-collimated-industrial-illumination-va-blbl2-col",
+      "access": "web_consulted",
+      "read_scope": "Precio variante 710 EUR; dimensiones/masa web discrepan de PDF.",
+      "analysis_file": "lighting_candidates.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-VA-DIFF",
+      "type": "manufacturer_product",
+      "url": "https://va-imaging.com/products/bottom-lit-backlight-industrial-illumination-va-blbl2",
+      "access": "web_consulted",
+      "read_scope": "Variante 211×200 blanca, 710 EUR observado, 770 g web; fiscalidad pendiente.",
+      "analysis_file": "lighting_candidates.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-VA-FAQ",
+      "type": "manufacturer_service",
+      "url": "https://va-imaging.com/pages/vision-camera-frequently-asked-questions",
+      "access": "web_consulted",
+      "read_scope": "Préstamo disponible sujeto a condiciones; tarifas de gestión 19/79 EUR y fiscalidad según compra.",
+      "analysis_file": "lens_alternatives.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-VA-LENS20",
+      "type": "manufacturer_product",
+      "url": "https://va-imaging.com/products/lens-c-20mp-35mm-f2-8-1-1-va-lcm-20mp-35mm-f2-8-110",
+      "access": "web_consulted",
+      "read_scope": "Variante europea 280 EUR observados; características/MTF de web, no garantía con 2,4 micras.",
+      "analysis_file": "lens_alternatives.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-VA-LENS25",
+      "type": "manufacturer_product",
+      "url": "https://va-imaging.com/products/lens-c-mount-25mp-35mm-f2-8-1-1-va-lcm-25mp-35mm-f2-8-110",
+      "access": "web_consulted",
+      "read_scope": "350 EUR observados; verificar MTF a distancia real, no priorizar por 25 MP.",
+      "analysis_file": "lens_alternatives.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-COMPUTAR35",
+      "type": "manufacturer_product",
+      "url": "https://www.computar.com/products/v3522-mpz",
+      "access": "web_consulted",
+      "read_scope": "Ficha 35 mm; etiquetas DISCONTINUED ocultas en plantilla no prueban descatalogación.",
+      "analysis_file": "lens_alternatives.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-BASLER35",
+      "type": "manufacturer_datasheet",
+      "url": "https://docs.baslerweb.com/c11-3520-12m-p",
+      "access": "web_consulted",
+      "read_scope": "35 mm, MTF condicionado a distancia/apertura; sin precio EUR confirmado.",
+      "analysis_file": "lens_alternatives.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-TELECENTRIC",
+      "type": "manufacturer_product",
+      "url": "https://www.visiondatum.com/en/productview/1360.html",
+      "access": "web_consulted",
+      "read_scope": "Coincidencia 46,7 kg / 651,5 mm; no confirmado como modelo ofertado por STEMMER.",
+      "analysis_file": "optics_and_lighting.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-CALIB",
+      "type": "manufacturer_guide",
+      "url": "https://calib.io/blogs/knowledge-base/calibration-best-practices",
+      "access": "web_consulted",
+      "read_scope": "Calibrar con geometría, foco y apertura de uso; reproyección no equivale a validación independiente.",
+      "analysis_file": "optics_and_lighting.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-DOF",
+      "type": "manufacturer_guide",
+      "url": "https://www.edmundoptics.com/knowledge-center/application-notes/imaging/depth-of-field-and-depth-of-focus/",
+      "access": "web_consulted",
+      "read_scope": "Enfoque/profundidad y abertura; no corrigen escala con altura.",
+      "analysis_file": "optics_and_lighting.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-AIRY",
+      "type": "manufacturer_guide",
+      "url": "https://www.edmundoptics.com.sg/knowledge-center/application-notes/imaging/limitations-on-resolution-and-contrast-the-airy-disk/",
+      "access": "web_consulted",
+      "read_scope": "Difracción y contraste; diámetro Airy no es error del borde.",
+      "analysis_file": "optics_and_lighting.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-COLLIMATION",
+      "type": "manufacturer_guide",
+      "url": "https://www.lumimax.com/knowledge/topic-1-lighting-angle-influence-of-reflected-light-and-backlight-on-the-camera-view/backlight/collimated-and-telecentric-backlight.html",
+      "access": "web_consulted",
+      "read_scope": "Efecto de iluminación angular en borde; no hace telecéntrica a una lente convencional.",
+      "analysis_file": "optics_and_lighting.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-EURAMET",
+      "type": "metrology_guide",
+      "url": "https://iris.inrim.it/handle/11696/72070",
+      "access": "web_consulted",
+      "read_scope": "cg18 v4 2015: repetibilidad, indicación y excentricidad. PDF leído en web, descarga directa 403.",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-HX711",
+      "type": "manufacturer_datasheet_distributor",
+      "url": "https://datasheet.lcsc.com/lcsc/Avia-Semicon-Xiamen-HX711_C43656.pdf",
+      "access": "web_consulted",
+      "read_scope": "Tabla de ruido AVIA leída en web; descarga 403. Cálculo depende de célula hipotética.",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-USS-DRIVER",
+      "type": "user_implementation",
+      "url": "https://github.com/raleighlittles/USS-DBS-Driver/blob/main/docs/README.md",
+      "access": "web_consulted",
+      "read_scope": "Usuario de USS-DBS28-30: serie 9600 8N1, 17 bytes frente a 14 del manual; no ejecutado.",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-TORAY",
+      "type": "manufacturer_guide",
+      "url": "https://www.plastics.toray/de/technical/amilan/tec_011.html",
+      "access": "web_consulted",
+      "read_scope": "Poliamidas: humedad, contracción y orientación; no extrapolar coeficientes a PP.",
+      "analysis_file": "fixture_and_materials.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-FLIR-TRIGGER",
+      "type": "manufacturer_manual",
+      "url": "https://softwareservices.flir.com/BFS-U3-200S6/latest/Model/public/AcquisitionControl.html",
+      "access": "web_consulted",
+      "read_scope": "Disparo software y modos de obturador. Documentación antigua versionada como latest; confirmar firmware.",
+      "analysis_file": "../../electrical/acquisition_feasibility.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-FLIR-GPIO",
+      "type": "manufacturer_manual",
+      "url": "https://softwareservices.flir.com/BFS-U3-200S6/latest/Family/GPIOConnector.htm",
+      "access": "web_consulted",
+      "read_scope": "Conector y niveles/funciones por pin, revisión antigua; no plano eléctrico aprobado.",
+      "analysis_file": "../../electrical/acquisition_feasibility.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-FLUKE",
+      "type": "manufacturer_guide",
+      "url": "https://www.flukeprocessinstruments.com/en-us/why-use-pyrometers/frequently-asked-questions-about-infrared-instruments",
+      "access": "web_consulted",
+      "read_scope": "Área de lectura debe caber en hilo de 3–4 mm; no inferir temperatura del puntero láser.",
+      "analysis_file": "../../../validation/protocols/first_lab_checks.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-CALIPER",
+      "type": "manufacturer_guide",
+      "url": "https://www2.mitutoyo.co.jp/eng/useful/E11003/pageindices/index23.html",
+      "access": "web_consulted",
+      "read_scope": "Errores de fuerza y temperatura; texto indexado consultado, apertura directa falló.",
+      "analysis_file": "../../../validation/protocols/first_lab_checks.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-DTU-TEMPLATE",
+      "type": "research_article",
+      "url": "https://backend.orbit.dtu.dk/ws/files/56154544/INITIAL_VERIFICATION.pdf",
+      "access": "web_consulted",
+      "read_scope": "PDF p5: plantilla nominal graduada 1 mm y peso; no exactitud 0,1 mm ni contracción libre. No archivado.",
+      "analysis_file": "existing_solutions.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-USS300",
+      "type": "manufacturer_product",
+      "url": "https://ussolid.com/products/u-s-solid-300-x-0-001g-analytical-balance-1-mg-digital-lab-precision-scale-html",
+      "access": "web_consulted",
+      "read_scope": "300 g / 0,001 g, 133,49 USD; web difiere de manual en repetibilidad/linealidad.",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-USS1KG1MG",
+      "type": "manufacturer_product",
+      "url": "https://ussolid.com/products/u-s-solid-1-mg-analytical-balance-density-and-dynamic-weighing-0-001-g-x-1000-g-html",
+      "access": "web_consulted",
+      "read_scope": "1 kg / 0,001 g, 779 USD; cribado fuera del presupuesto, no selección.",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "L-CAMERA",
+      "type": "manufacturer_document_prior_archive",
+      "local_file": "../../components/datasheets/BFS-U3-200S6-Datasheet.pdf",
+      "read_scope": "Ficha original del usuario, inspección visual; variante mono concretada por oferta.",
+      "analysis_file": "../../components/camera_bfs_u3_200s6.md",
+      "access": "archived_in_first_study",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "L-LENS35",
+      "type": "manufacturer_document_prior_archive",
+      "local_file": "../../components/datasheets/V3522-MPZ.pdf",
+      "read_scope": "Ficha 35 mm y compatibilidad geométrica.",
+      "analysis_file": "lens_alternatives.md",
+      "access": "archived_in_first_study",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "L-SBS",
+      "type": "manufacturer_document_prior_archive",
+      "local_file": "../../components/datasheets/SBS-LW-1030_manual.pdf",
+      "read_scope": "PDF pp10,13–14; español pp45,48: modelos, salida y filtros/cero.",
+      "analysis_file": "../../components/scales_shortlist.md",
+      "access": "archived_in_first_study",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "L-PCE",
+      "type": "manufacturer_document_prior_archive",
+      "local_file": "../../components/datasheets/PCE-BSK_series_ES.pdf",
+      "read_scope": "PDF pp3,8–9: especificaciones y comunicación; preferir frente a edición IT antigua.",
+      "analysis_file": "../../components/scales_shortlist.md",
+      "access": "archived_in_first_study",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "L-PMMA",
+      "type": "manufacturer_document_prior_archive",
+      "local_file": "../../components/datasheets/PLEXIGLAS_GS_XT.pdf",
+      "read_scope": "Propiedades de material; no validación térmica de pieza/ranura.",
+      "analysis_file": "fixture_and_materials.md",
+      "access": "archived_in_first_study",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "R01",
+      "type": "user_experience_anecdotal",
+      "url": "https://www.reddit.com/r/computervision/comments/1l3s907/high_precision_measurement/",
+      "access": "thread_read",
+      "read_scope": "Caso, limitaciones y contraste primario resumidos en field_reports.md; no especificación metrológica.",
+      "analysis_file": "field_reports.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "R02",
+      "type": "user_experience_anecdotal",
+      "url": "https://www.reddit.com/r/MachineVisionSystems/comments/1su7dll/seeing_small_measurement_drift_not_sure_whats/",
+      "access": "thread_read",
+      "read_scope": "Caso, limitaciones y contraste primario resumidos en field_reports.md; no especificación metrológica.",
+      "analysis_file": "field_reports.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "R03",
+      "type": "user_experience_anecdotal",
+      "url": "https://www.reddit.com/r/manufacturing/comments/18ekgaq/experiences_with_computer_vision_in_quality/",
+      "access": "thread_read",
+      "read_scope": "Caso, limitaciones y contraste primario resumidos en field_reports.md; no especificación metrológica.",
+      "analysis_file": "field_reports.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "R04",
+      "type": "user_experience_anecdotal",
+      "url": "https://www.reddit.com/r/AskElectronics/comments/1ce8ns9/",
+      "access": "thread_read",
+      "read_scope": "Caso, limitaciones y contraste primario resumidos en field_reports.md; no especificación metrológica.",
+      "analysis_file": "field_reports.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "R05",
+      "type": "user_experience_anecdotal",
+      "url": "https://www.reddit.com/r/embedded/comments/cophkh/",
+      "access": "thread_read",
+      "read_scope": "Caso, limitaciones y contraste primario resumidos en field_reports.md; no especificación metrológica.",
+      "analysis_file": "field_reports.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "R06",
+      "type": "user_experience_anecdotal",
+      "url": "https://www.reddit.com/r/foodscience/comments/179gn1q/",
+      "access": "thread_read",
+      "read_scope": "Caso, limitaciones y contraste primario resumidos en field_reports.md; no especificación metrológica.",
+      "analysis_file": "field_reports.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "R07",
+      "type": "user_experience_anecdotal",
+      "url": "https://www.reddit.com/r/DIYfragrance/comments/1wixc9m/any_scale_recommendations/",
+      "access": "thread_read",
+      "read_scope": "Caso, limitaciones y contraste primario resumidos en field_reports.md; no especificación metrológica.",
+      "analysis_file": "field_reports.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "R08",
+      "type": "user_experience_anecdotal",
+      "url": "https://www.reddit.com/r/Metrology/comments/1lrd8ln/help_with_hardware_in_an_optical_metrology_system/",
+      "access": "thread_read",
+      "read_scope": "Caso, limitaciones y contraste primario resumidos en field_reports.md; no especificación metrológica.",
+      "analysis_file": "field_reports.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "R09",
+      "type": "user_experience_anecdotal",
+      "url": "https://www.reddit.com/r/chemhelp/comments/10ewaez/incorrect_reading_on_scale/",
+      "access": "thread_read",
+      "read_scope": "Caso, limitaciones y contraste primario resumidos en field_reports.md; no especificación metrológica.",
+      "analysis_file": "field_reports.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "R10",
+      "type": "user_experience_anecdotal",
+      "url": "https://www.reddit.com/r/DIYfragrance/comments/1ppxset/scale_shopping/",
+      "access": "thread_read",
+      "read_scope": "Caso, limitaciones y contraste primario resumidos en field_reports.md; no especificación metrológica.",
+      "analysis_file": "field_reports.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-CAL-ALU",
+      "type": "manufacturer_datasheet",
+      "url": "https://cdn.shopify.com/s/files/1/0021/3984/8751/files/Calib_Datasheet_Alu_LDPE.pdf?v=1720127874",
+      "local_file": "sources/Calib_Alu_LDPE_2025.pdf",
+      "access": "downloaded",
+      "read_scope": "4 páginas; tolerancia/planitud, informe individual opcional; tabla p1 revisada visualmente.",
+      "analysis_file": "calibration_references.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-CAL-CERAMIC",
+      "type": "manufacturer_datasheet",
+      "url": "https://cdn.shopify.com/s/files/1/0021/3984/8751/files/Calib_Datasheet_Ceramic.pdf?v=1720127873",
+      "local_file": "sources/Calib_Ceramic_2025.pdf",
+      "access": "downloaded",
+      "read_scope": "3 páginas; tolerancia/planitud, informe individual; tabla p1 revisada visualmente.",
+      "analysis_file": "calibration_references.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-CAL-LITHO",
+      "type": "manufacturer_datasheet",
+      "url": "https://cdn.shopify.com/s/files/1/0021/3984/8751/files/Calib_Datasheet_Print_Lithography.pdf?v=1720127875",
+      "local_file": "sources/Calib_Print_Lithography_2025.pdf",
+      "access": "downloaded",
+      "read_scope": "3 páginas; tolerancia/planitud, vidrio/CFRP; tabla p1 revisada visualmente.",
+      "analysis_file": "calibration_references.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-CAL-TARGET",
+      "type": "manufacturer_product",
+      "url": "https://calib.io/products/checkerboard",
+      "access": "web_consulted",
+      "read_scope": "CHT200150F, 103 EUR observado; no confundir aluminio con tolerancia cerámica ni precio entregado.",
+      "analysis_file": "calibration_references.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-FLIR-CURRENT",
+      "type": "manufacturer_product",
+      "url": "https://www.teledynevisionsolutions.com/en-150/products/blackfly-s-usb3/?model=BFS-U3-200S6M-C&segment=iis&vertical=machine+vision",
+      "access": "web_consulted",
+      "read_scope": "In Production; precios observados 620/645,50 EUR sin IVA; exposición69 us frente67 us PDF antiguo, disparo y sensor.",
+      "analysis_file": "../../components/camera_bfs_u3_200s6.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "D-NAHITA-FICHA",
+      "type": "manufacturer_document",
+      "url": "https://www.auxilab.es/controles/ObtenerPDF.ashx?f=%5C00%5C06%5Cyf%5Cvy_F_Serie+5173_C.pdf",
+      "access": "downloaded",
+      "read_scope": "p 2 revisada visualmente: KBD005 300 g/1 mg, repetibilidad 2 mg, interfaces.",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04",
+      "local_file": "sources/Nahita_5173_datasheet.pdf"
+    },
+    {
+      "id": "D-NAHITA-MANUAL",
+      "type": "manufacturer_document",
+      "url": "https://www.auxilab.es/controles/ObtenerPDF.ashx?f=%5C00%5C07%5C96%5C6m_M55173xxx.pdf",
+      "access": "downloaded",
+      "read_scope": "PDF pp 4–10: referencias antiguas, envío por MENU, serial; no modo continuo localizado.",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04",
+      "local_file": "sources/Nahita_5173_manual.pdf"
+    },
+    {
+      "id": "W-NAHITA300",
+      "type": "supplier_product",
+      "url": "https://www.auxilab.es/es/productos-laboratorio/balanza-de-precision-300g-0-001g-serie-5173/",
+      "access": "web_consulted",
+      "read_scope": "245,25 EUR sin IVA; 296,75 con 21%, conexión/entrega y lectura automática pendientes.",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-NAHITA5163-300",
+      "type": "supplier_product",
+      "url": "https://www.auxilab.es/es/productos-laboratorio/balanza-de-precision-300g-0-001g-serie-5163/",
+      "access": "web_consulted",
+      "read_scope": "268,98 EUR sin IVA; excede 300 con 21% antes de conexión.",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-NAHITA5163-500",
+      "type": "supplier_product",
+      "url": "https://www.auxilab.es/es/productos-laboratorio/balanza-de-precision-500g-0-001g-serie-5163/",
+      "access": "web_consulted",
+      "read_scope": "289,28 EUR sin IVA; excede 300 con 21% antes de conexión.",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    },
+    {
+      "id": "W-USS-NOPORT",
+      "type": "supplier_product",
+      "url": "https://ussolid.com/products/300-x-0-001g-analytical-balance-1-mg-digital-lab-precision-scale-html",
+      "access": "web_consulted",
+      "read_scope": "USS-DBS3-3 sin interfaz en tabla; no confundir con 46.",
+      "analysis_file": "weighing.md",
+      "retrieved": "2026-11-04"
+    }
+  ],
+  "claims": [
+    {
+      "id": "C01",
+      "question": "¿Qué significa longitud aquí?",
+      "conclusion": "Avance de llenado y contracción son objetivos confirmados distintos; no ajustar todos los recorridos al nominal.",
+      "status": "user_confirmed",
+      "source_ids": [],
+      "analysis_files": [
+        "../../../docs/measurement_definition.md",
+        "existing_solutions.md"
+      ],
+      "next_evidence": "Definir extremos observables y condición de apoyo; muestras parciales/completas."
+    },
+    {
+      "id": "C02",
+      "question": "¿Caben 75 mm y 35 mm en la altura deseada?",
+      "conclusion": "Modelo óptico: 75 mm implica 1,36–1,79 m; 35 mm, 0,635–0,835 m para 150–200 mm útiles con FLIR.",
+      "status": "calculated_not_tested",
+      "source_ids": [
+        "L-CAMERA",
+        "L-LENS35"
+      ],
+      "analysis_files": [
+        "../vision.md",
+        "lens_alternatives.md"
+      ],
+      "next_evidence": "Confirmar WD frontal/FOV/margen con proveedor y conjunto real."
+    },
+    {
+      "id": "C03",
+      "question": "¿0,1 mm significa igual error en ancho y longitud?",
+      "conclusion": "No: una escala común produce error absoluto proporcional a la magnitud; ejemplo h=2 mm a Z=800 cambia L 1,279 mm y ancho4 0,010 mm.",
+      "status": "calculated_not_tested",
+      "source_ids": [],
+      "analysis_files": [
+        "calculation_notes.md",
+        "geometry_sensitivity.py"
+      ],
+      "next_evidence": "Controlar altura y probar referencia independiente."
+    },
+    {
+      "id": "C04",
+      "question": "¿Se recupera longitud 3D libre con una sola imagen?",
+      "conclusion": "No en general si altura/forma son desconocidas; curvas espaciales distintas pueden compartir proyección.",
+      "status": "geometric_nonobservability",
+      "source_ids": [],
+      "analysis_files": [
+        "calculation_notes.md"
+      ],
+      "next_evidence": "Definir apoyo o estudiar información complementaria de altura."
+    },
+    {
+      "id": "C05",
+      "question": "¿Basta un blob binario?",
+      "conclusion": "Ancho requiere definición de borde; la longitud por cadena 8 vecinos muestra sesgo sintético no eliminado por más resolución.",
+      "status": "calculated_method_limit",
+      "source_ids": [
+        "D-MVTEC"
+      ],
+      "analysis_files": [
+        "calculation_notes.md",
+        "optics_and_lighting.md"
+      ],
+      "next_evidence": "Comparar estimadores con referencia curva; no implementar aplicación todavía."
+    },
+    {
+      "id": "C06",
+      "question": "¿Cerrar iris y colimar luz resuelve la altura?",
+      "conclusion": "Pueden cambiar enfoque/bordes, pero no eliminan perspectiva ni añaden profundidad; difracción, contraste y material deben ensayarse.",
+      "status": "primary_supported_inference",
+      "source_ids": [
+        "W-DOF",
+        "W-AIRY",
+        "W-COLLIMATION",
+        "D-BACKLIGHT-PAPER"
+      ],
+      "analysis_files": [
+        "optics_and_lighting.md"
+      ],
+      "next_evidence": "Barrido f4/f5,6/f8 y luz sobre piezas reales, sin autoajustes."
+    },
+    {
+      "id": "C07",
+      "question": "¿Sirve una ranura completa?",
+      "conclusion": "Puede localizar pero también ocultar borde o imponer tamaño; no seleccionada.",
+      "status": "design_hypothesis",
+      "source_ids": [
+        "D-INLINE3D"
+      ],
+      "analysis_files": [
+        "fixture_and_materials.md"
+      ],
+      "next_evidence": "Comparar libre/apoyada y recuperación de forma; revisar unión de colada."
+    },
+    {
+      "id": "C08",
+      "question": "¿Qué demuestra la bibliografía de espirales?",
+      "conclusion": "Escáner, ángulo sobre nominal y plantilla ayudan a medir frente bajo condiciones; no validan automáticamente contracción/3D caliente.",
+      "status": "primary_supported_with_limits",
+      "source_ids": [
+        "D-JONES",
+        "D-MICROSPIRAL",
+        "W-DTU-TEMPLATE",
+        "D-INLINE3D"
+      ],
+      "analysis_files": [
+        "existing_solutions.md"
+      ],
+      "next_evidence": "Ensayo propio de las dos magnitudes; referencia independiente."
+    },
+    {
+      "id": "C09",
+      "question": "¿Puede automatizarse con báscula económica?",
+      "conclusion": "Manuales documentan salida continua/estable en candidatos y cámara admite disparo software.",
+      "status": "manual_verified_hardware_pending",
+      "source_ids": [
+        "D-USS5",
+        "L-SBS",
+        "L-PCE",
+        "W-FLIR-TRIGGER"
+      ],
+      "analysis_files": [
+        "../../electrical/acquisition_feasibility.md",
+        "weighing.md"
+      ],
+      "next_evidence": "Trama real, frecuencia, estabilidad, retirada y reconexión."
+    },
+    {
+      "id": "C10",
+      "question": "¿U.S. Solid 5 kg cumple 0,01 g y 300 EUR?",
+      "conclusion": "División sí; repetibilidad manual ±0,03 g. España, IVA, revisión y USB no cerrados; no garantía de sensibilidad10 mg ni de precio final.",
+      "status": "candidate_with_discrepancies",
+      "source_ids": [
+        "D-USS5",
+        "W-USS5",
+        "W-USS-SHIP"
+      ],
+      "analysis_files": [
+        "weighing.md"
+      ],
+      "next_evidence": "Oferta entregada y ensayo de incrementos sobre precarga."
+    },
+    {
+      "id": "C11",
+      "question": "¿Steinberg 3 kg es equivalente?",
+      "conclusion": "Precio español de 178 EUR observado y modos automáticos documentados; repetibilidad/linealidad y protocolo detallado pendientes.",
+      "status": "candidate_incomplete_specification",
+      "source_ids": [
+        "L-SBS",
+        "W-SBS",
+        "W-SBS-PORT"
+      ],
+      "analysis_files": [
+        "../../components/scales_shortlist.md"
+      ],
+      "next_evidence": "Datos metrológicos, pinout/trama y prueba física."
+    },
+    {
+      "id": "C12",
+      "question": "¿Conviene aligerar para mejorar pesaje?",
+      "conclusion": "PCE1,1 kg queda para soporte ligero. Ruta secundaria300 g/1 mg tiene mejor repetibilidad publicada pero necesita nueva mecánica y entrega pendiente.",
+      "status": "conditional_candidate",
+      "source_ids": [
+        "L-PCE",
+        "W-PCE1100",
+        "D-USS300",
+        "W-USS300"
+      ],
+      "analysis_files": [
+        "weighing.md"
+      ],
+      "next_evidence": "Pesar pieza/soporte, definir puente, comparar ruido con carga."
+    },
+    {
+      "id": "C13",
+      "question": "¿Qué aporta sacar el panel de la báscula?",
+      "conclusion": "Elimina su precarga y cable de la ruta pesada; exige puente sin contactos parásitos. EFFILUX del PPT pesa1,9 kg.",
+      "status": "design_tradeoff",
+      "source_ids": [
+        "W-EFFILUX",
+        "D-AD",
+        "D-NIST"
+      ],
+      "analysis_files": [
+        "fixture_and_materials.md",
+        "lighting_candidates.md"
+      ],
+      "next_evidence": "Maqueta, masa, excentricidad, calor/cables; no CAD definitivo."
+    },
+    {
+      "id": "C14",
+      "question": "¿Se puede probar iluminación sin comprar?",
+      "conclusion": "TPL y VA publican programas de préstamo; condiciones, disponibilidad y kit pendientes.",
+      "status": "service_observed_not_requested",
+      "source_ids": [
+        "W-TPL-LOAN",
+        "W-VA-FAQ"
+      ],
+      "analysis_files": [
+        "supplier_questions.md",
+        "lighting_candidates.md"
+      ],
+      "next_evidence": "Solicitar solo con instrucción del usuario; preparar muestras/ensayo."
+    },
+    {
+      "id": "C15",
+      "question": "¿Sirve toda luz o una receta universal?",
+      "conclusion": "Material, transparencia, intensidad y temperatura cambian bordes/apoyo; PP no es ámbito único.",
+      "status": "primary_supported_inference",
+      "source_ids": [
+        "D-BACKLIGHT-PAPER",
+        "W-TORAY",
+        "D-GLASS",
+        "L-PMMA"
+      ],
+      "analysis_files": [
+        "fixture_and_materials.md",
+        "optics_and_lighting.md"
+      ],
+      "next_evidence": "Muestras representativas de colores/materiales; matriz de validación."
+    },
+    {
+      "id": "C16",
+      "question": "¿Es suficiente perfilería20 mm y base300 mm?",
+      "conclusion": "Comparación de secciones concretas favorece40 mm en columna; uniones y altura total pendientes. SBS cuerpo300 mm consume profundidad base.",
+      "status": "calculated_not_constructively_validated",
+      "source_ids": [
+        "D-PROFILE20",
+        "D-PROFILE40",
+        "D-FLEXION",
+        "W-SBS-SIZE"
+      ],
+      "analysis_files": [
+        "mechanical_frame.md"
+      ],
+      "next_evidence": "Envolventes, anclaje y deriva después de manipular."
+    },
+    {
+      "id": "C17",
+      "question": "¿Qué enseñan Reddit y el driver de un usuario?",
+      "conclusion": "Recolocación, cable, deriva, fuerzas de tara y serial son riesgos a ensayar; no pruebas de prestaciones del modelo elegido.",
+      "status": "anecdotal_hypotheses",
+      "source_ids": [
+        "R01",
+        "R02",
+        "R03",
+        "R04",
+        "R05",
+        "R06",
+        "R07",
+        "R08",
+        "R09",
+        "R10",
+        "W-USS-DRIVER"
+      ],
+      "analysis_files": [
+        "field_reports.md"
+      ],
+      "next_evidence": "Convertir cada observación relevante en prueba, sin extrapolar cifras."
+    },
+    {
+      "id": "C18",
+      "question": "¿Puede validarse con lo que hay?",
+      "conclusion": "Calibre y básculas sin USB/RS232 permiten masa, ancho y repetición manual; no certifican longitud curva ni10 mg sin referencia adecuada.",
+      "status": "user_confirmed_equipment_test_proposed",
+      "source_ids": [
+        "W-CALIPER",
+        "W-FLUKE"
+      ],
+      "analysis_files": [
+        "../../../validation/protocols/first_lab_checks.md"
+      ],
+      "next_evidence": "Fotos/cotas/masa y registro individual; ninguna prueba realizada."
+    },
+    {
+      "id": "C19",
+      "question": "¿El calentamiento puede confundirse con ruido?",
+      "conclusion": "Hay cambio real de pieza y deriva de cámara/pesaje; separarlos con referencia estable y tiempo desde desmoldeo.",
+      "status": "primary_supported_inference",
+      "source_ids": [
+        "D-THERMAL-PAPER",
+        "D-NIST",
+        "D-INLINE3D"
+      ],
+      "analysis_files": [
+        "optics_and_lighting.md",
+        "weighing.md"
+      ],
+      "next_evidence": "Ensayo frío estable separado de serie caliente y calentamiento del apoyo."
+    },
+    {
+      "id": "C20",
+      "question": "¿Ahorrar con HX711 ya es una solución?",
+      "conclusion": "Modelo hipotético de ruido muestra que24 bits no garantizan10 mg; faltan célula, mecánica y deriva.",
+      "status": "calculated_not_selected",
+      "source_ids": [
+        "W-HX711"
+      ],
+      "analysis_files": [
+        "weighing.md"
+      ],
+      "next_evidence": "Solo retomar si una célula propia aporta ventaja mecánica demostrable."
+    },
+    {
+      "id": "C21",
+      "question": "¿Puede confundirse una contracción real con altura?",
+      "conclusion": "Modelo pinhole: s=0,999 y h=0,8 mm a Z=800 mm dan exactamente igual escala observada. Sesgo constante y sesgo variable no tienen el mismo efecto en comparaciones.",
+      "status": "calculated_nonobservability_example",
+      "source_ids": [],
+      "analysis_files": [
+        "detectable_variation.md",
+        "calculation_notes.md"
+      ],
+      "next_evidence": "Ensayo frío/recolocación separado de caliente; apoyo o información de altura independiente."
+    },
+    {
+      "id": "C22",
+      "question": "¿Un patrón comercial económico valida 0,1 mm?",
+      "conclusion": "No por su nombre ni dpi: aluminio/LDPE admite0,32 mm en100 mm; otras tecnologías e informes individuales difieren. Reservar referencias independientes.",
+      "status": "primary_supported_inference",
+      "source_ids": [
+        "D-CAL-ALU",
+        "D-CAL-CERAMIC",
+        "D-CAL-LITHO",
+        "W-CAL-TARGET"
+      ],
+      "analysis_files": [
+        "calibration_references.md"
+      ],
+      "next_evidence": "Referencia prestada/caracterizada, incertidumbre y plano; ensayo independiente de bordes/recorrido."
+    },
+    {
+      "id": "C23",
+      "question": "¿La cámara original sigue comercialmente vigente?",
+      "conclusion": "Página oficial marca In Production; precio observado variable620/645,50 EUR sin IVA. No inferir EOL de la edad del PDF.",
+      "status": "manufacturer_status_observed",
+      "source_ids": [
+        "W-FLIR-CURRENT",
+        "L-CAMERA"
+      ],
+      "analysis_files": [
+        "../../components/camera_bfs_u3_200s6.md"
+      ],
+      "next_evidence": "Presupuesto y revisión entregada, compatibilidad PC y ensayo óptico."
+    },
+    {
+      "id": "C24",
+      "question": "¿Hay ruta de 1 mg con canal español cerca de 300 EUR?",
+      "conclusion": "KBD005 cuesta 296,75 EUR calculados conIVA antes de conexión/entrega; solo 300 g y salida automática no confirmada. KBD027/028 exceden presupuesto.",
+      "status": "conditional_candidate_not_selected",
+      "source_ids": [
+        "D-NAHITA-FICHA",
+        "D-NAHITA-MANUAL",
+        "W-NAHITA300",
+        "W-NAHITA5163-300",
+        "W-NAHITA5163-500"
+      ],
+      "analysis_files": [
+        "weighing.md"
+      ],
+      "next_evidence": "Total entregado, lectura automática sin botón, soporte<300 g y ensayo; no sustituir candidato principal."
+    }
+  ],
+  "download_manifest": "sources/download_manifest.json"
+}

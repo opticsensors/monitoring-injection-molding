@@ -1,0 +1,93 @@
+{
+  "status": "synthetic_only_no_hardware_validation",
+  "assumptions": {
+    "image_size_px": [
+      5472,
+      3648
+    ],
+    "nominal_field_mm": [
+      300,
+      200
+    ],
+    "z_mm": 800.0,
+    "tilt_degrees": [
+      1.5,
+      3
+    ],
+    "distortion": [
+      0.04,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "detection_noise_px": 0,
+    "training_points": 165,
+    "independent_test_points": 1260,
+    "warning": "Invented distortion; exact model is an oracle, not a fitted result."
+  },
+  "coordinate_errors": {
+    "Escala global + giro": {
+      "rms_mm": 0.4783879946243446,
+      "maximum_mm": 1.3227102741007246
+    },
+    "Homografia": {
+      "rms_mm": 0.03585554421819656,
+      "maximum_mm": 0.08645986460181278
+    },
+    "Mapa 2D interpolado": {
+      "rms_mm": 0.0019053136769648115,
+      "maximum_mm": 0.01829072434106378
+    },
+    "Modelo exacto conocido": {
+      "rms_mm": 5.4322120455302026e-14,
+      "maximum_mm": 1.7112135109858138e-13
+    }
+  },
+  "scale_ambiguity": {
+    "actual_reference_mm": 100.02,
+    "assigned_reference_mm": 100,
+    "maximum_pixel_change": 1.016845989170083e-12,
+    "resulting_length_error_mm": -0.1020813449310028,
+    "resulting_width_error_mm": -0.0007998400319935151
+  },
+  "uniform_height_examples": [
+    {
+      "height_mm": 0.1,
+      "width_error_mm": 0.0005000625078134767,
+      "length_error_mm": 0.06382157844730592
+    },
+    {
+      "height_mm": 1.0,
+      "width_error_mm": 0.0050062578222778474,
+      "length_error_mm": 0.638934675844806
+    },
+    {
+      "height_mm": 2.0,
+      "width_error_mm": 0.010025062656641603,
+      "length_error_mm": 1.2794706917293233
+    },
+    {
+      "height_mm": 10.0,
+      "width_error_mm": 0.05063291139240506,
+      "length_error_mm": 6.462136784810126
+    }
+  ],
+  "height_for_0_1mm_length_error_mm": 0.15667571545955672,
+  "lens_angular_estimates": {
+    "35": {
+      "horizontal_deg": 21.251645420558518,
+      "vertical_deg": 14.258414175189627
+    },
+    "75": {
+      "horizontal_deg": 10.007202654352424,
+      "vertical_deg": 6.680900115209252
+    }
+  },
+  "versions": {
+    "python": "3.11.8",
+    "numpy": "1.26.4",
+    "opencv": "4.11.0",
+    "scipy": "1.16.2"
+  }
+}

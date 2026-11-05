@@ -1,0 +1,172 @@
+{
+  "study": "Machina: calibración dimensional 2D",
+  "date": "2026-11-04",
+  "status": "research_and_synthetic_demonstration_only",
+  "source_catalog": "literature_review.md",
+  "download_manifest": "sources/download_manifest.json",
+  "entry_point": "README.md",
+  "claims": [
+    {
+      "id": "CAL-01",
+      "claim": "La escala absoluta requiere una referencia dimensional; focal y píxel nominales no calibran la estación.",
+      "sources": [
+        "C01",
+        "C08",
+        "C10",
+        "C16",
+        "C25"
+      ],
+      "status": "geometry_supported",
+      "limit": "No hay calibración física de Machina.",
+      "next_test": "Comparar una referencia independiente en mm.",
+      "note": "pixel_to_mm.md"
+    },
+    {
+      "id": "CAL-02",
+      "claim": "Un mapa del plano permite medir sin identificar focal y distancia por separado.",
+      "sources": [
+        "C08",
+        "C09",
+        "C10",
+        "C25"
+      ],
+      "status": "supported_geometry_proposed_application",
+      "limit": "Solo dentro del plano y dominio validados; posible sobreajuste.",
+      "next_test": "Comparar modelos con puntos reservados y artefacto independiente.",
+      "note": "recommended_protocol.md"
+    },
+    {
+      "id": "CAL-03",
+      "claim": "Los campos estrechos dificultan separar focal y distancia durante la calibración.",
+      "sources": [
+        "C04",
+        "C05",
+        "C21"
+      ],
+      "status": "literature_supported_relevance_inferred",
+      "limit": "No transferir umbrales angulares ni errores de otros equipos.",
+      "next_test": "Dos campañas con poses diversas; comparar mapas y dimensiones.",
+      "note": "flir_computar.md"
+    },
+    {
+      "id": "CAL-04",
+      "claim": "El checkerboard es opcional; otros patrones también requieren dimensiones y planitud conocidas.",
+      "sources": [
+        "C01",
+        "C03",
+        "C10",
+        "C14",
+        "C16",
+        "C18"
+      ],
+      "status": "supported",
+      "limit": "C14 accesible solo por resumen; patrón nominal no equivale a calibrado.",
+      "next_test": "Caracterizar coordenadas, incertidumbre, planitud y altura de marcas.",
+      "note": "targets_and_alternatives.md"
+    },
+    {
+      "id": "CAL-05",
+      "claim": "Un RMS pequeño no demuestra exactitud métrica ni detecta escala uniforme equivocada del patrón.",
+      "sources": [
+        "C02",
+        "C03",
+        "C06",
+        "C07",
+        "C25"
+      ],
+      "status": "literature_and_own_synthetic_demonstration",
+      "limit": "La simulación no cuantifica incertidumbre de nuestra celda.",
+      "next_test": "Referencia independiente y repetición de calibración.",
+      "note": "repeatability_uncertainty.md"
+    },
+    {
+      "id": "CAL-06",
+      "claim": "Calibrar el plano no elimina altura desconocida ni recupera longitud espacial libre.",
+      "sources": [
+        "C09",
+        "C10"
+      ],
+      "status": "geometry_and_own_derivation",
+      "limit": "Tabla de desplazamiento uniforme; no modela alabeo local real.",
+      "next_test": "Referencia a alturas conocidas y prueba del apoyo.",
+      "note": "pixel_to_mm.md"
+    },
+    {
+      "id": "CAL-07",
+      "claim": "FLIR documenta calibración con Spinnaker/OpenCV; no aporta una calibración individual de nuestra pareja.",
+      "sources": [
+        "C19",
+        "C20",
+        "C21"
+      ],
+      "status": "manufacturer_documented_with_model_limit",
+      "limit": "Ejemplo con otro modelo/lente; manual específico público fechado 2017.",
+      "next_test": "Verificar firmware/nodos y calibrar conjunto real.",
+      "note": "flir_computar.md"
+    },
+    {
+      "id": "CAL-08",
+      "claim": "FFC y datos EMVA son radiométricos, no un mapa dimensional.",
+      "sources": [
+        "C20",
+        "C23",
+        "C24"
+      ],
+      "status": "manufacturer_and_standard_scope_supported",
+      "limit": "No implica desactivar toda corrección ni ejecutar el estándar completo.",
+      "next_test": "Guardar receta y comprobar dimensiones al variar luz/exposición.",
+      "note": "flir_computar.md"
+    },
+    {
+      "id": "CAL-09",
+      "claim": "Localización subpíxel puede tener sesgos por posición fraccionaria, contraste y respuesta.",
+      "sources": [
+        "C13",
+        "C22",
+        "C23"
+      ],
+      "status": "supported_with_application_inference",
+      "limit": "Otros sensores/modelos; no transferir cifras a IMX183.",
+      "next_test": "Traslaciones/giros pequeños y ancho caracterizado con luz controlada.",
+      "note": "repeatability_uncertainty.md"
+    },
+    {
+      "id": "CAL-10",
+      "claim": "El mismo error relativo de escala afecta de forma distinta al ancho y a un recorrido largo.",
+      "sources": [
+        "C07"
+      ],
+      "status": "own_calculation_using_standard_propagation",
+      "limit": "Separar escala correlacionada, bordes, extremos y curva.",
+      "next_test": "Validar anchos cortos y curva caracterizada independientemente.",
+      "note": "calibration_sensitivity.json"
+    },
+    {
+      "id": "CAL-11",
+      "claim": "Reutilizar calibración mientras se conserve configuración y pase control independiente.",
+      "sources": [
+        "C10",
+        "C19",
+        "C20",
+        "C25"
+      ],
+      "status": "proposed_operating_policy",
+      "limit": "Frecuencia y rango térmico pendientes; no intervalo universal.",
+      "next_test": "Referencia durante arranque, entre sesiones y tras incidentes.",
+      "note": "recommended_protocol.md"
+    },
+    {
+      "id": "CAL-12",
+      "claim": "Existen alternativas sin patrón diseñado; rectitud/autocalibración no fijan por sí solas escala absoluta.",
+      "sources": [
+        "C08",
+        "C11",
+        "C12"
+      ],
+      "status": "supported_alternatives_not_recommended_initially",
+      "limit": "Harp para distorsión; targetless exige escena/red informativa.",
+      "next_test": "Priorizar referencia del plano; no usar escala nominal de espiral.",
+      "note": "targets_and_alternatives.md"
+    }
+  ]
+}

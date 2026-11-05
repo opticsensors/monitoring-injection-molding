@@ -1,0 +1,71 @@
+# Literatura consultada y límites de lectura
+
+Fecha de consulta: **2026-11-04**. Fuentes primarias en inglés. Las páginas indicadas son páginas del PDF, empezando en 1, salvo aclaración. Se leyeron las secciones señaladas; **no se afirma haber leído íntegros todos los libros/manuales descargados**. Notas breves propias, sin reproducir capítulos.
+
+## Fundamentos y validación de calibración
+
+| ID | Fuente y acceso | Lectura y aportación |
+| --- | --- | --- |
+| C01 | Zhang, *A Flexible New Technique for Camera Calibration*. [MSR TR-98-71](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr98-71.pdf), [PDF local](sources/Zhang_MSR_TR98_71_2008revision.pdf) | Informe 1998 revisado hasta 2008, relacionado con PAMI 2000; no son el mismo archivo. Leídos modelo/optimización/degeneraciones pp. 4–9 y sensibilidad del patrón pp. 15–18. Las poses paralelas no aportan las mismas restricciones que inclinaciones distintas. La cantidad mínima algebraica no es una receta robusta |
+| C02 | Hagemann et al., *Inferring bias and uncertainty in camera calibration*. [Preprint 2021](https://arxiv.org/abs/2107.13484), [PDF](sources/Hagemann_2021_bias_uncertainty_arxiv.pdf); publicación [IJCV 2022](https://doi.org/10.1007/s11263-021-01528-x) | Leído cuerpo pp. 1–15; figura 6 inspeccionada visualmente. Distingue sesgo/varianza y evalúa remuestreo por imágenes. Su verdad de referencia para cámaras reales procede de otras calibraciones, no de una cámara ideal certificada. No trasladar sus cifras a Machina |
+| C03 | Strobl y Hirzinger, *More Accurate Pinhole Camera Calibration with Imperfect Planar Target*, ICCV Workshops 2011. [DLR](https://elib.dlr.de/71888/), [PDF](sources/Strobl_2011_imperfect_planar_target.pdf) | Leídas pp. 1–8; figura 9 inspeccionada. Optimiza estructura del patrón; no recupera escala absoluta de la nada. El patrón debe mantener su geometría. La validación presentada es estéreo, con otros sensores y focales |
+| C04 | Strobl, Sepp y Hirzinger, *On the Issue of Camera Calibration with Narrow Angular Field of View*, IROS 2009. [PDF DLR](https://elib.dlr.de/62660/1/Strobl-Iros09_calib.pdf), [local](sources/Strobl_2009_narrow_angular_field.pdf) | Modelo, simulaciones y conclusiones; figura 4/6 inspeccionadas. Explica correlación focal–distancia en campos estrechos. Su solución asistida por robot no se propone para Machina: nuestra aplicación puede centrarse en un plano fijo |
+| C05 | Stamatopoulos, Fraser y Cronk, *On the Self-Calibration of Long Focal Length Lenses*, ISPRS 2010. [Original](https://www.isprs.org/proceedings/XXXVIII/part5/papers/110.pdf), [local](sources/Stamatopoulos_2010_long_focal_length.pdf) | Leídas pp. 1–2 y 4–5; p. 3 consultada parcialmente. Muestra que los campos estrechos son calibrables con un método/geometría adecuados; no deben declararse imposibles. Redes fotogramétricas diferentes de nuestra estación |
+| C06 | Tsai, T., *Camera Calibration for a Manufacturing Inspection Workstation*, NISTIR 7197, 2005. [Registro](https://www.nist.gov/publications/camera-calibration-manufacturing-inspection-workstation), [PDF](sources/NISTIR7197_2005_inspection_workstation.pdf) | Leídas pp. 7 y 34–36, más resumen. Buen contraste entre ajuste subpíxel y error final sobre pieza: el experimento obtuvo del orden de 1–2 mm al localizar características con referencias limitadas. No es un límite de las cámaras modernas ni ensayo de la FLIR |
+| C07 | Taylor y Kuyatt, *Guidelines for Evaluating and Expressing the Uncertainty of NIST Measurement Results*, TN 1297, edición 1994. [Original](https://nvlpubs.nist.gov/nistpubs/legacy/tn/nbstechnicalnote1297.pdf), [local](sources/NIST_TN1297_1994.pdf) | Leídas secciones de evaluación/combinación pp. 7–9 y apéndice A pp. 12–13. Base para distinguir incertidumbre, correcciones y correlaciones. No se presenta este estudio como cumplimiento de una norma de aceptación de sistemas ópticos |
+
+## Libros y guía industrial
+
+| ID | Fuente | Qué se leyó |
+| --- | --- | --- |
+| C08 | Richard Szeliski, *Computer Vision: Algorithms and Applications*, borrador 3 septiembre 2010, primera edición. [Página del autor](https://szeliski.org/Book/1stEdition.htm), [borrador autorizado](https://szeliski.org/Book/drafts/SzeliskiBook_20100903_draft.pdf) | §§2.1.6 y 6.3: PDF pp. 80–81 y 349–358, páginas impresas 58–59 y 327–336. Distorsión, patrones, métodos alternativos y relación entre intrínsecos/pose. Copia para lectura personal fuera de los documentos versionables; no se redistribuye el libro. No se ha leído la segunda edición completa |
+| C09 | Hartley y Zisserman, *Multiple View Geometry in Computer Vision*, segunda edición 2004. [Muestra oficial](https://www.robots.ox.ac.uk/~vgg/hzbook/hzbook2/HZintroduction.pdf), [PDF de la muestra](sources/Hartley_Zisserman_2004_introduction_sample.pdf) | Leída introducción pp. 1–10: proyección central, homografía de un plano y rayos. Se consultó una muestra, no el libro completo ni su capítulo completo de calibración |
+| C10 | MVTec, HALCON **26.05 Progress**, *Solution Guide III-C — 3D Vision*. [Original](https://www.mvtec.com/fileadmin/Redaktion/mvtec.com/products/halcon/documentation/solution_guide/solution_guide_iii_c_3d_vision.pdf), [PDF](sources/MVTec_3D_Vision_guide.pdf) | Leídas pp. 59–61, 67–78, 87–89 y 219–222. Figura 3.14 inspeccionada. Medición en plano, efecto de espesor y transformación de puntos/contornos; rectificación por malla limitada por su paso. No se ha leído el manual de 238 páginas completo ni se propone comprar HALCON |
+
+La primera edición de Szeliski está disponible en la página del autor con restricciones de redistribución. El archivo personal, ignorado por Git, está en `data/inspection_cell_build/calibration_books/Szeliski_2010_draft.pdf`; SHA-256 `1543540dbc84084b713c238af7f11141868488db3052c8968a5833e3f03cd64f`. Para retomar desde otro equipo, usar el enlace del autor, no dar por disponible esa copia temporal.
+
+## Alternativas al ajedrez y localización de bordes
+
+| ID | Fuente | Lectura y límite |
+| --- | --- | --- |
+| C11 | Tang et al., *High-precision camera distortion measurements with a “calibration harp”*, JOSA A 29(10), 2012. [Preprint](https://arxiv.org/abs/1212.5656), [PDF](sources/Tang_2012_calibration_harp.pdf) | Leídas pp. 1–4 y 20. Usa rectitud de hilos para estudiar distorsión; no es una fuente independiente de escala métrica. La cifra subpíxel del artículo no se adopta como prestación de la celda |
+| C12 | Barazzetti et al., *Targetless Camera Calibration*, ISPRS 2011. [Artículo](https://isprs-archives.copernicus.org/articles/XXXVIII-5-W16/335/2011/), [PDF](sources/Barazzetti_2011_targetless_calibration.pdf) | Leídas pp. 1–2 y 7, no todos los experimentos. Requiere escena con textura y red de imágenes adecuada. Alternativa existente, no recomendación para nuestra cámara fija y pieza lisa |
+| C13 | Steger, *Analytical and Empirical Performance Evaluation of Subpixel Line and Edge Detection*, 1998. [Original TUM](https://mv.in.tum.de/_media/members/steger/publications/1998/eemcv-98-steger.pdf), [PDF](sources/Steger_1998_subpixel_performance.pdf) | Leídas pp. 1–3 y 16–22. Analiza modelos de bordes/líneas y ensayos de desplazamiento. Separamos capacidad de localizar cambios subpíxel de exactitud métrica absoluta. No se ha reproducido su experimento ni elegido todavía un extractor definitivo |
+| C14 | Heikkilä, *Geometric camera calibration using circular control points*, IEEE TPAMI 22(10), 2000, DOI 10.1109/34.879788. [Registro/editor](https://ieeexplore.ieee.org/document/879788/) | **Solo resumen accesible**, no artículo íntegro descargado. Señala corrección de sesgo para puntos circulares. No atribuir resultados cuantitativos no leídos |
+| C15 | NIST, *Automatic Checkerboard Corner Detection and Data Processing Tool*, v1, 2022. [Página oficial](https://www.nist.gov/services-resources/software/automatic-checkerboard-corner-detection-and-data-processing-tool), [guía](sources/NIST_checkerboard_tool_guide.pdf) | Guía pp. 1–5 consultada; muestra automatización y refinamiento de esquinas. El residuo publicado no es un certificado de precisión dimensional de nuestra celda. No instalado ni probado |
+
+## Documentación de implementación y fabricantes
+
+| ID | Enlace primario | Uso en el estudio |
+| --- | --- | --- |
+| C16 | [OpenCV 4.13: Camera calibration](https://docs.opencv.org/4.13.0/d4/d94/tutorial_camera_calibration.html) | Flujo de capturas y `calibrateCameraRO`, con distancia física entre extremos del patrón |
+| C17 | [OpenCV 4.13: calib3d](https://docs.opencv.org/4.13.0/d9/d0c/group__calib3d.html) | Convenciones de `K,D`, coordenadas, homografía y detector de esquinas; consultar versión al implementar |
+| C18 | [OpenCV 4.13: ChArUco calibration](https://docs.opencv.org/4.13.0/da/d13/tutorial_aruco_calibration.html) | Uso de esquinas identificadas y vistas parciales; no convierte un patrón nominal en patrón calibrado |
+| C19 | [Teledyne: stereo vision con Spinnaker/OpenCV](https://www.teledynevisionsolutions.com/en-hk/support/support-center/application-note/iis/build-your-own-stereo-vision/) | Nota de aplicación de 2020, apartados Calibration Pattern, Lens Adjustment y Calibration Sequence. Ejemplo con BFS-U3-50S5C-C/Fujinon 6 mm, **no** con el equipo candidato |
+| C20 | [FLIR BFS-U3-200S6 Technical Reference](https://softwareservices.flir.com/BFS-U3-200S6/latest/Model/Readme.html) | Se consultaron formato, controles analógicos, FFC, temperatura y User Sets. Referencia pública fechada 2017; verificar nodos/firmware de la unidad real |
+| C21 | [Computar V3522](https://www.computar.com/products/v3522-mpz), [V7531](https://www.computar.com/products/v7531-mpz) y [fichas locales](../../components/datasheets/README.md) | Especificaciones nominales, no calibraciones individuales. Los textos de disponibilidad presentes en HTML no se interpretan como un estado comercial confirmado |
+
+## Comprobación adicional de detección y radiometría
+
+| ID | Fuente | Lectura y aplicación |
+| --- | --- | --- |
+| C22 | Duda y Frese, *Accurate Detection and Localization of Checkerboard Corners for Calibration*, BMVC 2018. [Archivo BMVA](https://bmva-archive.org.uk/bmvc/2018/contents/papers/0508.pdf), [PDF local](sources/Duda_Frese_2018_checkerboard_corners.pdf) | Leídas pp. 1–9; referencias de p. 10 no revisadas. Método de Radon local, posición fraccionaria, orientación, desenfoque y ruido. Fundamenta ensayar desplazamientos pequeños. Su comparación histórica y residuos no certifican precisión dimensional de la FLIR |
+| C23 | Rosenberger et al., *EMVA 1288 Camera characterisation and the influences of radiometric camera characteristics on geometric measurements*, Acta IMEKO 5(4), 2016, pp. 81–87. [DOI](https://doi.org/10.21014/acta_imeko.v5i4.356), [PDF local](sources/Rosenberger_2016_radiometry_geometry.pdf) | Leídas pp. 1 y 4–7 completas; pp. 2–3 consultadas parcialmente en versión web. Simulaciones con parámetros de otro sensor: respuesta no lineal, contraste y no uniformidad afectan al sesgo/dispersión del borde. No trasladar los números a IMX183. PDF original sin cambios, atribución a autores; declara licencia CC BY 3.0, mientras la web actual indica CC BY 4.0 |
+| C24 | EMVA, *Standard for Characterization of Image Sensors and Cameras*, Release 4.0 **General**, 16 junio 2021. [Original](https://www.emva.org/wp-content/uploads/EMVA1288General_4.0Release.pdf), [PDF local](sources/EMVA1288_General_4_0_2021.pdf) | Consultados índice, §1 y §6.5, PDF pp. 4–5 y 20. Caracterización radiométrica, no mapa dimensional. No es una lectura completa del estándar ni una afirmación de cumplimiento. Copia inalterada, licencia indicada CC BY-ND 4.0 |
+
+## Guía de metrología y contraste con sistemas de referencia
+
+| ID | Fuente | Lectura y límite |
+| --- | --- | --- |
+| C25 | Tim Coveney, NPL, *Dimensional Measurement using Vision Systems*, GPG 39, Issue 2, actualización agosto 2014. [Página oficial](https://www.npl.co.uk/resources/gpgs/dimensional-measurement-using-vision-systems-gpg39), [PDF](sources/NPL_GPG39_2014_vision_dimensional.pdf) | Leído capítulo 7 completo, PDF pp. 68–79 (impresas 59–70), más p. 48 y pp. 53–58. La fecha web 2020 no es la edición del PDF. Trata referencia trazable, mapa de error, umbral y comparación con artefactos semejantes. Sus ejemplos microscópicos no son prestaciones de Machina. **No copiar su presupuesto numérico sin revisión:** en p. 77, inspeccionada visualmente, aparecen inconsistencias aritméticas (0,02 frente a aproximadamente 0,20 y división posterior). Usar formulación de NIST/GUM para nuestros cálculos. La guía dedica el ejemplo a imagen binaria; no excluye métodos modernos en gris |
+| C26 | Praniewicz, Stoup y Ren, *Validation of upgrades to the NIST M48 vision measurement system*, 2026. [Registro NIST](https://www.nist.gov/publications/validation-upgrades-nist-m48-vision-measurement-system), [DOI](https://doi.org/10.1088/1361-6501/aea922) | **Solo resumen oficial leído**; descarga institucional fallida por timeout, registrada. Describe validación con patrones de control y materiales de referencia. Es una CMM con cámara y posicionamiento de alta precisión, no una cámara fija económica: sus incertidumbres no se transfieren a Machina |
+
+## Evidencia anterior que se conserva
+
+Las tolerancias de patrones Calib.io ya se contrastaron en [referencias de calibración](../deep_dive_2026-11-04/calibration_references.md). La literatura sobre luz de fondo y deriva térmica está en [óptica e iluminación](../deep_dive_2026-11-04/optics_and_lighting.md), con XML originales y manifiesto. Se enlaza esa investigación; no se presenta como nueva descarga ni ensayo realizado ahora.
+
+## Acceso y reproducibilidad
+
+Los originales descargados no se han alterado. [Manifiesto](sources/download_manifest.json): procedencia, fecha, páginas, bytes, SHA-256 y fallos de acceso. El enlace antiguo de Strobl 2008 y el primer dominio TUM fallaron por timeout; Strobl 2011 sí está archivado y Steger se recuperó desde otro dominio institucional. No se enviaron formularios, datos del proyecto ni solicitudes a autores/proveedores.
+
+Las recomendaciones de [protocolo](recommended_protocol.md) son una adaptación propia a Machina, no una receta que un artículo haya validado para PP caliente ni para otros materiales.

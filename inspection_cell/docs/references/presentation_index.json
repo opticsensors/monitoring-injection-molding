@@ -1,0 +1,255 @@
+[
+  {
+    "slide": 1,
+    "text_runs": [
+      "Solución control calidad Machina",
+      "Báscula precisión 0.1 g con conexión al PC (USB, RS232, Ethernet, …)",
+      "Panel de LEDs luz difusa (",
+      "Backlight",
+      " Illumination)",
+      "Soporte para espiral (transparente)",
+      "Perfil aluminio V-slot ",
+      "Cámara + óptica Industrial con conexión a PC"
+    ],
+    "media": [
+      "../media/image2.png",
+      "../media/image1.png"
+    ],
+    "links": []
+  },
+  {
+    "slide": 2,
+    "text_runs": [
+      "Dimensiones",
+      "1 – 2 m",
+      "30 cm",
+      "30 cm"
+    ],
+    "media": [
+      "../media/image2.png",
+      "../media/image1.png"
+    ],
+    "links": []
+  },
+  {
+    "slide": 3,
+    "text_runs": [
+      "Espiral teórica",
+      "Diámetro del hilo: 3 mm",
+      "Longitud total de la espiral: 510.51 mm",
+      "TARGET: ±0,10 mm"
+    ],
+    "media": [
+      "../media/image3.png"
+    ],
+    "links": []
+  },
+  {
+    "slide": 4,
+    "text_runs": [
+      "Espiral real"
+    ],
+    "media": [
+      "../media/image5.jpeg",
+      "../media/image4.jpeg",
+      "../media/image6.jpeg"
+    ],
+    "links": []
+  },
+  {
+    "slide": 5,
+    "text_runs": [
+      "Cámara y ópticas (recomendación ",
+      "Stemmer",
+      ")",
+      "FLIR BACKFLY S",
+      "Resolution",
+      "5472 × 3648 pixels (20 MP)",
+      "Sensor",
+      "Sony IMX183 CMOS, 1\"",
+      "Frame Rate",
+      "18 FPS",
+      "Pixel Size",
+      "2.4 µm",
+      "Lens Mount / Interface",
+      "C-",
+      "mount",
+      " / USB 3.1 Gen 1",
+      "V7531-MPZ",
+      "Focal Length",
+      "75 mm",
+      "Maximum ",
+      "Aperture",
+      "f/3.1",
+      "Angle of View (1\" sensor)",
+      "12.2° diagonal / 9.8° horizontal",
+      "Lens Mount",
+      "C-Mount",
+      "Minimum Object Distance",
+      "0.25 m",
+      "627,25 €",
+      "475,78 €"
+    ],
+    "media": [
+      "../media/image8.png",
+      "../media/image7.png"
+    ],
+    "links": []
+  },
+  {
+    "slide": 6,
+    "text_runs": [
+      "Perfiles V slot",
+      "40 x 40 mm",
+      "20 x 20 mm",
+      "10€ el metro",
+      "30€ el metro"
+    ],
+    "media": [
+      "../media/image10.png",
+      "../media/image9.jpeg"
+    ],
+    "links": []
+  },
+  {
+    "slide": 7,
+    "text_runs": [
+      "Panel de LEDs",
+      "Hikrobot",
+      " ",
+      "250 x 250 mm ",
+      " (",
+      "link",
+      ")",
+      "Edmun ",
+      "Optics",
+      " ",
+      "200 x 200 mm ",
+      " (",
+      "link",
+      ")",
+      "718 €",
+      "765 €"
+    ],
+    "media": [
+      "../media/image11.jpeg",
+      "../media/image12.jpeg"
+    ],
+    "links": [
+      "https://www.ztec.dk/shop/hikrobot-310101593-hikrobot-mv-lbss-h-250-250-w-40604?utm_source=chatgpt.com",
+      "https://www.edmundoptics.es/p/white-200-x-200-high-power-led-backlight/49405/?utm_source=chatgpt.com"
+    ]
+  },
+  {
+    "slide": 8,
+    "text_runs": [
+      "Panel de LEDs (alternativas baratas)",
+      "B.K.Licht Panel de LEDs",
+      " 293 x 293 mm ",
+      " (",
+      "link",
+      ")",
+      "OSRAM SMART PANEL LED ",
+      "300 x 300 mm ",
+      " (",
+      "link",
+      ")",
+      "27 €",
+      "69 €"
+    ],
+    "media": [
+      "../media/image15.png",
+      "../media/image14.jpeg",
+      "../media/image13.png"
+    ],
+    "links": [
+      "https://www.amazon.es/OSRAM-Matter-FRAMELESS-300x300mm-3000-6500K/dp/B0FNN8NQ9L?utm_source=chatgpt.com",
+      "https://www.amazon.es/B-K-Licht-retroiluminaci%C3%B3n-indirecta-blanca-293x293mm/dp/B08J3W21R2?utm_source=chatgpt.com"
+    ]
+  },
+  {
+    "slide": 9,
+    "text_runs": [
+      "Básculas",
+      "B.K.Licht Panel ",
+      "(",
+      "link",
+      ", ",
+      "link",
+      ")",
+      "Max: 8kg",
+      "Precisión: 0,0001kg",
+      "340 × 240 mm",
+      "Conexión USB (mediante KUP-03, cable de abajo)",
+      "Adam ",
+      "Equipment",
+      " ",
+      "Cruiser",
+      " (",
+      "link",
+      ")",
+      "Max: 8kg",
+      "Precisión: 0,1g",
+      "300 × 210 mm",
+      "Conexión RS-232",
+      "360 €",
+      "540 €",
+      "75 €"
+    ],
+    "media": [
+      "../media/image18.png",
+      "../media/image17.png",
+      "../media/image16.png"
+    ],
+    "links": [
+      "https://www.kern-sohn.com/shop/en/products/accessories/balances/interface-module/tykup-03-b/?utm_source=chatgpt.com",
+      "https://www.kern-sohn.com/shop/es/productos/balanzas-industriales/balanzas-de-mesa/tfkb-8k-4-b/?utm_source=chatgpt.com",
+      "https://es.rs-online.com/web/p/balanzas/0687298?utm_source=chatgpt.com"
+    ]
+  },
+  {
+    "slide": 10,
+    "text_runs": [
+      "Básculas",
+      "MRC lab platform balances ",
+      "(",
+      "link",
+      ")",
+      "Max: 6kg",
+      "Precisión: 0,1 g",
+      "300 × 300 mm",
+      "2×USB, 2×RS 232, Ethernet, 4 I/O digital, Wireless con.",
+      "1693 €",
+      "??? €",
+      "OHAUS Ranger 7000 – R71MD3-EU",
+      " (",
+      "link",
+      ")",
+      "Max: 3 kg",
+      "Precisión ",
+      ":",
+      " 0,05 g",
+      "280 × 280 mm",
+      "2 × USB (host y ",
+      "device",
+      "), 1 × RS232"
+    ],
+    "media": [
+      "../media/image19.png",
+      "../media/image20.png"
+    ],
+    "links": [
+      "https://www.mrclab.com/platform-balances-2",
+      "https://europe.ohaus.com/en-eu/ranger7000-14"
+    ]
+  },
+  {
+    "slide": 11,
+    "text_runs": [
+      "Total",
+      "2000 - 3000 €"
+    ],
+    "media": [],
+    "links": []
+  }
+]

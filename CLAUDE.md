@@ -80,6 +80,9 @@ config/    daq_config_defaults.json ← hand-maintained channel layout (source o
 scripts/   standalone tools (import the app only via sys.path shims)
 iot/       deploy.sh, two generated JSON files, short SERVER_SETUP.md
            nodered/ (runtime), postgres/ (SQL), validation/, maintenance/
+inspection_cell/  planned spiral inspection cell: docs/, hardware/, software/,
+                  validation/. Start at its README.md; source copies and design
+                  hypotheses are documented, but no inspection runtime exists yet.
 figures/   images / assets
 data/      (gitignored) logs/, pending/ (MQTT spool), results/, cycle_id.txt
 ```

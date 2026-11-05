@@ -1,0 +1,242 @@
+{
+  "copied_on": "2026-11-04",
+  "files": [
+    {
+      "source": "C:\\Users\\eduard.almar\\OneDrive - EURECAT\\Escritorio\\proyectos\\24. machina\\quality control\\Solución control calidad Machina.pptx",
+      "copy": "docs/references/Solucion_control_calidad_Machina.pptx",
+      "sha256": "ba3c811b29500a81595c0daf2866393d0b57f74bbd429e7b6123660e3dc37172",
+      "bytes": 10338627
+    },
+    {
+      "source": "C:\\Users\\eduard.almar\\Downloads\\BFS-U3-200S6-Datasheet.pdf",
+      "copy": "hardware/components/datasheets/BFS-U3-200S6-Datasheet.pdf",
+      "sha256": "278b7c241ce998d49d4675d7d199b516e25c2a56e3e21e2f219b1045b2daccdb",
+      "bytes": 522406,
+      "verified_sources": [
+        {
+          "path": "C:\\edu\\projects\\Machina\\BFS-U3-200S6-Datasheet.pdf",
+          "verified_on": "2026-11-04",
+          "sha256": "278b7c241ce998d49d4675d7d199b516e25c2a56e3e21e2f219b1045b2daccdb"
+        }
+      ]
+    },
+    {
+      "source": "C:\\Users\\eduard.almar\\Downloads\\V7531-MPZ.pdf",
+      "copy": "hardware/components/datasheets/V7531-MPZ.pdf",
+      "sha256": "c72a3a495778fe0834ef81d25fd56001ba792ea893e90559d1cce46424ac136e",
+      "bytes": 125375,
+      "verified_sources": [
+        {
+          "path": "C:\\edu\\projects\\Machina\\V7531-MPZ.pdf",
+          "verified_on": "2026-11-04",
+          "sha256": "c72a3a495778fe0834ef81d25fd56001ba792ea893e90559d1cce46424ac136e"
+        }
+      ]
+    },
+    {
+      "source": "C:\\Users\\eduard.almar\\Downloads\\Ventas Oferta IN26-1893.pdf",
+      "copy": "hardware/components/quotes/IN26-1893.pdf",
+      "sha256": "3e37b10ef890568c75d3db86cb182bd28707a536c6954f8d2ffdb31b94f0cdcc",
+      "bytes": 193384,
+      "verified_sources": [
+        {
+          "path": "C:\\edu\\projects\\Machina\\Ventas Oferta IN26-1893.pdf",
+          "verified_on": "2026-11-04",
+          "sha256": "3e37b10ef890568c75d3db86cb182bd28707a536c6954f8d2ffdb31b94f0cdcc"
+        }
+      ]
+    },
+    {
+      "source": "C:\\Users\\eduard.almar\\OneDrive - EURECAT\\Escritorio\\proyectos\\24. machina\\quality control\\spiral_sensors.py",
+      "copy": "hardware/mechanical/geometry/spiral_sensors.py",
+      "sha256": "33e66f5c04c364950c275ba638ace2d513ab7cdd43be2e6f8e4a65fef07cd693",
+      "bytes": 8179
+    },
+    {
+      "source": "C:\\Users\\eduard.almar\\OneDrive - EURECAT\\Escritorio\\proyectos\\24. machina\\quality control\\spiral_sensors.png",
+      "copy": "hardware/mechanical/geometry/spiral_sensors.png",
+      "sha256": "8e29348cc6aa0ae1424f0a8e07de68df8cc44b98f30611bf7403aa012aed4b25",
+      "bytes": 332875
+    },
+    {
+      "source": "C:\\Users\\eduard.almar\\OneDrive - EURECAT\\Escritorio\\proyectos\\24. machina\\quality control\\spiral_sensors.svg",
+      "copy": "hardware/mechanical/geometry/spiral_sensors.svg",
+      "sha256": "de71e445012e5953bdc64061a94cf84be65fd5636f40fe1ad8689e3a45028f38",
+      "bytes": 23994
+    },
+    {
+      "source": "C:\\Users\\eduard.almar\\OneDrive - EURECAT\\Escritorio\\proyectos\\24. machina\\quality control\\20260812_B_SELECTOR PASO MATERIAL EXPULSION 510 mm.SLDPRT",
+      "copy": "hardware/mechanical/cad/reference/20260812_B_SELECTOR PASO MATERIAL EXPULSION 510 mm.SLDPRT",
+      "sha256": "b26016eb7d9af60223fda9cc2db67821bf81fe28a553c8475b4cb1f96d908da8",
+      "bytes": 40285
+    },
+    {
+      "source": "C:\\Users\\eduard.almar\\OneDrive - EURECAT\\Escritorio\\proyectos\\24. machina\\quality control\\20260812_B_SELECTOR PASO MATERIAL INYECCION 510 mm.SLDPRT",
+      "copy": "hardware/mechanical/cad/reference/20260812_B_SELECTOR PASO MATERIAL INYECCION 510 mm.SLDPRT",
+      "sha256": "588024224ba6c89103a95d234cd02f49e07bda70bbb70c5a73db3de0caaacc29",
+      "bytes": 40036
+    },
+    {
+      "source": "C:\\Users\\eduard.almar\\OneDrive - EURECAT\\Escritorio\\proyectos\\24. machina\\quality control\\20260812_PLACA FIGURA EXPULSION SELECTOR PASO MATERIAL 510 mm.SLDPRT",
+      "copy": "hardware/mechanical/cad/reference/20260812_PLACA FIGURA EXPULSION SELECTOR PASO MATERIAL 510 mm.SLDPRT",
+      "sha256": "45e6922f49cfea330f577b1a2b62e7c61d95995e1065e693e5e16467ed63138c",
+      "bytes": 169028
+    },
+    {
+      "source": "C:\\Users\\eduard.almar\\OneDrive - EURECAT\\Escritorio\\proyectos\\24. machina\\quality control\\20260812_PLACA FIGURA REFRIGERACION INYECCION SELECTOR PASO MATERIAL 510 mm.SLDPRT",
+      "copy": "hardware/mechanical/cad/reference/20260812_PLACA FIGURA REFRIGERACION INYECCION SELECTOR PASO MATERIAL 510 mm.SLDPRT",
+      "sha256": "c6dd237b2ee89e0789fd314670ec28e6fae0beff41981d8d72f5a407bb84c515",
+      "bytes": 81032
+    },
+    {
+      "source": "C:\\Users\\eduard.almar\\OneDrive - EURECAT\\Escritorio\\proyectos\\24. machina\\quality control\\20261019_RDI 300 ASSEMBY MOLDE ESPIRAL+ SENSORICA + SELECTOR DE PASO MATERIAL.x_t",
+      "copy": "hardware/mechanical/cad/reference/20261019_RDI 300 ASSEMBY MOLDE ESPIRAL+ SENSORICA + SELECTOR DE PASO MATERIAL.x_t",
+      "sha256": "0a1aa71615b3d9ab280cd3d0aa8c7df43811e078ba648b014041a3dc8605bdc2",
+      "bytes": 1104856
+    },
+    {
+      "source": "C:\\Users\\eduard.almar\\OneDrive - EURECAT\\Escritorio\\proyectos\\24. machina\\quality control\\20261019_V2 RDI 300_PIEZA ESPIRAL.SLDPRT",
+      "copy": "hardware/mechanical/cad/reference/20261019_V2 RDI 300_PIEZA ESPIRAL.SLDPRT",
+      "sha256": "e9cffbf3f4b4c578ad1ab994f9c26e2161cb4697a91f823c9c3140646ea22cea",
+      "bytes": 50460
+    },
+    {
+      "source": "C:\\Users\\eduard.almar\\OneDrive - EURECAT\\Escritorio\\proyectos\\24. machina\\quality control\\dim espiral.SLDASM",
+      "copy": "hardware/mechanical/cad/reference/dim espiral.SLDASM",
+      "sha256": "04f6cf7845499dc21d579c7c5d5db551fd31cc9416d5ab29f7256b334186dd52",
+      "bytes": 1715623
+    },
+    {
+      "source": "C:\\Users\\eduard.almar\\OneDrive - EURECAT\\Escritorio\\proyectos\\24. machina\\quality control\\E_1530_3_2x9_7_compressed_to_length_7.SLDPRT",
+      "copy": "hardware/mechanical/cad/reference/E_1530_3_2x9_7_compressed_to_length_7.SLDPRT",
+      "sha256": "67151cf857e2b0ab96d2582a86b1d2af70b6c67887e9c3546c426f27cb3f28bd",
+      "bytes": 117477
+    },
+    {
+      "source": "C:\\Users\\eduard.almar\\OneDrive - EURECAT\\Escritorio\\proyectos\\24. machina\\quality control\\socket head cap screw_din(DIN 912 M3 x 10 --- 10S).SLDPRT",
+      "copy": "hardware/mechanical/cad/reference/socket head cap screw_din(DIN 912 M3 x 10 --- 10S).SLDPRT",
+      "sha256": "d7210f031e17d7e8a1c089e76181781ad22250911b9986835e9cddc420a37bb8",
+      "bytes": 38573
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image1.png",
+      "copy": "docs/assets/presentation/media/image1.png",
+      "sha256": "ec69833967f45fefb68383fbb0a30f7844a467d5b2bc20b41225ebb4ef8db58c",
+      "bytes": 1568003
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image10.png",
+      "copy": "docs/assets/presentation/media/image10.png",
+      "sha256": "47d5890860164de29e2e9415383799a660c4a64b2098998170b033ee7fc1873e",
+      "bytes": 97461
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image11.jpeg",
+      "copy": "docs/assets/presentation/media/image11.jpeg",
+      "sha256": "8f793c41676778b225bd30fe811a2ba428a2c287eb63cd1b865bc4a78bf0e5be",
+      "bytes": 8040
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image12.jpeg",
+      "copy": "docs/assets/presentation/media/image12.jpeg",
+      "sha256": "041bd500de2f32257236129028d1120c560ed068aa8db811c385342ff302e5d7",
+      "bytes": 16765
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image13.png",
+      "copy": "docs/assets/presentation/media/image13.png",
+      "sha256": "17437d2f4c809e4185e64beb570e6d127a8b8af1a0a8cb63d1a2c4db0e2b4e80",
+      "bytes": 90451
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image14.jpeg",
+      "copy": "docs/assets/presentation/media/image14.jpeg",
+      "sha256": "478570b7d1bceb8688bf32ef87fd49e5c3ac726c337aefc66350d065949b0ac3",
+      "bytes": 38710
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image15.png",
+      "copy": "docs/assets/presentation/media/image15.png",
+      "sha256": "7512c7419f7e26a641c85c01c25125b86a8b92b7c18bee10b8a313ccb90fb6c4",
+      "bytes": 62270
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image16.png",
+      "copy": "docs/assets/presentation/media/image16.png",
+      "sha256": "e4d3031723c97f85d901d786c439afee95946e2efb22dfab872e08ee0450a0ed",
+      "bytes": 829854
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image17.png",
+      "copy": "docs/assets/presentation/media/image17.png",
+      "sha256": "48caab303fb57fc0a116f28f45bf7d0ad6b5b22411d6abbf6581d31d962a0107",
+      "bytes": 72748
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image18.png",
+      "copy": "docs/assets/presentation/media/image18.png",
+      "sha256": "e5b716f4b61a33efbf328e0387501586380090e45beee59619f5a888dde52a14",
+      "bytes": 39991
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image19.png",
+      "copy": "docs/assets/presentation/media/image19.png",
+      "sha256": "8c9513979f3d40cb2b8c7e10d2dae30eaea7c6227679f248bc69d60f380e49c1",
+      "bytes": 594186
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image2.png",
+      "copy": "docs/assets/presentation/media/image2.png",
+      "sha256": "ac59ef054bb638cc5599cc4f832dec813372187e5fddb5590be0f18446a8ef33",
+      "bytes": 1600164
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image20.png",
+      "copy": "docs/assets/presentation/media/image20.png",
+      "sha256": "9851e3fa5ee7aa70f0de594be86a2e50c366b1f4f219359fc09481c08eab4d12",
+      "bytes": 101080
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image3.png",
+      "copy": "docs/assets/presentation/media/image3.png",
+      "sha256": "904666c05322b665b1905d07bc5c1413f7d5d27ed9980db1e747771e3d695115",
+      "bytes": 81464
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image4.jpeg",
+      "copy": "docs/assets/presentation/media/image4.jpeg",
+      "sha256": "04f9aa3fa5a9557fdad07aaaa67d97fa1b0ec23d151389fabb9873bc88ccf4c1",
+      "bytes": 1182862
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image5.jpeg",
+      "copy": "docs/assets/presentation/media/image5.jpeg",
+      "sha256": "9ef48edbb2130e86638b0c03a297b378520a95b6c187dd048151e04d1404c918",
+      "bytes": 1032264
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image6.jpeg",
+      "copy": "docs/assets/presentation/media/image6.jpeg",
+      "sha256": "61e6d5362683e12eccf5dc310b45f372768141fe4d8101ffbc21b07bbb52720c",
+      "bytes": 2670411
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image7.png",
+      "copy": "docs/assets/presentation/media/image7.png",
+      "sha256": "3f965049c644bda8a2d5534e1f6c90b342da9f0d61eb8e0cb086f82b2130afe6",
+      "bytes": 57612
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image8.png",
+      "copy": "docs/assets/presentation/media/image8.png",
+      "sha256": "6bdc9c167170553991008324baf5bab921ef6050138acd0e06a46e4999f7c8fa",
+      "bytes": 74548
+    },
+    {
+      "source": "Solucion_control_calidad_Machina.pptx::ppt/media/image9.jpeg",
+      "copy": "docs/assets/presentation/media/image9.jpeg",
+      "sha256": "c2d9860e88adea371a1a1d78138b67cedf9c0060aa4cdcc3311384d9fc8f6162",
+      "bytes": 50015
+    }
+  ]
+}

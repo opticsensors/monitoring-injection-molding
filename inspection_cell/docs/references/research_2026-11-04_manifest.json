@@ -1,0 +1,86 @@
+{
+  "date": "2026-11-04",
+  "files": [
+    {
+      "path": "hardware/components/datasheets/V3522-MPZ.pdf",
+      "source_url": "https://computarganz.s3.amazonaws.com/Computar+Active+Resources/V3522-MPZ+specs.pdf",
+      "retrieved_on": "2026-11-04",
+      "sha256": "d6c5157852a42f5f4cf84be206174ac5ead9f1263da187a2671590d26e413aeb",
+      "bytes": 95555,
+      "pages": 1,
+      "note": "Computar, ficha 2019.08; 35 mm"
+    },
+    {
+      "path": "hardware/components/datasheets/V5024-MPZ.pdf",
+      "source_url": "https://computarganz.s3.amazonaws.com/Computar+Active+Resources/V5024-MPZ+spec.pdf",
+      "retrieved_on": "2026-11-04",
+      "sha256": "e0ff6097f334486344d8d9b6af6b9101d23e80560fe93dd55f83bd169b8e49d6",
+      "bytes": 92673,
+      "pages": 1,
+      "note": "Computar, ficha 2019.08; 50 mm"
+    },
+    {
+      "path": "hardware/components/datasheets/Computar_MPZ_series.pdf",
+      "source_url": "https://computarganz.s3.amazonaws.com/Computar+Active+Resources/MPZ+Series_0120.pdf",
+      "retrieved_on": "2026-11-04",
+      "sha256": "938e6d55b70602366353a3d24d8189c1eba97e27a3904b16d212430f252fdd56",
+      "bytes": 1759773,
+      "pages": 2,
+      "note": "Computar; PDF basado en imagen, inspeccionado visualmente"
+    },
+    {
+      "path": "hardware/components/datasheets/SBS-LW-1030_manual.pdf",
+      "source_url": "https://manuals.expondo.com/10031315",
+      "retrieved_on": "2026-11-04",
+      "sha256": "0f3ed9882837ddab26562c57a132e2b862bf3ab3712da620ac37bdb6471eed0c",
+      "bytes": 1668570,
+      "pages": 152,
+      "note": "Expondo/Steinberg; ficha p10, salida serial p13, castellano p45 y p48"
+    },
+    {
+      "path": "hardware/components/datasheets/PCE-BSK_series_ES.pdf",
+      "source_url": "https://pim.pce-service.net/upload/files/assets/pce-instruments-m6690f2f6ad2eff0f.pdf",
+      "retrieved_on": "2026-11-04",
+      "sha256": "8c1ede879325fb66fe29257a5643e2bd52b123491acb4601308ae397156ce0c7",
+      "bytes": 674186,
+      "pages": 10,
+      "note": "Manual vigente enlazado desde producto PCE; especificaciones p3, modos p8 y protocolo p9"
+    },
+    {
+      "path": "hardware/components/datasheets/PCE-BSK_series_IT.pdf",
+      "source_url": "https://www.pce-italia.it/html/manuali/man-bilancia-pce-bsk-v1.0-it.pdf",
+      "retrieved_on": "2026-11-04",
+      "sha256": "c9f2b3cd0e4200f700530c90635b57c14c98eeb161a9f24c64bebe68c795bd00",
+      "bytes": 527174,
+      "pages": 11,
+      "note": "Manual anterior: conservar para documentar discrepancia de temperatura frente al ES actual"
+    },
+    {
+      "path": "hardware/components/datasheets/PCE-BSK_5100_datasheet_ES.pdf",
+      "source_url": "https://pim.pce-service.net/upload/files/assets/pce-instruments-e66309f3ce2545e36.pdf",
+      "retrieved_on": "2026-11-04",
+      "sha256": "6994dc3eac71f7b464d9ebf8cff618fc9cb390462dab3c412c0bd19f4f6ca316",
+      "bytes": 3236209,
+      "pages": 2,
+      "note": "Ficha enlazada desde producto PCE"
+    },
+    {
+      "path": "hardware/components/datasheets/PLEXIGLAS_GS_XT.pdf",
+      "source_url": "https://www.plexiglas.de/files/plexiglas-content/pdf/technische-informationen/211-1-PLEXIGLAS-GS-XT-EN.pdf",
+      "retrieved_on": "2026-11-04",
+      "sha256": "b06ecf90ccf0dc56496d9d96ebb5932c5acf636a151300dcad5cac76242f3fea",
+      "bytes": 664539,
+      "pages": 7,
+      "note": "Rohm/PLEXIGLAS: material, densidad, temperatura y dilatacion"
+    },
+    {
+      "path": "hardware/components/datasheets/VIBRA_weighing_manual.pdf",
+      "source_url": "https://www.vibra.co.jp/files/page_options/global/products/detail/61/enProducts_fileUp03/enProducts_fileUp03.pdf",
+      "retrieved_on": "2026-11-04",
+      "sha256": "4363a963e219d75d6572cab024daea44e8c6c03b194d23256683406677bd80ae",
+      "bytes": 1913990,
+      "pages": 58,
+      "note": "Manual VIBRA; p10 PDF / p5 impresa: calor, conveccion, electricidad estatica. Evidencia cualitativa, no candidato seleccionado"
+    }
+  ]
+}

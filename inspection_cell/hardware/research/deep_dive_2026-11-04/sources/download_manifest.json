@@ -1,0 +1,248 @@
+[
+  {
+    "file": "MVTec_1D_Measuring_26_05.pdf",
+    "url": "https://www.mvtec.com/fileadmin/Redaktion/mvtec.com/products/halcon/documentation/solution_guide/solution_guide_iii_a_1d_measuring.pdf",
+    "retrieved": "2026-11-04",
+    "bytes": 2907744,
+    "pages": 64,
+    "sha256": "2c086cff542559b896a67b5a8cf1d29fc205bb60b9aee71ab46e0c5fa1de0425",
+    "status": "downloaded"
+  },
+  {
+    "file": "SCHOTT_BOROFLOAT33_technical_data.pdf",
+    "url": "https://www.schott.com/-/media/project/onex/products/b/borofloat/downloads/schott-borofloat-technical-data-sheet-english-26032019.pdf?rev=aa66d15af04a4ce7994f5e7699350364",
+    "retrieved": "2026-11-04",
+    "bytes": 211474,
+    "pages": 1,
+    "sha256": "52591e4aaf8bb75ade427c6e2df5a17317883ca69bee8d197cefaadc110291b7",
+    "status": "downloaded"
+  },
+  {
+    "file": "TPL_CSBACK_Product_Profile_EN.pdf",
+    "url": "https://www.tpl-vision.com/documents/techsheets/TPL_CSBACK_Product_Profile_EN.pdf",
+    "retrieved": "2026-11-04",
+    "bytes": 2419340,
+    "pages": 6,
+    "sha256": "66bd79b433f1a2ca6f364ce29155aec996850fd158ba0f4d2727822c2be7fa63",
+    "status": "downloaded"
+  },
+  {
+    "file": "AD4212D_system_weighing_manual.pdf",
+    "url": "https://aandd.jp/products/manual/balances/ad4212d.pdf",
+    "retrieved": "2026-11-04",
+    "bytes": 3704981,
+    "pages": 56,
+    "sha256": "0e3cb30a9f6a585b6f09db9428f7b0ad7656c33d4814e5af9a5b94bd668ad095",
+    "status": "downloaded"
+  },
+  {
+    "file": "Harmatys_2021_backlight_uncertainty.pdf",
+    "url": "https://www.mdpi.com/1424-8220/21/7/2509/pdf",
+    "retrieved": "2026-11-04",
+    "status": "failed",
+    "reason": "403 Client Error: Forbidden for url: https://www.mdpi.com/1424-8220/21/7/2509/pdf"
+  },
+  {
+    "file": "Jones_2011_spiral_flatbed_scanner.pdf",
+    "url": "https://www.iastatedigitalpress.com/jtmae/article/14168/galley/12932/download/",
+    "retrieved": "2026-11-04",
+    "bytes": 789657,
+    "pages": 8,
+    "sha256": "2c40ecf976cfbbcf553febb2828db4bb5f0d03fbae9524b77183f337f839c82d",
+    "status": "downloaded"
+  },
+  {
+    "file": "USS_DBS28_manual.pdf",
+    "url": "https://file.ussolid.com/content/JFDBS/JFDBS28.pdf",
+    "retrieved": "2026-11-04",
+    "bytes": 9134883,
+    "pages": 6,
+    "sha256": "015f667fda201d3f5dcf421fdf29c2ba7b50aaee5eba738a85c328f8aae5363c",
+    "status": "downloaded"
+  },
+  {
+    "file": "EURAMET_cg18_v4_2015.pdf",
+    "url": "https://iris.inrim.it/retrieve/dd2573c3-0028-e71c-e053-d805fe0ad5dc/I-CAL-GUI-018_Calibration_Guide_No._18_web.pdf",
+    "retrieved": "2026-11-04",
+    "status": "failed",
+    "reason": "403 Client Error: Forbidden for url: https://iris.inrim.it/retrieve/dd2573c3-0028-e71c-e053-d805fe0ad5dc/I-CAL-GUI-018_Calibration_Guide_No._18_web.pdf"
+  },
+  {
+    "file": "HX711_AVIA_datasheet.pdf",
+    "url": "https://datasheet.lcsc.com/lcsc/Avia-Semicon-Xiamen-HX711_C43656.pdf",
+    "retrieved": "2026-11-04",
+    "status": "failed",
+    "reason": "403 Client Error: Forbidden for url: https://datasheet.lcsc.com/lcsc/Avia-Semicon-Xiamen-HX711_C43656.pdf"
+  },
+  {
+    "file": "USS_DBS28_30_manual_community_mirror.pdf",
+    "url": "https://raw.githubusercontent.com/raleighlittles/USS-DBS-Driver/main/docs/USS-DBS28-30%20Product%20Manual.pdf",
+    "retrieved": "2026-11-04",
+    "bytes": 9029314,
+    "pages": 4,
+    "sha256": "eb65fd0f86890010a31887ea282e1602cd9a409bffe76be1587e2028e781f727",
+    "status": "downloaded",
+    "note": "Manufacturer manual hosted by an independent user; version/model must be checked before extrapolation."
+  },
+  {
+    "file": "Harmatys_2021_backlight_uncertainty.xml",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC8038391/fullTextXML",
+    "retrieved": "2026-11-04",
+    "bytes": 96152,
+    "sha256": "6f60df189f4ac473626d8385d301912e7f93bef0428472bd7ed127fb5ebfe4d8",
+    "status": "downloaded",
+    "format": "JATS XML",
+    "note": "Open-access full article obtained from Europe PMC; publisher PDF request failed."
+  },
+  {
+    "file": "USS_DBS28_61_51_5kg_manual.pdf",
+    "url": "https://file.ussolid.com/content/JFDBS/English_Manual_JFDBS00028_61_51-5kg.pdf",
+    "retrieved": "2026-11-04",
+    "bytes": 718722,
+    "pages": 6,
+    "sha256": "e3d7dfd49f1825aa64873d2c31c8e2df8fa30d7adb4a3260ce2de584f872170e",
+    "status": "downloaded"
+  },
+  {
+    "file": "EFFILUX_EFFI_BL_datasheet.pdf",
+    "url": "https://effilux.com/docs/datasheet/DATASHEET-EFFI-BL.pdf",
+    "retrieved": "2026-11-04",
+    "status": "failed",
+    "reason": "403 Client Error: Forbidden for url: https://effilux.com/docs/datasheet/DATASHEET-EFFI-BL.pdf"
+  },
+  {
+    "file": "VA_BLBL2_collimated_datasheet.pdf",
+    "url": "https://hs.va-imaging.com/hubfs/Supportshare/MachineVisionLights/VA-BLBL2-BottomLitCollimatedBacklightSeries-Datasheet.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 362753,
+    "pages": 4,
+    "sha256": "6ec78fe807c1cbffe27a28d7b931cdd6e7f66e5bd43a3a745f709ca65b3e65c0"
+  },
+  {
+    "file": "Nimura_2022_camera_thermal_test_stand.xml",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC9786690/fullTextXML",
+    "retrieved": "2026-11-04",
+    "bytes": 78164,
+    "sha256": "8aa05644805a5cb91b20d709c56b01c2b14092dafad5c77a303b01b824abb8d9",
+    "status": "downloaded",
+    "format": "JATS XML"
+  },
+  {
+    "file": "NISTIR_6969_2014_rev2015.pdf",
+    "url": "https://www.nist.gov/document/nistir69692014092620150624revpdf",
+    "retrieved": "2026-11-04",
+    "bytes": 985962,
+    "pages": 209,
+    "sha256": "74df83121db4669be2f4ec98306765f5086dcbe2b0a22abc465406931cd3a3c5",
+    "status": "downloaded",
+    "note": "GMP 10 reviewed for physical weighing influences; not adopted as a production certification protocol."
+  },
+  {
+    "file": "VA_lens_resolution_v1.5.pdf",
+    "url": "https://hs.va-imaging.com/hubfs/Supportshare/Lenses/Lens_resolution_data_v1.5.pdf",
+    "retrieved": "2026-11-04",
+    "status": "failed",
+    "reason": "HTTP 404; indexed PDF text available through search, no local file."
+  },
+  {
+    "file": "ITEM_profile_20x20.pdf",
+    "url": "https://cdn.item24.com/product-assets/DOK_PROD_37003_%23SEN_%23AIN_%23V1.pdf",
+    "retrieved": "2026-11-04",
+    "bytes": 422373,
+    "sha256": "435d6e54e806c546859dd87ba6da9f215724b37ed12c8f37290a13e4b4f56b97",
+    "pages": 1,
+    "status": "downloaded"
+  },
+  {
+    "file": "ITEM_profile_40x40.pdf",
+    "url": "https://cdn.item24.com/product-assets/DOK_PROD_2603_%23SALL_%23AIN_%23V1.pdf",
+    "retrieved": "2026-11-04",
+    "bytes": 309515,
+    "sha256": "ef0142ab368e41e9667111db4fe25b2b6bdb44e27a1bd858115e8b07c1040be4",
+    "pages": 1,
+    "status": "downloaded"
+  },
+  {
+    "file": "ITEM_profile_deflection.pdf",
+    "url": "https://cdn.item24.com/product-assets/DOK_DATA_profil-tech-daten_%23SEN_%23AIN_%23V3.pdf",
+    "retrieved": "2026-11-04",
+    "bytes": 1204948,
+    "sha256": "914fe9be9cc161110cdca4707bdfa8dfbd2e3368c5cde631e0d076b20e295346",
+    "pages": 9,
+    "status": "downloaded"
+  },
+  {
+    "file": "Micro_spiral_process_fingerprints_2019.xml",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC6562889/fullTextXML",
+    "retrieved": "2026-11-04",
+    "bytes": 68651,
+    "sha256": "f279b961b320ad6bd32ab8518cd67a603924628b1c117cde4b596c04cb6c9c04",
+    "status": "downloaded",
+    "format": "JATS XML"
+  },
+  {
+    "file": "Aminabadi_2022_inline_3D_moulded_parts.pdf",
+    "url": "https://pdfs.semanticscholar.org/b0d6/a95dac06927a0c851f73d8c7f333728d985c.pdf",
+    "retrieved": "2026-11-04",
+    "bytes": 6869297,
+    "sha256": "0e2227408c07a2939b8bdf81807f8b108cdeb234c455df8ea7ffcf936cb4a82c",
+    "status": "downloaded",
+    "pages": 19,
+    "note": "Published CC BY 4.0 article hosted by Semantic Scholar; DOI 10.3390/technologies10040095. Publisher HTML temporarily rate-limited."
+  },
+  {
+    "file": "USS_DBS46_300g_manual.pdf",
+    "url": "https://file.ussolid.com/content/JFDBS/Manual-USS-DBS46%20Precision%20Balance.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 934222,
+    "sha256": "05e9a9605c764392172760f02dfb817413ad267de04c1824c72efb214bfb7dc2",
+    "pages": 6
+  },
+  {
+    "file": "Calib_Alu_LDPE_2025.pdf",
+    "url": "https://cdn.shopify.com/s/files/1/0021/3984/8751/files/Calib_Datasheet_Alu_LDPE.pdf?v=1720127874",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 4512918,
+    "sha256": "199cd648004407bd2cb00f07f4fd8b0c0093bfdb9bdc43d8c61e460e6a1d082a",
+    "pages": 4
+  },
+  {
+    "file": "Calib_Ceramic_2025.pdf",
+    "url": "https://cdn.shopify.com/s/files/1/0021/3984/8751/files/Calib_Datasheet_Ceramic.pdf?v=1720127873",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 1961529,
+    "sha256": "cc9a10d5818532453617c43187c0630d58eadf0ecde7557acfb028f62ee2136a",
+    "pages": 3
+  },
+  {
+    "file": "Calib_Print_Lithography_2025.pdf",
+    "url": "https://cdn.shopify.com/s/files/1/0021/3984/8751/files/Calib_Datasheet_Print_Lithography.pdf?v=1720127875",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 7053702,
+    "sha256": "2f9038f49ac52f622f3bd53226baab3e012af0e245d1ca0e4fab374f591b4350",
+    "pages": 3
+  },
+  {
+    "file": "Nahita_5173_datasheet.pdf",
+    "url": "https://www.auxilab.es/controles/ObtenerPDF.ashx?f=%5C00%5C06%5Cyf%5Cvy_F_Serie+5173_C.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 1367186,
+    "sha256": "97d686a96f8d019fd885ec1c775dc82b9421b6efebefa790050e414818615d16",
+    "pages": 2
+  },
+  {
+    "file": "Nahita_5173_manual.pdf",
+    "url": "https://www.auxilab.es/controles/ObtenerPDF.ashx?f=%5C00%5C07%5C96%5C6m_M55173xxx.pdf",
+    "retrieved": "2026-11-04",
+    "status": "downloaded",
+    "bytes": 265060,
+    "sha256": "964fd1dccf28ed8e4e6f41e7129b7eb3bd16bce0204923e539d2a9c30659e519",
+    "pages": 35
+  }
+]
