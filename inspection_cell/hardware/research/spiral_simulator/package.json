@@ -1,0 +1,16 @@
+{
+  "name": "machina-spiral-simulator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node checks.mjs",
+    "check:browser": "node browser_checks.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.0",
+    "playwright-core": "1.56.1",
+    "three": "0.180.0"
+  }
+}

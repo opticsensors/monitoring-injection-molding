@@ -1,5 +1,7 @@
 # Investigación de hardware
 
+**Simulador interactivo, 2026-11-05:** [espiral 3D, cámara y FOV](spiral_simulator/README.md), con [visor autónomo](spiral_simulator/simulador.html), modelo Python y escenarios reproducibles. Permite comparar elevación uniforme, inclinación y ondas centradas −0,5/+0,5 mm o apoyadas 0/+1 mm; distingue deformación sin estirar de XY fijo. Son cálculos geométricos, sin ensayo físico.
+
 **Último estudio específico:** [calibración de píxeles a mm](calibration_2026-11-04/README.md): FLIR/Computar, literatura en inglés, patrones y alternativas al checkerboard, repetibilidad y validación independiente. Incluye PDFs, índices de evidencia y simulación reproducible, sin ensayo físico.
 
 **Estudio general:** [dictamen de viabilidad](deep_dive_2026-11-04/feasibility.md), [índice ampliado](deep_dive_2026-11-04/README.md) y [pruebas con medios disponibles](../../validation/protocols/first_lab_checks.md). Incluye nuevos candidatos, artículos, Reddit, cálculos de altura/longitud y consultas preparadas.

@@ -1,0 +1,11 @@
+import {build} from 'esbuild';
+import {readFile,writeFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import {dirname,join} from 'node:path';
+const dir=dirname(fileURLToPath(import.meta.url));
+const bundled=await build({entryPoints:[join(dir,'app.js')],bundle:true,minify:true,format:'iife',write:false,legalComments:'inline',target:['es2020']});
+const template=await readFile(join(dir,'index.template.html'),'utf8');
+const source=bundled.outputFiles[0].text.replaceAll('</script','<\\/script');
+await writeFile(join(dir,'simulador.html'),template.replace('<!-- APP_BUNDLE -->',()=>`<script>${source}</script>`),'utf8');
+await writeFile(join(dir,'THIRD_PARTY_LICENSES.txt'),'Three.js 0.180.0, incluido con OrbitControls en simulador.html.\n\n'+await readFile(join(dir,'node_modules/three/LICENSE'),'utf8'),'utf8');
+console.log('Generado simulador.html; autónomo, sin red ni servidor.');

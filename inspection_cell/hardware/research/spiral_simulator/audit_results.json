@@ -1,0 +1,504 @@
+{
+  "status": "PASS",
+  "date": "2026-11-05",
+  "camera_model": "BFS-U3-200S6M-C",
+  "sensor_pixels": [
+    5472,
+    3648
+  ],
+  "pixel_pitch_mm": 0.0024,
+  "sensor_mm": [
+    13.1328,
+    8.755199999999999
+  ],
+  "dependencies": {
+    "opencv": "4.11.0",
+    "numpy": "1.26.4",
+    "scipy": "1.16.2"
+  },
+  "ui_step_mm": 0.01,
+  "matrix_checks": {
+    "plana_z0": {
+      "coordinate_residual_mm": 2.842170943040401e-14,
+      "length_residual_mm": 1.369357960356865e-10,
+      "horizontal_width_residual_mm": 3.1530333899354446e-14,
+      "fully_visible": true
+    },
+    "subida_uniforme_1mm": {
+      "coordinate_residual_mm": 4.263256414560601e-14,
+      "length_residual_mm": 1.9775825421675108e-10,
+      "horizontal_width_residual_mm": 3.552713678800501e-14,
+      "fully_visible": true
+    },
+    "inclinada_centrada_1mm": {
+      "coordinate_residual_mm": 4.263256414560601e-14,
+      "length_residual_mm": 1.3073986337985843e-12,
+      "horizontal_width_residual_mm": 3.552713678800501e-14,
+      "fully_visible": true
+    },
+    "inclinada_0_a_1mm": {
+      "coordinate_residual_mm": 4.263256414560601e-14,
+      "length_residual_mm": 1.0231815394945443e-12,
+      "horizontal_width_residual_mm": 4.1744385725905886e-14,
+      "fully_visible": true
+    },
+    "onda_centrada_1mm_sin_estirar": {
+      "coordinate_residual_mm": 4.263256414560601e-14,
+      "length_residual_mm": 6.252776074688882e-13,
+      "horizontal_width_residual_mm": 2.7533531010703882e-14,
+      "fully_visible": true
+    },
+    "onda_0_a_1mm_sin_estirar": {
+      "coordinate_residual_mm": 4.263256414560601e-14,
+      "length_residual_mm": 1.8758328224066645e-12,
+      "horizontal_width_residual_mm": 2.398081733190338e-14,
+      "fully_visible": true
+    },
+    "onda_centrada_1mm_xy_fijo": {
+      "coordinate_residual_mm": 4.263256414560601e-14,
+      "length_residual_mm": 2.7853275241795927e-12,
+      "horizontal_width_residual_mm": 2.930988785010413e-14,
+      "fully_visible": true
+    },
+    "bulto_centro_fijo_10mm": {
+      "coordinate_residual_mm": 4.263256414560601e-14,
+      "length_residual_mm": 4.831690603168681e-12,
+      "horizontal_width_residual_mm": 2.4868995751603507e-14,
+      "fully_visible": true
+    },
+    "onda_centro_fijo_fase_40": {
+      "coordinate_residual_mm": 4.263256414560601e-14,
+      "length_residual_mm": 2.3305801732931286e-12,
+      "horizontal_width_residual_mm": 3.1530333899354446e-14,
+      "fully_visible": true
+    },
+    "caida_radial_1mm": {
+      "coordinate_residual_mm": 4.263256414560601e-14,
+      "length_residual_mm": 3.581135388230905e-12,
+      "horizontal_width_residual_mm": 2.7533531010703882e-14,
+      "fully_visible": true
+    },
+    "caida_radial_10mm": {
+      "coordinate_residual_mm": 4.263256414560601e-14,
+      "length_residual_mm": 6.912159733474255e-11,
+      "horizontal_width_residual_mm": 3.064215547965432e-14,
+      "fully_visible": true
+    },
+    "caida_radial_inclinada_elevada": {
+      "coordinate_residual_mm": 4.263256414560601e-14,
+      "length_residual_mm": 4.604316927725449e-12,
+      "horizontal_width_residual_mm": 4.218847493575595e-14,
+      "fully_visible": true
+    },
+    "escala_positiva_002pct": {
+      "coordinate_residual_mm": 2.842170943040401e-14,
+      "length_residual_mm": 9.828227121033706e-11,
+      "horizontal_width_residual_mm": 3.197442310920451e-14,
+      "fully_visible": true
+    },
+    "distorsion_positiva_1pct": {
+      "coordinate_residual_mm": 4.263256414560601e-14,
+      "length_residual_mm": 7.787548383930698e-11,
+      "horizontal_width_residual_mm": 3.6415315207705135e-14,
+      "fully_visible": true
+    },
+    "distorsion_negativa_1pct": {
+      "coordinate_residual_mm": 4.263256414560601e-14,
+      "length_residual_mm": 1.6154899640241638e-10,
+      "horizontal_width_residual_mm": 4.529709940470639e-14,
+      "fully_visible": true
+    },
+    "errores_combinados_onda": {
+      "coordinate_residual_mm": 5.684341886080802e-14,
+      "length_residual_mm": 1.7053025658242404e-13,
+      "horizontal_width_residual_mm": 3.6415315207705135e-14,
+      "fully_visible": true
+    },
+    "variado_00": {
+      "coordinate_residual_mm": 8.526512829121202e-14,
+      "length_residual_mm": 2.2737367544323206e-13,
+      "horizontal_width_residual_mm": 5.284661597215745e-14,
+      "fully_visible": false
+    },
+    "variado_01": {
+      "coordinate_residual_mm": 7.105427357601002e-14,
+      "length_residual_mm": 1.7053025658242404e-12,
+      "horizontal_width_residual_mm": 5.773159728050814e-14,
+      "fully_visible": true
+    },
+    "variado_02": {
+      "coordinate_residual_mm": 8.526512829121202e-14,
+      "length_residual_mm": 3.126388037344441e-12,
+      "horizontal_width_residual_mm": 4.796163466380676e-14,
+      "fully_visible": false
+    },
+    "variado_03": {
+      "coordinate_residual_mm": 8.526512829121202e-14,
+      "length_residual_mm": 4.263256414560601e-12,
+      "horizontal_width_residual_mm": 2.7533531010703882e-14,
+      "fully_visible": false
+    },
+    "variado_04": {
+      "coordinate_residual_mm": 3.126388037344441e-13,
+      "length_residual_mm": 1.7053025658242404e-12,
+      "horizontal_width_residual_mm": 2.3359092438113294e-13,
+      "fully_visible": true
+    },
+    "variado_05": {
+      "coordinate_residual_mm": 1.4210854715202004e-13,
+      "length_residual_mm": 1.4210854715202004e-12,
+      "horizontal_width_residual_mm": 7.016609515630989e-14,
+      "fully_visible": true
+    },
+    "variado_06": {
+      "coordinate_residual_mm": 3.979039320256561e-13,
+      "length_residual_mm": 1.1368683772161603e-12,
+      "horizontal_width_residual_mm": 2.4646951146678475e-13,
+      "fully_visible": true
+    },
+    "variado_07": {
+      "coordinate_residual_mm": 3.836930773104541e-13,
+      "length_residual_mm": 1.0231815394945443e-12,
+      "horizontal_width_residual_mm": 2.4513724383723456e-13,
+      "fully_visible": true
+    },
+    "variado_08": {
+      "coordinate_residual_mm": 1.1368683772161603e-13,
+      "length_residual_mm": 3.467448550509289e-12,
+      "horizontal_width_residual_mm": 3.6415315207705135e-14,
+      "fully_visible": false
+    },
+    "variado_09": {
+      "coordinate_residual_mm": 4.973799150320701e-14,
+      "length_residual_mm": 2.1600499167107046e-12,
+      "horizontal_width_residual_mm": 2.220446049250313e-14,
+      "fully_visible": true
+    },
+    "variado_10": {
+      "coordinate_residual_mm": 1.1368683772161603e-13,
+      "length_residual_mm": 3.637978807091713e-12,
+      "horizontal_width_residual_mm": 3.730349362740526e-14,
+      "fully_visible": false
+    },
+    "variado_11": {
+      "coordinate_residual_mm": 8.526512829121202e-14,
+      "length_residual_mm": 9.094947017729282e-13,
+      "horizontal_width_residual_mm": 2.6867397195928788e-14,
+      "fully_visible": false
+    },
+    "variado_12": {
+      "coordinate_residual_mm": 2.5579538487363607e-13,
+      "length_residual_mm": 4.547473508864641e-13,
+      "horizontal_width_residual_mm": 3.490541189421492e-13,
+      "fully_visible": true
+    },
+    "variado_13": {
+      "coordinate_residual_mm": 1.1368683772161603e-13,
+      "length_residual_mm": 2.2168933355715126e-12,
+      "horizontal_width_residual_mm": 5.10702591327572e-14,
+      "fully_visible": false
+    },
+    "variado_14": {
+      "coordinate_residual_mm": 4.263256414560601e-14,
+      "length_residual_mm": 3.410605131648481e-13,
+      "horizontal_width_residual_mm": 2.4868995751603507e-14,
+      "fully_visible": false
+    },
+    "variado_15": {
+      "coordinate_residual_mm": 3.126388037344441e-13,
+      "length_residual_mm": 1.0231815394945443e-12,
+      "horizontal_width_residual_mm": 2.6978419498391304e-13,
+      "fully_visible": true
+    },
+    "variado_16": {
+      "coordinate_residual_mm": 2.2737367544323206e-13,
+      "length_residual_mm": 2.9558577807620168e-12,
+      "horizontal_width_residual_mm": 1.5587531265737198e-13,
+      "fully_visible": true
+    },
+    "variado_17": {
+      "coordinate_residual_mm": 7.105427357601002e-14,
+      "length_residual_mm": 3.694822225952521e-12,
+      "horizontal_width_residual_mm": 5.1514348342607263e-14,
+      "fully_visible": true
+    },
+    "variado_18": {
+      "coordinate_residual_mm": 5.684341886080802e-14,
+      "length_residual_mm": 1.9895196601282805e-12,
+      "horizontal_width_residual_mm": 3.9968028886505635e-14,
+      "fully_visible": false
+    },
+    "variado_19": {
+      "coordinate_residual_mm": 1.4210854715202004e-13,
+      "length_residual_mm": 3.069544618483633e-12,
+      "horizontal_width_residual_mm": 7.016609515630989e-14,
+      "fully_visible": false
+    },
+    "variado_20": {
+      "coordinate_residual_mm": 8.526512829121202e-14,
+      "length_residual_mm": 7.958078640513122e-13,
+      "horizontal_width_residual_mm": 1.9095836023552692e-14,
+      "fully_visible": false
+    },
+    "variado_21": {
+      "coordinate_residual_mm": 8.526512829121202e-14,
+      "length_residual_mm": 8.526512829121202e-13,
+      "horizontal_width_residual_mm": 4.929390229335695e-14,
+      "fully_visible": false
+    },
+    "variado_22": {
+      "coordinate_residual_mm": 8.526512829121202e-14,
+      "length_residual_mm": 2.8990143619012088e-12,
+      "horizontal_width_residual_mm": 4.75175454539567e-14,
+      "fully_visible": false
+    },
+    "variado_23": {
+      "coordinate_residual_mm": 8.526512829121202e-14,
+      "length_residual_mm": 2.1600499167107046e-12,
+      "horizontal_width_residual_mm": 6.927791673660977e-14,
+      "fully_visible": false
+    },
+    "radial_-5_escala_-0.2": {
+      "coordinate_residual_mm": 8.526512829121202e-14,
+      "length_residual_mm": 2.8421709430404007e-13,
+      "horizontal_width_residual_mm": 3.552713678800501e-14,
+      "fully_visible": true
+    },
+    "radial_-5_escala_0": {
+      "coordinate_residual_mm": 8.526512829121202e-14,
+      "length_residual_mm": 2.3305801732931286e-12,
+      "horizontal_width_residual_mm": 3.552713678800501e-14,
+      "fully_visible": true
+    },
+    "radial_-5_escala_0.2": {
+      "coordinate_residual_mm": 8.526512829121202e-14,
+      "length_residual_mm": 1.5347723092418164e-12,
+      "horizontal_width_residual_mm": 3.552713678800501e-14,
+      "fully_visible": true
+    },
+    "radial_-1_escala_-0.2": {
+      "coordinate_residual_mm": 8.526512829121202e-14,
+      "length_residual_mm": 1.4779288903810084e-12,
+      "horizontal_width_residual_mm": 3.552713678800501e-14,
+      "fully_visible": true
+    },
+    "radial_-1_escala_0": {
+      "coordinate_residual_mm": 8.526512829121202e-14,
+      "length_residual_mm": 0.0,
+      "horizontal_width_residual_mm": 3.552713678800501e-14,
+      "fully_visible": true
+    },
+    "radial_-1_escala_0.2": {
+      "coordinate_residual_mm": 8.526512829121202e-14,
+      "length_residual_mm": 1.5347723092418164e-12,
+      "horizontal_width_residual_mm": 3.552713678800501e-14,
+      "fully_visible": true
+    },
+    "radial_1_escala_-0.2": {
+      "coordinate_residual_mm": 7.105427357601002e-14,
+      "length_residual_mm": 1.6484591469634324e-12,
+      "horizontal_width_residual_mm": 5.1514348342607263e-14,
+      "fully_visible": true
+    },
+    "radial_1_escala_0": {
+      "coordinate_residual_mm": 7.105427357601002e-14,
+      "length_residual_mm": 3.467448550509289e-12,
+      "horizontal_width_residual_mm": 5.1514348342607263e-14,
+      "fully_visible": true
+    },
+    "radial_1_escala_0.2": {
+      "coordinate_residual_mm": 7.105427357601002e-14,
+      "length_residual_mm": 1.8758328224066645e-12,
+      "horizontal_width_residual_mm": 5.1514348342607263e-14,
+      "fully_visible": true
+    },
+    "radial_5_escala_-0.2": {
+      "coordinate_residual_mm": 7.105427357601002e-14,
+      "length_residual_mm": 2.5579538487363607e-12,
+      "horizontal_width_residual_mm": 2.7533531010703882e-14,
+      "fully_visible": true
+    },
+    "radial_5_escala_0": {
+      "coordinate_residual_mm": 7.105427357601002e-14,
+      "length_residual_mm": 2.6716406864579767e-12,
+      "horizontal_width_residual_mm": 2.7533531010703882e-14,
+      "fully_visible": true
+    },
+    "radial_5_escala_0.2": {
+      "coordinate_residual_mm": 7.105427357601002e-14,
+      "length_residual_mm": 2.0463630789890885e-12,
+      "horizontal_width_residual_mm": 2.7533531010703882e-14,
+      "fully_visible": true
+    }
+  },
+  "continuous_checks": {
+    "plana_elevada_1mm": {
+      "reference": {
+        "spatial_mm": 510.50880620834135,
+        "apparent_mm": 511.14774088444693,
+        "error_mm": 0.6389346761055776,
+        "quadrature_error_estimate_mm": 1.134266621841449e-11
+      },
+      "ui_error_mm": 0.6389346733019465,
+      "ui_residual_mm": 2.803631105052773e-09,
+      "fine_residual_mm": 3.9199221646413207e-10
+    },
+    "inclinada_12_grados": {
+      "reference": {
+        "spatial_mm": 510.50880620834135,
+        "apparent_mm": 487.73367841461265,
+        "error_mm": -22.7751277937287,
+        "quadrature_error_estimate_mm": 1.1082717905874272e-11
+      },
+      "ui_error_mm": -22.775127687384497,
+      "ui_residual_mm": 1.0634420277710888e-07,
+      "fine_residual_mm": 2.6498867100599455e-08
+    },
+    "ondas_1mm_xy_fijo": {
+      "reference": {
+        "spatial_mm": 510.5523024041234,
+        "apparent_mm": 510.52991971167836,
+        "error_mm": -0.02238269244503499,
+        "quadrature_error_estimate_mm": 2.648849246786006e-11
+      },
+      "ui_error_mm": -0.022382693096176354,
+      "ui_residual_mm": 6.511413630505558e-10,
+      "fine_residual_mm": 6.707523425575346e-11
+    },
+    "ondas_20mm_8_ciclos_xy_fijo": {
+      "reference": {
+        "spatial_mm": 617.8005633380233,
+        "apparent_mm": 504.94569226531564,
+        "error_mm": -112.85487107270762,
+        "quadrature_error_estimate_mm": 2.253736776918236e-09
+      },
+      "ui_error_mm": -112.85486407466857,
+      "ui_residual_mm": 6.998039054906258e-06,
+      "fine_residual_mm": 1.2989598872081842e-06
+    },
+    "bulto_20mm_xy_fijo": {
+      "reference": {
+        "spatial_mm": 514.5444894950464,
+        "apparent_mm": 513.5163675289454,
+        "error_mm": -1.0281219661010255,
+        "quadrature_error_estimate_mm": 2.979617731029396e-10
+      },
+      "ui_error_mm": -1.0281219546885723,
+      "ui_residual_mm": 1.1412453204684425e-08,
+      "fine_residual_mm": 2.856609171431046e-09
+    },
+    "caida_20mm": {
+      "reference": {
+        "spatial_mm": 511.8406161239259,
+        "apparent_mm": 502.1023919421243,
+        "error_mm": -9.73822418180157,
+        "quadrature_error_estimate_mm": 8.22502815997146e-10
+      },
+      "ui_error_mm": -9.73822416623534,
+      "ui_residual_mm": 1.556622919451911e-08,
+      "fine_residual_mm": 3.7139784581086133e-09
+    },
+    "caida_inclinada": {
+      "reference": {
+        "spatial_mm": 511.8406161239258,
+        "apparent_mm": 476.5292151216225,
+        "error_mm": -35.31140100230334,
+        "quadrature_error_estimate_mm": 1.9789820132324559e-10
+      },
+      "ui_error_mm": -35.31140090556619,
+      "ui_residual_mm": 9.673715339886257e-08,
+      "fine_residual_mm": 2.398348897258984e-08
+    }
+  },
+  "inextensible_convergence": {
+    "wave": {
+      "step_mm": [
+        0.01,
+        0.005
+      ],
+      "difference_error_mm": 1.5237902402986947e-05,
+      "previous_step_mm": 0.05,
+      "previous_difference_error_mm": 0.0004692485068176211
+    },
+    "bump": {
+      "step_mm": [
+        0.01,
+        0.005
+      ],
+      "difference_error_mm": 2.503799123587669e-08,
+      "previous_step_mm": 0.05,
+      "previous_difference_error_mm": 9.816375268201227e-07
+    }
+  },
+  "diameter_scope_counterexample": {
+    "dimension_mm": 4,
+    "tilt_degrees": 12,
+    "center_z_mm": 0,
+    "horizontal_scale_error_mm": 0,
+    "inclined_segment_error_mm": -0.08740853999817588,
+    "meaning": "scale_only_is_not_a_bound_on_cross_section_measurement_error"
+  },
+  "examples": {
+    "plana_z0": {
+      "spatial_mm": 510.50880565885194,
+      "apparent_mm": 510.50880565885194,
+      "fully_visible": true,
+      "error_mm": 0.0,
+      "diameter_error_worst_mm": 0.0,
+      "fov_mm": [
+        287.04548571428575,
+        191.36365714285714
+      ],
+      "mm_per_px": 0.052457142857142855
+    },
+    "elevada_1mm": {
+      "spatial_mm": 510.50880565885194,
+      "apparent_mm": 511.1477403345655,
+      "fully_visible": true,
+      "error_mm": 0.6389346757135854,
+      "diameter_error_worst_mm": 0.005006257822278037,
+      "fov_mm": [
+        287.04548571428575,
+        191.36365714285714
+      ],
+      "mm_per_px": 0.052457142857142855
+    },
+    "ondas_iniciales": {
+      "spatial_mm": 510.50880565885814,
+      "apparent_mm": 510.48641552423186,
+      "fully_visible": true,
+      "error_mm": -0.022390134626277813,
+      "diameter_error_worst_mm": 0.0025015634766898387,
+      "fov_mm": [
+        287.04548571428575,
+        191.36365714285714
+      ],
+      "mm_per_px": 0.052457142857142855
+    },
+    "caida_10mm": {
+      "spatial_mm": 510.84472332591884,
+      "apparent_mm": 506.2672193845094,
+      "fully_visible": true,
+      "error_mm": -4.577503941409418,
+      "diameter_error_worst_mm": -0.049382716049382935,
+      "fov_mm": [
+        287.04548571428575,
+        191.36365714285714
+      ],
+      "mm_per_px": 0.052457142857142855
+    },
+    "lente_75mm_z800": {
+      "spatial_mm": 510.50880565885194,
+      "apparent_mm": 510.50880565885194,
+      "fully_visible": false,
+      "error_mm": 0.0,
+      "diameter_error_worst_mm": 0.0,
+      "fov_mm": [
+        126.95039999999999,
+        84.63359999999999
+      ],
+      "mm_per_px": 0.0232
+    }
+  },
+  "scope": "synthetic_model_only_not_hardware_validation"
+}
